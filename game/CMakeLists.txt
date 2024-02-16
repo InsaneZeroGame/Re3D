@@ -22,5 +22,5 @@ set(${TARGET}_Srcs
 
 
 add_executable(${TARGET} triangle.cpp ${${TARGET}_Headers} ${${TARGET}_Srcs})
-target_link_libraries(${TARGET} glfw)
+target_link_libraries(${TARGET} glfw GSL)
 target_precompile_headers(${TARGET} PRIVATE pch.h)
