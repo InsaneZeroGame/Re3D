@@ -16,7 +16,7 @@ Window::BaseWindow::BaseWindow(int InWidth, int InHeight):
 	Ensures(glfwInit());
 
 	/* Create a windowed mode window and its OpenGL context */
-	mWindow = glfwCreateWindow(800, 600, "Hello World", NULL, NULL);
+	mWindow = glfwCreateWindow(InWidth, InHeight, "Re3D", NULL, NULL);
 	if (!mWindow)
 	{
 		glfwTerminate();
@@ -47,11 +47,19 @@ void Window::BaseWindow::WindowLoop()
 	while (!glfwWindowShouldClose(mWindow))
 	{
 		/* Render here */
-
+		if (mRenderFunc)
+		{
+			mRenderFunc(0.0f);
+		}
 		/* Swap front and back buffers */
 		glfwSwapBuffers(mWindow);
 
 		/* Poll for and process events */
 		glfwPollEvents();
 	}
+}
+
+void Window::BaseWindow::SetRenderFunc(std::function<void(float)> InFunc)
+{
+	mRenderFunc = InFunc;
 }

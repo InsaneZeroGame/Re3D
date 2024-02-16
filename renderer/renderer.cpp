@@ -17,3 +17,8 @@ void Renderer::BaseRenderer::SetTargetWindow(HWND InWindow, int InWidth, int InH
 {
 	mDeviceManager->SetTargetWindow(InWindow, InWidth, InHeight);
 }
+
+void Renderer::BaseRenderer::Update(float delta)
+{
+
+}

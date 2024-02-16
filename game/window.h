@@ -20,10 +20,12 @@ namespace Window
 		int GetWidth() const { return mWidth; }
 		int GetHeight() const { return mHeight; };
 		void WindowLoop();
+		void SetRenderFunc(std::function<void(float)> InFunc);
 	private:
 		int mWidth;
 		int mHeight;
 		GLFWwindow* mWindow;
+		std::function<void(float)> mRenderFunc;
 	};
 	inline static BaseWindow* gMainWindow = nullptr;
 }
