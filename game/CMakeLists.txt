@@ -1,3 +1,5 @@
+set(TARGET triangle)
+
 CPMAddPackage(
         NAME GLFW
         GITHUB_REPOSITORY glfw/glfw
@@ -8,5 +10,17 @@ CPMAddPackage(
           "GLFW_BULID_DOCS OFF"
 )
 
-add_executable(triangle triangle.cpp)
-target_link_libraries(triangle glfw)
+set(${TARGET}_Headers 
+            window.h)
+
+set(${TARGET}_Srcs 
+            window.cpp)
+
+set(${TARGET}_Srcs
+            ${${TARGET}_Srcs}
+            pch.cpp pch.h)
+
+
+add_executable(${TARGET} triangle.cpp ${${TARGET}_Headers} ${${TARGET}_Srcs})
+target_link_libraries(${TARGET} glfw)
+target_precompile_headers(${TARGET} PRIVATE pch.h)
