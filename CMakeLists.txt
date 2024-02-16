@@ -9,7 +9,7 @@ CPMAddPackage(
         GITHUB_REPOSITORY "microsoft/GSL"
         GIT_TAG v4.0.0
 )
-
+add_subdirectory(renderer)
 add_subdirectory(game)
 
 

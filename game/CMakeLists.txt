@@ -20,7 +20,8 @@ set(${TARGET}_Srcs
             ${${TARGET}_Srcs}
             pch.cpp pch.h)
 
+include_directories(${CMAKE_SOURCE_DIR}/renderer)
 
 add_executable(${TARGET} triangle.cpp ${${TARGET}_Headers} ${${TARGET}_Srcs})
-target_link_libraries(${TARGET} glfw GSL)
+target_link_libraries(${TARGET} glfw GSL Renderer)
 target_precompile_headers(${TARGET} PRIVATE pch.h)

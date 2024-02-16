@@ -23,6 +23,26 @@ Window::BaseWindow::BaseWindow(int InWidth, int InHeight):
 	}
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwSetWindowSizeCallback(mWindow, &sOnResize);
+}
+
+Window::BaseWindow::~BaseWindow()
+{
+	glfwDestroyWindow(mWindow);
+	glfwTerminate();
+}
+
+void Window::BaseWindow::OnResize(int InWidth, int InHeight)
+{
+	std::cout << "Width : " << InWidth << " Height : " << InHeight << std::endl;
+}
+
+void* Window::BaseWindow::GetNativeWindow()
+{
+	return glfwGetWin32Window(mWindow);
+}
+
+void Window::BaseWindow::WindowLoop()
+{
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(mWindow))
 	{
@@ -34,16 +54,4 @@ Window::BaseWindow::BaseWindow(int InWidth, int InHeight):
 		/* Poll for and process events */
 		glfwPollEvents();
 	}
-
-	glfwTerminate();
-}
-
-Window::BaseWindow::~BaseWindow()
-{
-	glfwDestroyWindow(mWindow);
-}
-
-void Window::BaseWindow::OnResize(int InWidth, int InHeight)
-{
-
 }
