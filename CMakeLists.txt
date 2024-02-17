@@ -9,6 +9,12 @@ CPMAddPackage(
         GITHUB_REPOSITORY "microsoft/GSL"
         GIT_TAG v4.0.0
 )
+
+CPMAddPackage(
+        NAME spdlog
+        GITHUB_REPOSITORY "gabime/spdlog"
+        GIT_TAG v1.13.0
+)
 add_subdirectory(renderer)
 add_subdirectory(game)
 

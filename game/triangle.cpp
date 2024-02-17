@@ -5,14 +5,14 @@ constexpr int WINDOW_WIDTH = 800;
 constexpr int WINDOW_HEIGHT = 600;
 
 
-int main() 
+int main(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 {
 	//1.Renderer
 	auto renderer = new Renderer::BaseRenderer;
 	//2.Window
 	Window::gMainWindow = new Window::BaseWindow(WINDOW_WIDTH, WINDOW_HEIGHT);
 	//3.Bind renderer and window
-	renderer->SetTargetWindow((HWND)Window::gMainWindow->GetNativeWindow(), Window::gMainWindow->GetWidth(), Window::gMainWindow->GetHeight());
+	renderer->SetTargetWindowAndCreateSwapChain((HWND)Window::gMainWindow->GetNativeWindow(), Window::gMainWindow->GetWidth(), Window::gMainWindow->GetHeight());
 	Window::gMainWindow->SetRenderFunc(std::bind(&Renderer::BaseRenderer::Update,renderer,std::placeholders::_1));
 	//4.Window Message Loop
 	Window::gMainWindow->WindowLoop();

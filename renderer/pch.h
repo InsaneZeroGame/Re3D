@@ -73,6 +73,9 @@
 #include <gsl/gsl>
 #include <gsl/assert>
 #include <memory>
+#include <spdlog/spdlog.h>
+#include "color.h"
+
 
 #pragma comment(lib,"dxgi.lib")
 #pragma comment(lib,"d3d12.lib")

@@ -8,7 +8,7 @@ constexpr static bool RequireDXRSupport = true;
 static bool g_bTypedUAVLoadSupport_R11G11B10_FLOAT = false;
 static bool g_bTypedUAVLoadSupport_R16G16B16A16_FLOAT = false;
 constexpr static DXGI_FORMAT SwapChainFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
-constexpr static int SWAP_CHAIN_BUFFER_COUNT = 3;
+constexpr int MAX_DESC_NUM = 256;
 
 // Check adapter support for DirectX Raytracing.
 bool IsDirectXRaytracingSupported(ID3D12Device* testDevice)
@@ -34,7 +34,7 @@ void Renderer::DeviceManager::CreateD3DDevice()
 	uint32_t useDebugLayers = 0;
 #if _DEBUG
 	// Default to true for debug builds
-	useDebugLayers = 1;
+	useDebugLayers = 0;
 #endif
 
 	DWORD dxgiFactoryFlags = 0;
@@ -65,23 +65,23 @@ void Renderer::DeviceManager::CreateD3DDevice()
 		}
 
 #if _DEBUG
-		IDXGIInfoQueue* dxgiInfoQueue;
-		if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue))))
-		{
-			dxgiFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
-
-			dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, true);
-			dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, true);
-
-			DXGI_INFO_QUEUE_MESSAGE_ID hide[] =
-			{
-				80 /* IDXGISwapChain::GetContainingOutput: The swapchain's adapter does not control the output on which the swapchain's window resides. */,
-			};
-			DXGI_INFO_QUEUE_FILTER filter = {};
-			filter.DenyList.NumIDs = _countof(hide);
-			filter.DenyList.pIDList = hide;
-			dxgiInfoQueue->AddStorageFilterEntries(DXGI_DEBUG_DXGI, &filter);
-		}
+		//IDXGIInfoQueue* dxgiInfoQueue;
+		//if (SUCCEEDED(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiInfoQueue))))
+		//{
+		//	dxgiFactoryFlags = DXGI_CREATE_FACTORY_DEBUG;
+		//
+		//	dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_ERROR, true);
+		//	dxgiInfoQueue->SetBreakOnSeverity(DXGI_DEBUG_ALL, DXGI_INFO_QUEUE_MESSAGE_SEVERITY_CORRUPTION, true);
+		//
+		//	DXGI_INFO_QUEUE_MESSAGE_ID hide[] =
+		//	{
+		//		80 /* IDXGISwapChain::GetContainingOutput: The swapchain's adapter does not control the output on which the swapchain's window resides. */,
+		//	};
+		//	DXGI_INFO_QUEUE_FILTER filter = {};
+		//	filter.DenyList.NumIDs = _countof(hide);
+		//	filter.DenyList.pIDList = hide;
+		//	dxgiInfoQueue->AddStorageFilterEntries(DXGI_DEBUG_DXGI, &filter);
+		//}
 #endif
 	}
 
@@ -164,7 +164,7 @@ void Renderer::DeviceManager::CreateD3DDevice()
 			mDevice->SetStablePowerState(TRUE);
 	}
 #endif	
-
+	g_Device = mDevice;
 #if _DEBUG
 	ID3D12InfoQueue* pInfoQueue = nullptr;
 	if (SUCCEEDED(mDevice->QueryInterface(MY_IID_PPV_ARGS(&pInfoQueue))))
@@ -241,16 +241,27 @@ void Renderer::DeviceManager::CreateD3DDevice()
 			}
 		}
 	}
+	for (int i = 0 ; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;++i)
+	{
+		 g_DescHeap[i] = new DescHeap(D3D12_DESCRIPTOR_HEAP_TYPE(i));
+	}
 }
 
 
 
 Renderer::DeviceManager::~DeviceManager()
 {
-
+	for (int i = 0; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES; ++i)
+	{
+		if (g_DescHeap[i])
+		{
+			delete g_DescHeap[i];
+			g_DescHeap[i] = nullptr;
+		}
+	}
 }
 
-void Renderer::DeviceManager::SetTargetWindow(HWND InWindow, int InWidth, int InHeight)
+void Renderer::DeviceManager::SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight)
 {
 	mWidth = InWidth;
 	mHeight = InHeight;
@@ -261,7 +272,7 @@ void Renderer::DeviceManager::SetTargetWindow(HWND InWindow, int InWidth, int In
 void Renderer::DeviceManager::CreateSwapChain()
 {
 	Expects(s_SwapChain1 == nullptr);
-
+	
 	Microsoft::WRL::ComPtr<IDXGIFactory4> dxgiFactory;
 	Ensures(CreateDXGIFactory2(0, MY_IID_PPV_ARGS(&dxgiFactory)) == S_OK);
 
@@ -288,7 +299,7 @@ void Renderer::DeviceManager::CreateSwapChain()
 		&fsSwapChainDesc,
 		nullptr,
 		&s_SwapChain1) == S_OK);
-
+	
 #if CONDITIONALLY_ENABLE_HDR_OUTPUT
 	{
 		IDXGISwapChain4* swapChain = (IDXGISwapChain4*)s_SwapChain1;
@@ -313,13 +324,13 @@ void Renderer::DeviceManager::CreateSwapChain()
 	{
 		ID3D12Resource* DisplayPlane;
 		Ensures(s_SwapChain1->GetBuffer(i, IID_PPV_ARGS(&DisplayPlane)) == S_OK);
-		//g_DisplayPlane[i].CreateFromSwapChain(L"Primary SwapChain Buffer", DisplayPlane.Detach());
+		g_DisplayPlane[i].CreateFromSwapChain(L"Primary SwapChain Buffer", DisplayPlane);
 	}
 }
 
 void Renderer::DeviceManager::CreateCmdManager()
 {
-	mCmdManager = std::make_unique<CmdManager>(mDevice);
+	mCmdManager = std::make_shared<CmdManager>(mDevice);
 }
 
 Renderer::CmdManager::CmdManager(ID3D12Device* InDevice):
@@ -346,12 +357,20 @@ Renderer::CmdManager::~CmdManager()
 	
 }
 
-ID3D12CommandList* Renderer::CmdManager::AllocateCmdList(D3D12_COMMAND_LIST_TYPE InType)
+ID3D12GraphicsCommandList* Renderer::CmdManager::AllocateCmdList(D3D12_COMMAND_LIST_TYPE InType, ID3D12CommandAllocator* InAllocator)
 {
-	ID3D12CommandAllocator* newAllocator = mAllocatorMap[InType]->RequestAllocator(0);
-	ID3D12CommandList* newCmdList;
-	mDevice->CreateCommandList(0, InType, newAllocator, nullptr, IID_PPV_ARGS(&newCmdList));
+	ID3D12GraphicsCommandList* newCmdList;
+	g_Device->CreateCommandList(0, InType, InAllocator, nullptr, IID_PPV_ARGS(&newCmdList));
+	newCmdList->Close();
 	return newCmdList;
+
+	
+}
+
+ID3D12CommandAllocator* Renderer::CmdManager::RequestAllocator(D3D12_COMMAND_LIST_TYPE InType, uint64_t CompletedFenceValue)
+{
+	ID3D12CommandAllocator* newAllocator = mAllocatorMap[InType]->RequestAllocator(CompletedFenceValue);
+	return newAllocator;
 }
 
 ID3D12CommandQueue* Renderer::CmdManager::GetQueue(D3D12_COMMAND_LIST_TYPE InType)
@@ -359,9 +378,13 @@ ID3D12CommandQueue* Renderer::CmdManager::GetQueue(D3D12_COMMAND_LIST_TYPE InTyp
 	return mQueueMap[InType];
 }
 
+void Renderer::CmdManager::Discard(D3D12_COMMAND_LIST_TYPE InType, ID3D12CommandAllocator* cmdAllocator, uint64_t InFenceValue)
+{
+	mAllocatorMap[InType]->DiscardAllocator(InFenceValue, cmdAllocator);
+}
+
 Renderer::CommandAllocatorPool::CommandAllocatorPool(D3D12_COMMAND_LIST_TYPE Type):
-	m_cCommandListType(Type),
-	m_Device(nullptr)
+	m_cCommandListType(Type)
 {
 
 }
@@ -369,11 +392,6 @@ Renderer::CommandAllocatorPool::CommandAllocatorPool(D3D12_COMMAND_LIST_TYPE Typ
 Renderer::CommandAllocatorPool::~CommandAllocatorPool()
 {
 	Shutdown();
-}
-
-void Renderer::CommandAllocatorPool::Create(ID3D12Device* pDevice)
-{
-	m_Device = pDevice;
 }
 
 void Renderer::CommandAllocatorPool::Shutdown()
@@ -405,7 +423,7 @@ ID3D12CommandAllocator* Renderer::CommandAllocatorPool::RequestAllocator(uint64_
 	// If no allocator's were ready to be reused, create a new one
 	if (pAllocator == nullptr)
 	{
-		Ensures(m_Device->CreateCommandAllocator(m_cCommandListType, MY_IID_PPV_ARGS(&pAllocator)) == S_OK);
+		Ensures(g_Device->CreateCommandAllocator(m_cCommandListType, MY_IID_PPV_ARGS(&pAllocator)) == S_OK);
 		wchar_t AllocatorName[32];
 		swprintf(AllocatorName, 32, L"CommandAllocator %zu", m_AllocatorPool.size());
 		pAllocator->SetName(AllocatorName);
@@ -421,4 +439,41 @@ void Renderer::CommandAllocatorPool::DiscardAllocator(uint64_t FenceValue, ID3D1
 
 	// That fence value indicates we are free to reset the allocator
 	m_ReadyAllocators.push(std::make_pair(FenceValue, Allocator));
+}
+
+Renderer::DescHeap::DescHeap(D3D12_DESCRIPTOR_HEAP_TYPE Type):
+	mDescSize(0),
+	mCurrentIndex(0)
+{
+	D3D12_DESCRIPTOR_HEAP_DESC lHeapDesc = {};
+	lHeapDesc.Type = Type;
+	lHeapDesc.NumDescriptors = MAX_DESC_NUM;
+	lHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
+	if (Type == D3D12_DESCRIPTOR_HEAP_TYPE_RTV || Type == D3D12_DESCRIPTOR_HEAP_TYPE_DSV)
+	{
+		lHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	}
+	g_Device->CreateDescriptorHeap(&lHeapDesc, IID_PPV_ARGS(&mDescHeap));
+	mDescSize = g_Device->GetDescriptorHandleIncrementSize(Type);
+	if (Type != D3D12_DESCRIPTOR_HEAP_TYPE_RTV && Type != D3D12_DESCRIPTOR_HEAP_TYPE_DSV)
+	{
+		mGpuStart = mDescHeap->GetGPUDescriptorHandleForHeapStart();
+	}
+	mCpuStart = mDescHeap->GetCPUDescriptorHandleForHeapStart();
+
+}
+
+Renderer::DescHeap::~DescHeap()
+{
+	mDescHeap = nullptr;
+}
+
+std::tuple<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> Renderer::DescHeap::Allocate(int count)
+{
+	auto cpuHandle = mCpuStart;
+	auto gpuHandle = mGpuStart;
+	cpuHandle.ptr = mCpuStart.ptr + mCurrentIndex * mDescSize;
+	gpuHandle.ptr = mGpuStart.ptr + mCurrentIndex * mDescSize;
+	mCurrentIndex += count;
+	return {cpuHandle,gpuHandle};
 }
