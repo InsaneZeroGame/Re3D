@@ -40,7 +40,7 @@ void Renderer::BaseRenderer::Update(float delta)
 	IDXGISwapChain4* swapChain = (IDXGISwapChain4*)mDeviceManager->GetSwapChain();
 	mCurrentBackbufferIndex = swapChain->GetCurrentBackBufferIndex();
 	auto cmdAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,mFenceValue);
-	mGraphicsCmd->Reset(cmdAllocator, nullptr);
+	mGraphicsCmd->Reset(cmdAllocator, mPipelineState);
 	if (mIsFirstFrame)
 	{
 		FirstFrame();
@@ -48,10 +48,16 @@ void Renderer::BaseRenderer::Update(float delta)
 	}
 	TransitState(mGraphicsCmd, g_DisplayPlane[mCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, nullptr);
+	D3D12_VIEWPORT lViewPort = {0,0,800,600,0.0,1.0};
+	mGraphicsCmd->RSSetViewports(1, &lViewPort);
+	D3D12_RECT lRect = {0,0,800,600};
+	mGraphicsCmd->RSSetScissorRects(1, &lRect);
 	float ColorRGBA[4] = { 0.15f,0.25f,0.75f,1.0f };
 	D3D12_RECT rect = {0,0,800,600};
 	mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), ColorRGBA, 1, &rect);
-	
+	mGraphicsCmd->SetPipelineState(mPipelineState);
+	mGraphicsCmd->SetGraphicsRootSignature(m_rootSignature);
+	mGraphicsCmd->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 	//Render 
 	{
 		mGraphicsCmd->IASetVertexBuffers(0, 1, &mVertexBuffer->VertexBufferView());
@@ -76,8 +82,8 @@ void Renderer::BaseRenderer::CreateBuffers()
 	//Triangle
 	std::vector<Vertex> triangle = 
 	{
-		{{0.0,1.0,0.0,1.0},{1.0,0.0,0.0,1.0}},
-		{{1.0,0.0,0.0,1.0},{0.0,1.0,0.0,1.0}},
+		{ {0.0,1.0,0.0,1.0},{1.0,0.0,0.0,1.0}},
+		{{ 1.0,0.0,0.0,1.0},{0.0,1.0,0.0,1.0}},
 		{{-1.0,0.0,0.0,1.0},{0.0,0.0,1.0,1.0}},
 
 	};
@@ -91,7 +97,7 @@ void Renderer::BaseRenderer::CreateBuffers()
 	constexpr int uploadBufferSize = MAX_ELE_COUNT * VERTEX_SIZE_IN_BYTE;
 	mUploadBuffer->Create(L"UploadBuffer", uploadBufferSize);
 	void* uploadBufferPtr = mUploadBuffer->Map();
-	memcpy(uploadBufferPtr, triangle.data(), triangle.size());
+	memcpy(uploadBufferPtr, triangle.data(), triangle.size() * sizeof(Vertex));
 	mUploadBuffer->Unmap();
 }
 
@@ -173,9 +179,6 @@ D3D12_SHADER_BYTECODE ReadShader(_In_z_ const wchar_t* name)
 
 void Renderer::BaseRenderer::CreatePipelineState()
 {
-	CHAR path[512];
-	DWORD size = GetModuleFileName(nullptr, path, 512);
-
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC lDesc = {};
 	lDesc.pRootSignature = m_rootSignature;
 	lDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
@@ -183,6 +186,7 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	lDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	lDesc.VS = ReadShader(L"ForwardVS.cso");
 	lDesc.PS = ReadShader(L"ForwardPS.cso");
+	lDesc.SampleMask = UINT_MAX;
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> elements =
 	{

@@ -5,10 +5,10 @@ struct PSInput
     float4 color : COLOR;
 };
 
-PSInput main()
+PSInput main(float4 pos : POSITION,float4 color : COLOR)
 {
     PSInput input;
-    input.position = float4(1.0, 1.0, 1.0, 1.0f);
-    input.color = float4(1.0, 1.0, 1.0, 1.0f);
+    input.position = pos;
+    input.color = color;
     return input;
 }
