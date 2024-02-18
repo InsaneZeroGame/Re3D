@@ -89,7 +89,7 @@ namespace Renderer
 			case DXGI_FORMAT_X24_TYPELESS_G8_UINT:
 			case DXGI_FORMAT_D16_UNORM:
 
-				assert(false, "Requested a UAV Format for a depth stencil Format.");
+				assert(false);
 #endif
 
 			default:
@@ -580,6 +580,292 @@ namespace Renderer
 		//	Context.TransitionResource(*this, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE |
 		//		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		//}
+
+		void GpuBuffer::Create(const std::wstring& name, uint32_t NumElements, uint32_t ElementSize, const void* initialData)
+		{
+			Destroy();
+
+			m_ElementCount = NumElements;
+			m_ElementSize = ElementSize;
+			m_BufferSize = NumElements * ElementSize;
+
+			D3D12_RESOURCE_DESC ResourceDesc = DescribeBuffer();
+
+			m_UsageState = D3D12_RESOURCE_STATE_COMMON;
+
+			D3D12_HEAP_PROPERTIES HeapProps;
+			HeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+			HeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			HeapProps.CreationNodeMask = 1;
+			HeapProps.VisibleNodeMask = 1;
+
+			Ensures(g_Device->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE,
+				&ResourceDesc, m_UsageState, nullptr, MY_IID_PPV_ARGS(&m_pResource)) == S_OK);
+
+			m_GpuVirtualAddress = m_pResource->GetGPUVirtualAddress();
+
+			if (initialData)
+				assert(0);
+				//CommandContext::InitializeBuffer(*this, initialData, m_BufferSize);
+
+#ifdef RELEASE
+			(name);
+#else
+			m_pResource->SetName(name.c_str());
+#endif
+
+			CreateDerivedViews();
+		}
+
+		void GpuBuffer::Create(const std::wstring& name, uint32_t NumElements, uint32_t ElementSize, const UploadBuffer& srcData, uint32_t srcOffset)
+		{
+			Destroy();
+
+			m_ElementCount = NumElements;
+			m_ElementSize = ElementSize;
+			m_BufferSize = NumElements * ElementSize;
+
+			D3D12_RESOURCE_DESC ResourceDesc = DescribeBuffer();
+
+			m_UsageState = D3D12_RESOURCE_STATE_COMMON;
+
+			D3D12_HEAP_PROPERTIES HeapProps;
+			HeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
+			HeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			HeapProps.CreationNodeMask = 1;
+			HeapProps.VisibleNodeMask = 1;
+
+			Ensures(
+				g_Device->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE,
+					&ResourceDesc, m_UsageState, nullptr, MY_IID_PPV_ARGS(&m_pResource)) == S_OK);
+
+			m_GpuVirtualAddress = m_pResource->GetGPUVirtualAddress();
+
+			//CommandContext::InitializeBuffer(*this, srcData, srcOffset);
+
+#ifdef RELEASE
+			(name);
+#else
+			m_pResource->SetName(name.c_str());
+#endif
+
+			CreateDerivedViews();
+		}
+
+		// Sub-Allocate a buffer out of a pre-allocated heap.  If initial data is provided, it will be copied into the buffer using the default command context.
+		void GpuBuffer::CreatePlaced(const std::wstring& name, ID3D12Heap* pBackingHeap, uint32_t HeapOffset, uint32_t NumElements, uint32_t ElementSize,
+			const void* initialData)
+		{
+			m_ElementCount = NumElements;
+			m_ElementSize = ElementSize;
+			m_BufferSize = NumElements * ElementSize;
+
+			D3D12_RESOURCE_DESC ResourceDesc = DescribeBuffer();
+
+			m_UsageState = D3D12_RESOURCE_STATE_COMMON;
+
+			Ensures(g_Device->CreatePlacedResource(pBackingHeap, HeapOffset, &ResourceDesc, m_UsageState, nullptr, MY_IID_PPV_ARGS(&m_pResource)) == S_OK);
+
+			m_GpuVirtualAddress = m_pResource->GetGPUVirtualAddress();
+
+			if (initialData)
+				assert(0);
+				//CommandContext::InitializeBuffer(*this, initialData, m_BufferSize);
+
+#ifdef RELEASE
+			(name);
+#else
+			m_pResource->SetName(name.c_str());
+#endif
+
+			CreateDerivedViews();
+
+		}
+		
+
+		D3D12_CPU_DESCRIPTOR_HANDLE GpuBuffer::CreateConstantBufferView(uint32_t Offset, uint32_t Size) const
+		{
+			Expects(Offset + Size <= m_BufferSize);
+			//Todo : Size = Math::AlignUp(Size, 16);
+			assert(0);
+
+			D3D12_CONSTANT_BUFFER_VIEW_DESC CBVDesc;
+			CBVDesc.BufferLocation = m_GpuVirtualAddress + (size_t)Offset;
+			CBVDesc.SizeInBytes = Size;
+			auto [cpuHandle,gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
+			D3D12_CPU_DESCRIPTOR_HANDLE hCBV = cpuHandle;
+			g_Device->CreateConstantBufferView(&CBVDesc, hCBV);
+			return hCBV;
+		}
+
+		D3D12_RESOURCE_DESC GpuBuffer::DescribeBuffer(void)
+		{
+			Expects(m_BufferSize != 0);
+
+			D3D12_RESOURCE_DESC Desc = {};
+			Desc.Alignment = 0;
+			Desc.DepthOrArraySize = 1;
+			Desc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			Desc.Flags = m_ResourceFlags;
+			Desc.Format = DXGI_FORMAT_UNKNOWN;
+			Desc.Height = 1;
+			Desc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			Desc.MipLevels = 1;
+			Desc.SampleDesc.Count = 1;
+			Desc.SampleDesc.Quality = 0;
+			Desc.Width = (UINT64)m_BufferSize;
+			return Desc;
+		}
+
+		void ByteAddressBuffer::CreateDerivedViews(void)
+		{
+			D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+			SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			SRVDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+			SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			SRVDesc.Buffer.NumElements = (UINT)m_BufferSize / 4;
+			SRVDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_RAW;
+
+			if (m_SRV.ptr == D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN)
+			{
+				auto [cpuHandle, gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
+				m_SRV = cpuHandle;
+			}
+			g_Device->CreateShaderResourceView(m_pResource, &SRVDesc, m_SRV);
+
+			D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc = {};
+			UAVDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+			UAVDesc.Format = DXGI_FORMAT_R32_TYPELESS;
+			UAVDesc.Buffer.NumElements = (UINT)m_BufferSize / 4;
+			UAVDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_RAW;
+
+			if (m_UAV.ptr == D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN)
+			{
+				auto [cpuHandle, gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
+				m_UAV = cpuHandle;
+			}
+			g_Device->CreateUnorderedAccessView(m_pResource, nullptr, &UAVDesc, m_UAV);
+		}
+
+		void StructuredBuffer::CreateDerivedViews(void)
+		{
+			D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+			SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			SRVDesc.Format = DXGI_FORMAT_UNKNOWN;
+			SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			SRVDesc.Buffer.NumElements = m_ElementCount;
+			SRVDesc.Buffer.StructureByteStride = m_ElementSize;
+			SRVDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+
+			if (m_SRV.ptr == D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN)
+			{
+				auto [cpuHandle, gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
+				m_SRV = cpuHandle;
+			}
+			g_Device->CreateShaderResourceView(m_pResource, &SRVDesc, m_SRV);
+
+			D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc = {};
+			UAVDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+			UAVDesc.Format = DXGI_FORMAT_UNKNOWN;
+			UAVDesc.Buffer.CounterOffsetInBytes = 0;
+			UAVDesc.Buffer.NumElements = m_ElementCount;
+			UAVDesc.Buffer.StructureByteStride = m_ElementSize;
+			UAVDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+
+			m_CounterBuffer.Create(L"StructuredBuffer::Counter", 1, 4);
+
+			if (m_UAV.ptr == D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN)
+			{
+				auto [cpuHandle, gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
+				m_UAV = cpuHandle;
+			}
+			g_Device->CreateUnorderedAccessView(m_pResource, m_CounterBuffer.GetResource(), &UAVDesc, m_UAV);
+		}
+
+		void TypedBuffer::CreateDerivedViews(void)
+		{
+			D3D12_SHADER_RESOURCE_VIEW_DESC SRVDesc = {};
+			SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_BUFFER;
+			SRVDesc.Format = m_DataFormat;
+			SRVDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+			SRVDesc.Buffer.NumElements = m_ElementCount;
+			SRVDesc.Buffer.Flags = D3D12_BUFFER_SRV_FLAG_NONE;
+
+			if (m_SRV.ptr == D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN)
+			{
+				auto [cpuHandle, gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
+				m_SRV = cpuHandle;
+			}
+			g_Device->CreateShaderResourceView(m_pResource, &SRVDesc, m_SRV);
+
+			D3D12_UNORDERED_ACCESS_VIEW_DESC UAVDesc = {};
+			UAVDesc.ViewDimension = D3D12_UAV_DIMENSION_BUFFER;
+			UAVDesc.Format = m_DataFormat;
+			UAVDesc.Buffer.NumElements = m_ElementCount;
+			UAVDesc.Buffer.Flags = D3D12_BUFFER_UAV_FLAG_NONE;
+
+			if (m_UAV.ptr == D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN)
+			{
+				auto [cpuHandle, gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
+				m_UAV = cpuHandle;
+			}
+			g_Device->CreateUnorderedAccessView(m_pResource, nullptr, &UAVDesc, m_UAV);
+		}
+
+		void UploadBuffer::Create(const std::wstring& name, size_t BufferSize)
+		{
+			Destroy();
+
+			m_BufferSize = BufferSize;
+
+			// Create an upload buffer.  This is CPU-visible, but it's write combined memory, so
+			// avoid reading back from it.
+			D3D12_HEAP_PROPERTIES HeapProps;
+			HeapProps.Type = D3D12_HEAP_TYPE_UPLOAD;
+			HeapProps.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+			HeapProps.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+			HeapProps.CreationNodeMask = 1;
+			HeapProps.VisibleNodeMask = 1;
+
+			// Upload buffers must be 1-dimensional
+			D3D12_RESOURCE_DESC ResourceDesc = {};
+			ResourceDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+			ResourceDesc.Width = m_BufferSize;
+			ResourceDesc.Height = 1;
+			ResourceDesc.DepthOrArraySize = 1;
+			ResourceDesc.MipLevels = 1;
+			ResourceDesc.Format = DXGI_FORMAT_UNKNOWN;
+			ResourceDesc.SampleDesc.Count = 1;
+			ResourceDesc.SampleDesc.Quality = 0;
+			ResourceDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+			ResourceDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+
+			Ensures(g_Device->CreateCommittedResource(&HeapProps, D3D12_HEAP_FLAG_NONE, &ResourceDesc,
+				D3D12_RESOURCE_STATE_GENERIC_READ, nullptr, MY_IID_PPV_ARGS(&m_pResource)) == S_OK);
+
+			m_GpuVirtualAddress = m_pResource->GetGPUVirtualAddress();
+
+#ifdef RELEASE
+			(name);
+#else
+			m_pResource->SetName(name.c_str());
+#endif
+		}
+
+		void* UploadBuffer::Map(void)
+		{
+			void* Memory;
+			m_pResource->Map(0, &CD3DX12_RANGE(0, m_BufferSize), &Memory);
+			return Memory;
+		}
+
+		void UploadBuffer::Unmap(size_t begin /*= 0*/, size_t end /*= -1*/)
+		{
+			m_pResource->Unmap(0, &CD3DX12_RANGE(begin, std::min(end, m_BufferSize)));
+		}
+
 	}
 
 

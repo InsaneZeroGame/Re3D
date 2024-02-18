@@ -18,6 +18,7 @@
 #pragma warning(disable:4239) // A non-const reference may only be bound to an lvalue; assignment operator takes a reference to non-const
 #pragma warning(disable:4324) // structure was padded due to __declspec(align())
 
+
 #include <winsdkver.h>
 #define _WIN32_WINNT 0x0A00
 #include <sdkddkver.h>
