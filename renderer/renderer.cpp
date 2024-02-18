@@ -1,6 +1,7 @@
 #include "renderer.h"
 #include "device_manager.h"
 #include "gpu_resource.h"
+#include <d3dcompiler.h>
 
 constexpr int MAX_ELE_COUNT = 1000000;
 constexpr int VERTEX_SIZE_IN_BYTE = sizeof(Renderer::Vertex);
@@ -19,6 +20,8 @@ Renderer::BaseRenderer::BaseRenderer():
 	auto newAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, 0);
 	mGraphicsCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT, newAllocator);
 	CreateBuffers();
+	CreateRootSignature();
+	CreatePipelineState();
 }
 
 Renderer::BaseRenderer::~BaseRenderer()
@@ -109,12 +112,90 @@ void Renderer::BaseRenderer::PostRender()
 {
 
 }
+inline std::vector<uint8_t> ReadData(_In_z_ const wchar_t* name)
+{
+	std::ifstream inFile(name, std::ios::in | std::ios::binary | std::ios::ate);
+
+#if !defined(WINAPI_FAMILY) || (WINAPI_FAMILY == WINAPI_FAMILY_DESKTOP_APP)
+	if (!inFile)
+	{
+		wchar_t moduleName[_MAX_PATH] = {};
+		if (!GetModuleFileNameW(nullptr, moduleName, _MAX_PATH))
+			throw std::system_error(std::error_code(static_cast<int>(GetLastError()), std::system_category()), "GetModuleFileNameW");
+
+		wchar_t drive[_MAX_DRIVE];
+		wchar_t path[_MAX_PATH];
+
+		if (_wsplitpath_s(moduleName, drive, _MAX_DRIVE, path, _MAX_PATH, nullptr, 0, nullptr, 0))
+			throw std::runtime_error("_wsplitpath_s");
+
+		wchar_t filename[_MAX_PATH];
+		if (_wmakepath_s(filename, _MAX_PATH, drive, path, name, nullptr))
+			throw std::runtime_error("_wmakepath_s");
+
+		inFile.open(filename, std::ios::in | std::ios::binary | std::ios::ate);
+	}
+#endif
+
+	if (!inFile)
+		throw std::runtime_error("ReadData");
+
+	const std::streampos len = inFile.tellg();
+	if (!inFile)
+		throw std::runtime_error("ReadData");
+
+	std::vector<uint8_t> blob;
+	blob.resize(size_t(len));
+
+	inFile.seekg(0, std::ios::beg);
+	if (!inFile)
+		throw std::runtime_error("ReadData");
+
+	inFile.read(reinterpret_cast<char*>(blob.data()), len);
+	if (!inFile)
+		throw std::runtime_error("ReadData");
+
+	inFile.close();
+
+	return blob;
+}
+
+D3D12_SHADER_BYTECODE ReadShader(_In_z_ const wchar_t* name)
+{
+	auto shaderByteCode = ReadData(name);
+	ID3DBlob* vertexBlob;
+	D3DCreateBlob(shaderByteCode.size(), &vertexBlob);
+	void* vertexPtr = vertexBlob->GetBufferPointer();
+	memcpy(vertexPtr, shaderByteCode.data(), shaderByteCode.size());
+	return CD3DX12_SHADER_BYTECODE(vertexBlob);
+};
+
 
 void Renderer::BaseRenderer::CreatePipelineState()
 {
+	CHAR path[512];
+	DWORD size = GetModuleFileName(nullptr, path, 512);
+
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC lDesc = {};
+	lDesc.pRootSignature = m_rootSignature;
+	lDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
+	lDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	lDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+	lDesc.VS = ReadShader(L"ForwardVS.cso");
+	lDesc.PS = ReadShader(L"ForwardPS.cso");
 
-
+	std::vector<D3D12_INPUT_ELEMENT_DESC> elements =
+	{
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+	};
+	lDesc.InputLayout.NumElements = elements.size();
+	lDesc.InputLayout.pInputElementDescs = elements.data();
+	lDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	lDesc.NumRenderTargets = 1;
+	lDesc.RTVFormats[0] = DXGI_FORMAT_R10G10B10A2_UNORM;
+	lDesc.SampleDesc.Count = 1;
+	lDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mPipelineState));
 }
 

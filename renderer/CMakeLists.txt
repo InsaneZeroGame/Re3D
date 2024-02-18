@@ -16,7 +16,14 @@ set(${TARGET}_Srcs
             ${${TARGET}_Srcs}
             pch.cpp pch.h)
 
+set(HLSL_SHADER_FILES shaders/ForwardVS.hlsl shaders/ForwardPS.hlsl)
+set_property(SOURCE shaders/ForwardVS.hlsl PROPERTY VS_SHADER_TYPE Vertex)
+set_property(SOURCE shaders/ForwardPS.hlsl PROPERTY VS_SHADER_TYPE Pixel)
+set_property(SOURCE shaders/ForwardVS.hlsl PROPERTY VS_SHADER_MODEL 5.0)
+set_property(SOURCE shaders/ForwardPS.hlsl PROPERTY VS_SHADER_MODEL 5.0)
 
-add_library(${TARGET} ${${TARGET}_Headers} ${${TARGET}_Srcs})
+add_library(${TARGET} ${${TARGET}_Headers} ${${TARGET}_Srcs} ${HLSL_SHADER_FILES})
 target_link_libraries(${TARGET} GSL spdlog)
 target_precompile_headers(${TARGET} PRIVATE pch.h)
+
+

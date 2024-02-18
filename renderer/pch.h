@@ -66,6 +66,7 @@
 #include <string>
 #include <cwctype>
 #include <exception>
+#include <fstream>
 
 #include <ppltasks.h>
 #include <functional>
