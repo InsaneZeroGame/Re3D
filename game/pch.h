@@ -6,3 +6,4 @@
 #include <iostream>
 #include <gsl/gsl>
 #include <gsl/assert>
+#include <optional>

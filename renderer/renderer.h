@@ -1,20 +1,14 @@
 #pragma once
 #include <d3d12.h>
+#include <asset_loader.h>
 
 namespace Renderer
 {
-	struct Vertex
-	{
-		std::array<float, 4> pos;
-		std::array<float, 4> color;
-	};
-
 	namespace Resource 
 	{
 		class VertexBuffer;
 		class UploadBuffer;
 	}
-
 
 	class BaseRenderer
 	{
@@ -30,7 +24,10 @@ namespace Renderer
 		virtual void PostRender();
 		virtual void CreatePipelineState();
 		virtual void CreateRootSignature();
+		virtual void RenderObject(const AssetLoader::ModelAsset& InAsset);
 		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter);
+		D3D12_SHADER_BYTECODE ReadShader(_In_z_ const wchar_t* name);
+
 	protected:
 		std::unique_ptr<class DeviceManager> mDeviceManager;
 		std::shared_ptr<class CmdManager> mCmdManager;
@@ -41,9 +38,13 @@ namespace Renderer
 		HANDLE mFrameDoneEvent;
 		ID3D12GraphicsCommandList* mGraphicsCmd;
 		std::shared_ptr<Resource::VertexBuffer> mVertexBuffer;
-		//std::shared_ptr<Resource::VertexBuffer> mIndexBuffer;
+		std::shared_ptr<Resource::VertexBuffer> mIndexBuffer;
 		std::shared_ptr<Resource::UploadBuffer> mUploadBuffer;
+		//temp 
+		std::shared_ptr<Resource::UploadBuffer> mIndexUploadBuffer;
+
 		ID3D12PipelineState* mPipelineState;
 		ID3D12RootSignature* m_rootSignature;
+		AssetLoader::ModelAsset mCurrentModel;
 	};
 }

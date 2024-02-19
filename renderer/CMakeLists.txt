@@ -1,5 +1,7 @@
 set(TARGET Renderer)
 
+include_directories(${CMAKE_SOURCE_DIR}/engine)
+
 set(${TARGET}_Headers
             color.h
             gpu_resource.h
@@ -14,7 +16,7 @@ set(${TARGET}_Srcs
 
 set(${TARGET}_Srcs
             ${${TARGET}_Srcs}
-            pch.cpp pch.h)
+            pch.h pch.cpp)
 
 set(HLSL_SHADER_FILES shaders/ForwardVS.hlsl shaders/ForwardPS.hlsl)
 set_property(SOURCE shaders/ForwardVS.hlsl PROPERTY VS_SHADER_TYPE Vertex)
@@ -28,7 +30,7 @@ set_property(SOURCE ${HLSL_SHADER_FILES} PROPERTY VS_SHADER_ENABLE_DEBUG true)
 
 
 add_library(${TARGET} ${${TARGET}_Headers} ${${TARGET}_Srcs} ${HLSL_SHADER_FILES})
-target_link_libraries(${TARGET} GSL spdlog)
+target_link_libraries(${TARGET} GSL spdlog Engine)
 target_precompile_headers(${TARGET} PRIVATE pch.h)
 
 

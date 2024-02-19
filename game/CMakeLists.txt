@@ -1,5 +1,7 @@
 set(TARGET triangle)
 
+include_directories(${CMAKE_SOURCE_DIR}/engine)
+
 CPMAddPackage(
         NAME GLFW
         GITHUB_REPOSITORY glfw/glfw

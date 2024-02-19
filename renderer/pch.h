@@ -76,7 +76,9 @@
 #include <gsl/assert>
 #include <memory>
 #include <spdlog/spdlog.h>
+#include <optional>
 #include "color.h"
+#include <filesystem>
 
 
 #pragma comment(lib,"dxgi.lib")

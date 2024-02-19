@@ -18,6 +18,7 @@ CPMAddPackage(
         GITHUB_REPOSITORY "gabime/spdlog"
         GIT_TAG v1.13.0
 )
+add_subdirectory(engine)
 add_subdirectory(renderer)
 add_subdirectory(game)
 
