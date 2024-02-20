@@ -18,6 +18,17 @@ CPMAddPackage(
         GITHUB_REPOSITORY "gabime/spdlog"
         GIT_TAG v1.13.0
 )
+
+CPMAddPackage(
+        NAME GLFW
+        GITHUB_REPOSITORY glfw/glfw
+        GIT_TAG 3.3.2
+        OPTIONS
+          "GLFW_BUILD_TESTS OFF"
+          "GLFW_BUILD_EXAMPLES OFF"
+          "GLFW_BULID_DOCS OFF"
+)
+
 add_subdirectory(engine)
 add_subdirectory(renderer)
 add_subdirectory(game)

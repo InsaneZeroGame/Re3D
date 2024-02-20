@@ -6,6 +6,43 @@ namespace Window
 	{
 		gMainWindow->OnResize(InWidth, InHeight);
 	}
+
+	static void sCursorPos(GLFWwindow* window, double x, double y)
+	{
+
+	}
+	static void sOnMouseEntered(GLFWwindow* window, int Entered)
+	{
+		if (Entered == GLFW_TRUE)
+		{
+			//spdlog::info("Entered");
+		}
+		else
+		{
+			//spdlog::info("Leave");
+		}
+	}
+
+	static void mouse_button_callback(GLFWwindow* window, int button, int action, int mods)
+	{
+		if (button == GLFW_MOUSE_BUTTON_RIGHT && action == GLFW_PRESS)
+		{
+
+		}
+	}
+
+	static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
+	{
+
+	}
+
+	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
+	{
+		for (auto& Delegate : Delegates::KeyPressDelegate)
+		{
+			Delegate(key, scancode, action, mods);
+		}
+	}
 }
 
 Window::BaseWindow::BaseWindow(int InWidth, int InHeight):
@@ -23,6 +60,10 @@ Window::BaseWindow::BaseWindow(int InWidth, int InHeight):
 	}
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 	glfwSetWindowSizeCallback(mWindow, &sOnResize);
+	glfwSetCursorPosCallback(mWindow, &sCursorPos);
+	glfwSetCursorEnterCallback(mWindow, &sOnMouseEntered);
+	glfwSetScrollCallback(mWindow, &scroll_callback);
+	glfwSetKeyCallback(mWindow, &key_callback);
 }
 
 Window::BaseWindow::~BaseWindow()

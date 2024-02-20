@@ -6,7 +6,7 @@
 #define GLFW_NATIVE_INCLUDE_NONE
 #include <GLFW/glfw3native.h>
 #endif // WIN32
-
+#include <delegates.h>
 
 namespace Window
 {

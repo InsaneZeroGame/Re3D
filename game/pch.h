@@ -8,3 +8,4 @@
 #include <gsl/assert>
 #include <optional>
 #include <SimpleMath.h>
+#include <spdlog/spdlog.h>

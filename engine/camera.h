@@ -12,7 +12,11 @@ namespace Gameplay
 		const SimpleMath::Matrix& GetPrj();
 		const SimpleMath::Matrix& GetView();
 		const SimpleMath::Matrix& GetPrjView();
+		virtual void KeyDown(int key, int scancode, int action, int mods);
 	protected:
+		void Forward(float InSpeed);
+		void Right(float InSpeed);
+		void Yaw(float InSpeed);
 		SimpleMath::Vector3 mEye;
 		SimpleMath::Vector3 mCenter;
 		SimpleMath::Vector3 mUp;

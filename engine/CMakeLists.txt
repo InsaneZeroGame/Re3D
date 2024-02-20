@@ -1,6 +1,7 @@
 set(TARGET Engine)
 
 set(${TARGET}_Headers
+            delegates.h
             camera.h
             SimpleMath.h
             SimpleMath.inl
@@ -11,6 +12,7 @@ set(${TARGET}_Headers
             tiny_obj_loader.h)
 
 set(${TARGET}_Srcs 
+            delegates.cpp
             SimpleMath.cpp
             camera.cpp
             asset_loader.cpp
@@ -23,5 +25,5 @@ set(${TARGET}_Srcs
             pch.h pch.cpp)
 
 add_library(${TARGET} ${${TARGET}_Headers} ${${TARGET}_Srcs} )
-target_link_libraries(${TARGET} GSL spdlog)
+target_link_libraries(${TARGET} GSL spdlog glfw)
 target_precompile_headers(${TARGET} PRIVATE pch.h)
