@@ -47,6 +47,7 @@
 #include <wrl/event.h>
 
 #include <d3d12.h>
+#include <SimpleMath.h>
 #include <dxgi1_6.h>
 #include "d3dx12.h"
 #ifdef _DEBUG

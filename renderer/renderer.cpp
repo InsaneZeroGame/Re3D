@@ -3,6 +3,7 @@
 #include "gpu_resource.h"
 #include "obj_model_loader.h"
 #include "utility.h"
+#include <camera.h>
 #include <d3dcompiler.h>
 
 constexpr int MAX_ELE_COUNT = 1000000;
@@ -28,17 +29,21 @@ Renderer::BaseRenderer::BaseRenderer():
 
 Renderer::BaseRenderer::~BaseRenderer()
 {
-
+	
 }
 
 void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight)
 {
+	mWidth = InWidth;
+	mHeight = InHeight;
 	mDeviceManager->SetTargetWindowAndCreateSwapChain(InWindow, InWidth, InHeight);
+	mDefaultCamera = std::make_unique<Gameplay::PerspectCamera>(InWidth, InHeight, 0.1, 125.0);
+	mDefaultCamera->LookAt({ 0.0,1.0,2.0 }, { 0.0f,1.0f,0.0f }, { 0.0f,1.0f,0.0f });
 }
 
 void Renderer::BaseRenderer::Update(float delta)
 {
-	//spdlog::info("Update");
+	UpdataFrameData();
 	IDXGISwapChain4* swapChain = (IDXGISwapChain4*)mDeviceManager->GetSwapChain();
 	mCurrentBackbufferIndex = swapChain->GetCurrentBackBufferIndex();
 	auto cmdAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,mFenceValue);
@@ -50,16 +55,16 @@ void Renderer::BaseRenderer::Update(float delta)
 	}
 	TransitState(mGraphicsCmd, g_DisplayPlane[mCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 	mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, nullptr);
-	D3D12_VIEWPORT lViewPort = {0,0,800,600,0.0,1.0};
+	D3D12_VIEWPORT lViewPort = {0,0,mWidth,mHeight,0.0,1.0};
 	mGraphicsCmd->RSSetViewports(1, &lViewPort);
-	D3D12_RECT lRect = {0,0,800,600};
+	D3D12_RECT lRect = {0,0,mWidth,mHeight };
 	mGraphicsCmd->RSSetScissorRects(1, &lRect);
 	float ColorRGBA[4] = { 0.15f,0.25f,0.75f,1.0f };
-	D3D12_RECT rect = {0,0,800,600};
-	mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), ColorRGBA, 1, &rect);
+	mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), ColorRGBA, 1, &lRect);
 	mGraphicsCmd->SetPipelineState(mPipelineState);
 	mGraphicsCmd->SetGraphicsRootSignature(m_rootSignature);
 	mGraphicsCmd->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
 	RenderObject(mCurrentModel);
 
 	TransitState(mGraphicsCmd, g_DisplayPlane[mCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
@@ -86,15 +91,14 @@ void Renderer::BaseRenderer::CreateBuffers()
 	//};
 	//
 	//std::vector<uint32_t> indices = {0,1,2};
-
 	AssetLoader::ObjModelLoader* objLoader = new AssetLoader::ObjModelLoader;
 	auto model = objLoader->LoadAssetFromFile("cornell_box.obj");
-	if (model.has_value())
-	{
-		mCurrentModel = model.value();
-	}
+	Ensures(model.has_value());
+	mCurrentModel = model.value();
 	auto& vertices = mCurrentModel.mMeshes[0].mVertices;
 	auto& indices = mCurrentModel.mMeshes[0].mIndices;
+
+	//auto& vertices = triangle;
 	//1.Vertex Buffer
 	mVertexBuffer = std::make_shared<Resource::VertexBuffer>();
 	mVertexBuffer->Create(L"VertexBuffer", MAX_ELE_COUNT, VERTEX_SIZE_IN_BYTE);
@@ -115,6 +119,10 @@ void Renderer::BaseRenderer::CreateBuffers()
 	void* indexUploadBufferPtr = mIndexUploadBuffer->Map();
 	memcpy(indexUploadBufferPtr, indices.data(), indices.size() * sizeof(uint32_t));
 	mIndexUploadBuffer->Unmap();
+
+	mFrameDataGPU = std::make_shared<Resource::UploadBuffer>();
+	mFrameDataGPU->Create(L"FrameData", sizeof(mFrameDataCPU));
+	mFrameDataPtr = mFrameDataGPU->Map();
 }
 
 void Renderer::BaseRenderer::FirstFrame()
@@ -160,6 +168,8 @@ void Renderer::BaseRenderer::CreatePipelineState()
 		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 
 	};
+	lDesc.DepthStencilState.DepthEnable = FALSE;
+	lDesc.DepthStencilState.StencilEnable = FALSE;
 	lDesc.InputLayout.NumElements = static_cast<UINT>(elements.size());
 	lDesc.InputLayout.pInputElementDescs = elements.data();
 	lDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
@@ -172,8 +182,21 @@ void Renderer::BaseRenderer::CreatePipelineState()
 
 void Renderer::BaseRenderer::CreateRootSignature()
 {
+	
 	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
-	rootSignatureDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+	
+	D3D12_ROOT_PARAMETER frameDataCBV = {};
+	frameDataCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+	frameDataCBV.Descriptor.RegisterSpace = 0;
+	frameDataCBV.Descriptor.ShaderRegister = 0;
+	frameDataCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
+	std::vector<D3D12_ROOT_PARAMETER> parameters = 
+	{
+		frameDataCBV
+	};
+
+	rootSignatureDesc.Init((UINT)parameters.size(), parameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	ID3DBlob* signature;
 	ID3DBlob* error;
@@ -213,3 +236,11 @@ D3D12_SHADER_BYTECODE Renderer::BaseRenderer::ReadShader(_In_z_ const wchar_t* n
 	memcpy(vertexPtr, shaderByteCode.data(), shaderByteCode.size());
 	return CD3DX12_SHADER_BYTECODE(vertexBlob);
 };
+
+void Renderer::BaseRenderer::UpdataFrameData()
+{
+	mFrameDataCPU.mPrj = mDefaultCamera->GetPrj();
+	mFrameDataCPU.mView = mDefaultCamera->GetView();
+	mFrameDataCPU.mPrjView = mDefaultCamera->GetPrjView();
+	memcpy(mFrameDataPtr,&mFrameDataCPU,sizeof(mFrameDataCPU));
+}

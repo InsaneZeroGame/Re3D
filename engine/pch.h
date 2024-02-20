@@ -10,3 +10,5 @@
 #define WIN32_LEAN_AND_MEAN
 #include <Windows.h>
 #include <spdlog/spdlog.h>
+#include <d3d12.h>
+#include "SimpleMath.h"

@@ -1,8 +1,8 @@
 #include <iostream>
 #include "window.h"
 #include <renderer.h>
-constexpr int WINDOW_WIDTH = 800;
-constexpr int WINDOW_HEIGHT = 600;
+constexpr int WINDOW_WIDTH = 1280;
+constexpr int WINDOW_HEIGHT = 720;
 
 
 int main(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
