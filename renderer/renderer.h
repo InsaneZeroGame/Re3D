@@ -14,9 +14,9 @@ namespace Renderer
 
 	struct FrameData
 	{	
-		DirectX::SimpleMath::Matrix mPrj;
-		DirectX::SimpleMath::Matrix mView;
 		DirectX::SimpleMath::Matrix mPrjView;
+		DirectX::SimpleMath::Vector4 DirectionalLightDir;
+		DirectX::SimpleMath::Vector4 DirectionalLightColor;
 	};
 
 	class BaseRenderer

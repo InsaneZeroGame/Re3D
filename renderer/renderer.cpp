@@ -128,7 +128,8 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mFrameDataGPU->Create(L"FrameData", sizeof(mFrameDataCPU));
 	mFrameDataPtr = mFrameDataGPU->Map();
 
-	
+	mFrameDataCPU.DirectionalLightColor = SimpleMath::Vector4(1.0f, 1.0f, 1.0f,1.0f);
+	mFrameDataCPU.DirectionalLightDir = -SimpleMath::Vector4(0.0, 1.0, 2.0,1.0f);
 }
 
 void Renderer::BaseRenderer::FirstFrame()
@@ -142,6 +143,9 @@ void Renderer::BaseRenderer::FirstFrame()
 	TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 	mGraphicsCmd->CopyResource(mIndexBuffer->GetResource(), mIndexUploadBuffer->GetResource());
 	TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+
+	TransitState(mGraphicsCmd, mDepthBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
 }
 
 void Renderer::BaseRenderer::PreRender()
@@ -243,8 +247,9 @@ D3D12_SHADER_BYTECODE Renderer::BaseRenderer::ReadShader(_In_z_ const wchar_t* n
 
 void Renderer::BaseRenderer::UpdataFrameData()
 {
-	mFrameDataCPU.mPrj = mDefaultCamera->GetPrj();
-	mFrameDataCPU.mView = mDefaultCamera->GetView();
+	//mFrameDataCPU.mPrj = mDefaultCamera->GetPrj();
+	//mFrameDataCPU.mView = mDefaultCamera->GetView();
 	mFrameDataCPU.mPrjView = mDefaultCamera->GetPrjView();
+	mFrameDataCPU.DirectionalLightDir.Normalize();
 	memcpy(mFrameDataPtr,&mFrameDataCPU,sizeof(mFrameDataCPU));
 }

@@ -878,6 +878,8 @@ namespace Renderer
 
 			D3D12_CLEAR_VALUE ClearValue = {};
 			ClearValue.Format = Format;
+			ClearValue.DepthStencil.Depth = m_ClearDepth;
+			ClearValue.DepthStencil.Stencil = m_ClearStencil;
 			CreateTextureResource(g_Device, Name, ResourceDesc, ClearValue, VidMemPtr);
 			CreateDerivedViews(g_Device, Format);
 		}
