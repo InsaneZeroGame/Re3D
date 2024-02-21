@@ -64,6 +64,7 @@ Window::BaseWindow::BaseWindow(int InWidth, int InHeight):
 	glfwSetCursorEnterCallback(mWindow, &sOnMouseEntered);
 	glfwSetScrollCallback(mWindow, &scroll_callback);
 	glfwSetKeyCallback(mWindow, &key_callback);
+	glfwSwapInterval(0);
 }
 
 Window::BaseWindow::~BaseWindow()

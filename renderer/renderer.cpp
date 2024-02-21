@@ -123,6 +123,9 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mFrameDataGPU = std::make_shared<Resource::UploadBuffer>();
 	mFrameDataGPU->Create(L"FrameData", sizeof(mFrameDataCPU));
 	mFrameDataPtr = mFrameDataGPU->Map();
+
+	mDepthBuffer = std::make_shared<Resource::DepthBuffer>(0.0,0);
+	mDepthBuffer->Create(L"DepthBuffer", mWidth, mHeight, DXGI_FORMAT_D32_FLOAT);
 }
 
 void Renderer::BaseRenderer::FirstFrame()
@@ -136,8 +139,6 @@ void Renderer::BaseRenderer::FirstFrame()
 	TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 	mGraphicsCmd->CopyResource(mIndexBuffer->GetResource(), mIndexUploadBuffer->GetResource());
 	TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
-
-
 }
 
 void Renderer::BaseRenderer::PreRender()

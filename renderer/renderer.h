@@ -9,6 +9,7 @@ namespace Renderer
 	{
 		class VertexBuffer;
 		class UploadBuffer;
+		class DepthBuffer;
 	}
 
 	struct FrameData
@@ -57,6 +58,7 @@ namespace Renderer
 		std::unique_ptr<Gameplay::PerspectCamera> mDefaultCamera;
 		FrameData mFrameDataCPU;
 		std::shared_ptr<Resource::UploadBuffer> mFrameDataGPU;
+		std::shared_ptr<Resource::DepthBuffer> mDepthBuffer;
 		void* mFrameDataPtr;
 		int mWidth;
 		int mHeight;
