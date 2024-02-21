@@ -39,6 +39,9 @@ void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, in
 	mDeviceManager->SetTargetWindowAndCreateSwapChain(InWindow, InWidth, InHeight);
 	mDefaultCamera = std::make_unique<Gameplay::PerspectCamera>(InWidth, InHeight, 0.1, 125.0);
 	mDefaultCamera->LookAt({ 0.0,1.0,2.0 }, { 0.0f,1.0f,0.0f }, { 0.0f,1.0f,0.0f });
+
+	mDepthBuffer = std::make_shared<Resource::DepthBuffer>(1.0, 0);
+	mDepthBuffer->Create(L"DepthBuffer", mWidth, mHeight, DXGI_FORMAT_D32_FLOAT);
 }
 
 void Renderer::BaseRenderer::Update(float delta)
@@ -54,13 +57,14 @@ void Renderer::BaseRenderer::Update(float delta)
 		mIsFirstFrame = false;
 	}
 	TransitState(mGraphicsCmd, g_DisplayPlane[mCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, nullptr);
+	mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV());
 	D3D12_VIEWPORT lViewPort = {0,0,mWidth,mHeight,0.0,1.0};
 	mGraphicsCmd->RSSetViewports(1, &lViewPort);
 	D3D12_RECT lRect = {0,0,mWidth,mHeight };
 	mGraphicsCmd->RSSetScissorRects(1, &lRect);
 	float ColorRGBA[4] = { 0.15f,0.25f,0.75f,1.0f };
 	mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), ColorRGBA, 1, &lRect);
+	mGraphicsCmd->ClearDepthStencilView(mDepthBuffer->GetDSV(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 1, &lRect);
 	mGraphicsCmd->SetPipelineState(mPipelineState);
 	mGraphicsCmd->SetGraphicsRootSignature(m_rootSignature);
 	mGraphicsCmd->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
@@ -124,8 +128,7 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mFrameDataGPU->Create(L"FrameData", sizeof(mFrameDataCPU));
 	mFrameDataPtr = mFrameDataGPU->Map();
 
-	mDepthBuffer = std::make_shared<Resource::DepthBuffer>(0.0,0);
-	mDepthBuffer->Create(L"DepthBuffer", mWidth, mHeight, DXGI_FORMAT_D32_FLOAT);
+	
 }
 
 void Renderer::BaseRenderer::FirstFrame()
@@ -166,16 +169,16 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	{
 		{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 
 	};
-	lDesc.DepthStencilState.DepthEnable = FALSE;
-	lDesc.DepthStencilState.StencilEnable = FALSE;
 	lDesc.InputLayout.NumElements = static_cast<UINT>(elements.size());
 	lDesc.InputLayout.pInputElementDescs = elements.data();
 	lDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	lDesc.NumRenderTargets = 1;
 	lDesc.RTVFormats[0] = DXGI_FORMAT_R10G10B10A2_UNORM;
+	lDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	lDesc.SampleDesc.Count = 1;
 	lDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mPipelineState));

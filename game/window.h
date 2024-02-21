@@ -27,5 +27,5 @@ namespace Window
 		GLFWwindow* mWindow;
 		std::function<void(float)> mRenderFunc;
 	};
-	inline static BaseWindow* gMainWindow = nullptr;
+	inline BaseWindow* gMainWindow = nullptr;
 }

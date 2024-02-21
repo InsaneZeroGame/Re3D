@@ -58,7 +58,8 @@ std::optional<AssetLoader::ModelAsset> AssetLoader::ObjModelLoader::LoadAssetFro
 	ModelAsset newModelAsset;
 
 		tinyobj::attrib_t attrib;
-		bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials,&err, fileName.c_str());
+		auto mtlDir = std::filesystem::path(fileName).parent_path();
+		bool ret = tinyobj::LoadObj(&attrib, &shapes, &materials,&err, fileName.c_str(),(mtlDir.string() + "\\").c_str());
 		if (!warn.empty()) {
 			std::cout << "WARN: " << warn << std::endl;
 		}
@@ -141,8 +142,15 @@ std::optional<AssetLoader::ModelAsset> AssetLoader::ObjModelLoader::LoadAssetFro
 		mesh.mVertices.resize(verticesCount);
 		for (size_t s = 0; s < shapes.size(); s++) 
 		{
+			
 			for (size_t f = 0; f < shapes[s].mesh.indices.size(); f++)
 			{
+				int current_material_id = shapes[s].mesh.material_ids[f / 3];
+				float diffuse[3];
+				for (size_t i = 0; i < 3; i++) {
+					diffuse[i] = materials[current_material_id].diffuse[i];
+				}
+
 				tinyobj::index_t idx = shapes[s].mesh.indices[f];
 				mesh.mIndices.push_back(idx.vertex_index);
 				auto& vertex = mesh.mVertices[idx.vertex_index];
@@ -154,6 +162,11 @@ std::optional<AssetLoader::ModelAsset> AssetLoader::ObjModelLoader::LoadAssetFro
 				vertex.normal[1] = attrib.normals[3 * idx.normal_index + 1];
 				vertex.normal[2] = attrib.normals[3 * idx.normal_index + 2];
 				vertex.normal[3] = 1.0f;
+				vertex.color[0] = diffuse[0];
+				vertex.color[1] = diffuse[1];
+				vertex.color[2] = diffuse[2];
+				vertex.color[3] = 1.0f;
+
 
 				if (idx.texcoord_index < 0)
 				{

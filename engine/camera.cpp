@@ -61,10 +61,10 @@ void Gameplay::BaseCamera::KeyDown(int key, int scancode, int action, int mods)
 			Right(0.1f);
 			break;
 		case GLFW_KEY_Q:
-			Yaw(0.01f);
+			Yaw(0.1f);
 			break;
 		case GLFW_KEY_E:
-			Yaw(-0.01f);
+			Yaw(-0.1f);
 			break;
 		default:
 			break;
@@ -77,6 +77,8 @@ void Gameplay::BaseCamera::Forward(float InSpeed)
 	auto forwardVec = mCenter - mEye;
 	auto forwardStep = forwardVec * InSpeed;
 	SimpleMath::Vector3::Transform(mEye, SimpleMath::Matrix::CreateTranslation(forwardStep),mEye);
+	SimpleMath::Vector3::Transform(mCenter, SimpleMath::Matrix::CreateTranslation(forwardStep), mCenter);
+
 	LookAt(mEye, mCenter, mUp);
 }
 
