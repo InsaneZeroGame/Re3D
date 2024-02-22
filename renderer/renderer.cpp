@@ -96,7 +96,7 @@ void Renderer::BaseRenderer::CreateBuffers()
 	//
 	//std::vector<uint32_t> indices = {0,1,2};
 	AssetLoader::ObjModelLoader* objLoader = new AssetLoader::ObjModelLoader;
-	auto model = objLoader->LoadAssetFromFile("cornell_box.obj");
+	auto model = objLoader->LoadAssetFromFile("scene.obj");
 	Ensures(model.has_value());
 	mCurrentModel = model.value();
 	auto& vertices = mCurrentModel.mMeshes[0].mVertices;
@@ -129,7 +129,7 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mFrameDataPtr = mFrameDataGPU->Map();
 
 	mFrameDataCPU.DirectionalLightColor = SimpleMath::Vector4(1.0f, 1.0f, 1.0f,1.0f);
-	mFrameDataCPU.DirectionalLightDir = -SimpleMath::Vector4(0.0, 1.0, 2.0,1.0f);
+	mFrameDataCPU.DirectionalLightDir = SimpleMath::Vector4(1.0, 1.0, 2.0,1.0f);
 }
 
 void Renderer::BaseRenderer::FirstFrame()

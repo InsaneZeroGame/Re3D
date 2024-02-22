@@ -10,7 +10,9 @@ struct PSInput
 
 float4 main(PSInput input) : SV_TARGET
 {
-    float diffuse = max(dot(normalize(input.normal), input.DirectionalLightDir), 0.0) * 2.5f;
-    float ambient = 0.35f;
-    return (diffuse + ambient) * input.color;
+    float diffuse = max(dot(normalize(input.normal), input.DirectionalLightDir), 0.0);
+    float ambient = 0.15f;
+    float gamma = 2.2f;
+    float4 colorAfterCorrection = pow(input.color, 1.0 / gamma);
+    return (diffuse + ambient) * colorAfterCorrection;
 }

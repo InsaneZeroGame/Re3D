@@ -241,13 +241,16 @@ void Renderer::DeviceManager::CreateD3DDevice()
 			}
 		}
 	}
+
+	D3D12_FEATURE_DATA_D3D12_OPTIONS5 featureSupport{};
+	mDevice->CheckFeatureSupport(D3D12_FEATURE_D3D12_OPTIONS5, &featureSupport, sizeof(featureSupport));
+	featureSupport.RenderPassesTier;
+
 	for (int i = 0 ; i < D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES;++i)
 	{
 		 g_DescHeap[i] = new DescHeap(D3D12_DESCRIPTOR_HEAP_TYPE(i));
 	}
 }
-
-
 
 Renderer::DeviceManager::~DeviceManager()
 {

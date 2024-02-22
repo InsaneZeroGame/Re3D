@@ -23,7 +23,7 @@ void Gameplay::BaseCamera::LookAt(SimpleMath::Vector3 InEye, SimpleMath::Vector3
 	mEye = InEye;
 	mCenter = InCenter;
 	mUp = InUp;
-	mView = SimpleMath::Matrix::CreateLookAt(InEye, InCenter, InUp);
+	mView = XMMatrixLookAtLH(mEye,mCenter,mUp);
 }
 
 const DirectX::SimpleMath::Matrix& Gameplay::BaseCamera::GetPrj()
@@ -55,16 +55,16 @@ void Gameplay::BaseCamera::KeyDown(int key, int scancode, int action, int mods)
 			Forward(-0.1f);
 			break;
 		case GLFW_KEY_A:
-			Right(-0.1f);
-			break;
-		case GLFW_KEY_D:
 			Right(0.1f);
 			break;
+		case GLFW_KEY_D:
+			Right(-0.1f);
+			break;
 		case GLFW_KEY_Q:
-			Yaw(0.1f);
+			Yaw(-0.1f);
 			break;
 		case GLFW_KEY_E:
-			Yaw(-0.1f);
+			Yaw(0.1f);
 			break;
 		default:
 			break;
@@ -118,7 +118,7 @@ Gameplay::PerspectCamera::PerspectCamera(float InWidth, float InHeight, float In
 	{
 		fovAngleY /= aspectRatio;
 	}
-	mPrj = SimpleMath::Matrix::CreatePerspectiveFieldOfView(fovAngleY, aspectRatio, InNear, InFar);
+	mPrj = XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, InNear, InFar);
 }
 
 Gameplay::PerspectCamera::PerspectCamera()
