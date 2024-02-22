@@ -29,7 +29,7 @@ Renderer::DeviceManager::DeviceManager()
 
 void Renderer::DeviceManager::CreateD3DDevice()
 {
-	Microsoft::WRL::ComPtr<ID3D12Device> pDevice;
+	Microsoft::WRL::ComPtr<ID3D12Device4> pDevice;
 
 	uint32_t useDebugLayers = 0;
 #if _DEBUG
@@ -360,11 +360,10 @@ Renderer::CmdManager::~CmdManager()
 	
 }
 
-ID3D12GraphicsCommandList* Renderer::CmdManager::AllocateCmdList(D3D12_COMMAND_LIST_TYPE InType, ID3D12CommandAllocator* InAllocator)
+ID3D12GraphicsCommandList* Renderer::CmdManager::AllocateCmdList(D3D12_COMMAND_LIST_TYPE InType)
 {
 	ID3D12GraphicsCommandList* newCmdList;
-	g_Device->CreateCommandList(0, InType, InAllocator, nullptr, IID_PPV_ARGS(&newCmdList));
-	newCmdList->Close();
+	g_Device->CreateCommandList1(0, InType, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&newCmdList));
 	return newCmdList;
 
 	

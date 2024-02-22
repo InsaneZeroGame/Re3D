@@ -75,6 +75,10 @@ namespace Renderer
 		int mHeight;
 		std::unique_ptr<class tf::Taskflow> mRenderFlow;
 		std::unique_ptr<class tf::Executor> mRenderExecution;
+		D3D12_VIEWPORT mViewPort;
+		D3D12_RECT mRect;
+		float mColorRGBA[4] = { 0.15f,0.25f,0.75f,1.0f };
+
 	};
 
 }

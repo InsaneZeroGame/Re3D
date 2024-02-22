@@ -20,13 +20,11 @@ Renderer::BaseRenderer::BaseRenderer():
 {
 	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFrameFence)) == S_OK);
 	mFrameDoneEvent = CreateEvent(nullptr, false, false, nullptr);
-	auto newAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, 0);
-	mGraphicsCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT, newAllocator);
+	mGraphicsCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	CreateBuffers();
 	CreateRootSignature();
 	CreatePipelineState();
 	CreateRenderTask();
-	//mRenderFlow.emplace()
 }
 
 Renderer::BaseRenderer::~BaseRenderer()
@@ -44,10 +42,13 @@ void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, in
 
 	mDepthBuffer = std::make_shared<Resource::DepthBuffer>(1.0, 0);
 	mDepthBuffer->Create(L"DepthBuffer", mWidth, mHeight, DXGI_FORMAT_D32_FLOAT);
+	mViewPort = { 0,0,(float)mWidth,(float)mHeight,0.0,1.0 };
+	mRect = { 0,0,mWidth,mHeight };
 }
 
 void Renderer::BaseRenderer::Update(float delta)
 {
+	UpdataFrameData();
 	mRenderExecution->run(*mRenderFlow).wait();
 }
 
@@ -55,9 +56,9 @@ void Renderer::BaseRenderer::CreateRenderTask()
 {
 	mRenderFlow = std::make_unique<tf::Taskflow>();
 	mRenderExecution = std::make_unique<tf::Executor>();
+
 	auto DepthOnlyPass = [this]()
 		{
-			UpdataFrameData();
 			IDXGISwapChain4* swapChain = (IDXGISwapChain4*)mDeviceManager->GetSwapChain();
 			//1.Reset CmdList
 			mCurrentBackbufferIndex = swapChain->GetCurrentBackBufferIndex();
@@ -72,13 +73,10 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			//Setup RenderTarget
 			TransitState(mGraphicsCmd, g_DisplayPlane[mCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			mGraphicsCmd->OMSetRenderTargets(0, nullptr, true, &mDepthBuffer->GetDSV());
-			D3D12_VIEWPORT lViewPort = { 0,0,mWidth,mHeight,0.0,1.0 };
-			mGraphicsCmd->RSSetViewports(1, &lViewPort);
-			D3D12_RECT lRect = { 0,0,mWidth,mHeight };
-			mGraphicsCmd->RSSetScissorRects(1, &lRect);
-			float ColorRGBA[4] = { 0.15f,0.25f,0.75f,1.0f };
-			mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), ColorRGBA, 1, &lRect);
-			mGraphicsCmd->ClearDepthStencilView(mDepthBuffer->GetDSV(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 1, &lRect);
+			mGraphicsCmd->RSSetViewports(1, &mViewPort);
+			mGraphicsCmd->RSSetScissorRects(1, &mRect);
+			mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), mColorRGBA, 1, &mRect);
+			mGraphicsCmd->ClearDepthStencilView(mDepthBuffer->GetDSV(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 1, &mRect);
 
 			//Set Resources
 			mGraphicsCmd->SetGraphicsRootSignature(m_rootSignature);
@@ -88,6 +86,11 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->IASetIndexBuffer(&mIndexBuffer->IndexBufferView());
 			mGraphicsCmd->SetPipelineState(mPipelineStateDepthOnly);
 			RenderObject(mCurrentModel);
+		};
+
+	auto computePass = [&]() 
+		{
+			
 		};
 
 	auto ColorPass = [this]()
@@ -124,15 +127,6 @@ void Renderer::BaseRenderer::CreateRenderTask()
 
 void Renderer::BaseRenderer::CreateBuffers()
 {
-	//Triangle
-	//std::vector<Vertex> triangle = 
-	//{
-	//	{ {0.0,1.0,0.0,1.0},{1.0,0.0,0.0,1.0},{0.0,0.0}},
-	//	{{ 1.0,0.0,0.0,1.0},{0.0,1.0,0.0,1.0},{0.0,0.0}},
-	//	{{-1.0,0.0,0.0,1.0},{0.0,0.0,1.0,1.0},{0.0,0.0}},
-	//};
-	//
-	//std::vector<uint32_t> indices = {0,1,2};
 	AssetLoader::ObjModelLoader* objLoader = new AssetLoader::ObjModelLoader;
 	auto model = objLoader->LoadAssetFromFile("scene.obj");
 	Ensures(model.has_value());

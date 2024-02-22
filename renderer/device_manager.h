@@ -6,9 +6,9 @@
 
 namespace Renderer
 {
-	inline constexpr static int SWAP_CHAIN_BUFFER_COUNT = 3;
+	inline constexpr int SWAP_CHAIN_BUFFER_COUNT = 3;
 	inline Resource::ColorBuffer g_DisplayPlane[SWAP_CHAIN_BUFFER_COUNT];
-	inline ID3D12Device* g_Device = nullptr;
+	inline ID3D12Device4* g_Device = nullptr;
 	inline class DescHeap* g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
 
 
@@ -53,7 +53,7 @@ namespace Renderer
 	public:
 		CmdManager(ID3D12Device* InDevice);
 		~CmdManager();
-		ID3D12GraphicsCommandList* AllocateCmdList(D3D12_COMMAND_LIST_TYPE InType, ID3D12CommandAllocator* InAllocator);
+		ID3D12GraphicsCommandList* AllocateCmdList(D3D12_COMMAND_LIST_TYPE InType);
 		ID3D12CommandAllocator* RequestAllocator(D3D12_COMMAND_LIST_TYPE InType, uint64_t CompletedFenceValue);
 		ID3D12CommandQueue* GetQueue(D3D12_COMMAND_LIST_TYPE InType);
 		void Discard(D3D12_COMMAND_LIST_TYPE InType,ID3D12CommandAllocator* cmdAllocator,uint64_t InFenceValue);
@@ -79,7 +79,7 @@ namespace Renderer
 		void CreateCmdManager();
 		void CreateD3DDevice();
 	private:
-		ID3D12Device* mDevice = nullptr;
+		ID3D12Device4* mDevice = nullptr;
 		IDXGISwapChain1* s_SwapChain1 = nullptr;
 		std::shared_ptr<CmdManager> mCmdManager;
 		int mWidth = 0;
