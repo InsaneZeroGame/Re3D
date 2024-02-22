@@ -3,6 +3,13 @@
 #include <asset_loader.h>
 #include <camera.h>
 
+namespace tf
+{
+	class Taskflow;
+	class Executor;
+}
+
+
 namespace Renderer
 {
 	namespace Resource 
@@ -27,7 +34,9 @@ namespace Renderer
 		void SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight);
 		void Update(float delta);
 	protected:
+		void CreateRenderTask();
 		void CreateBuffers();
+		void DepthOnlyPass(const AssetLoader::ModelAsset& InAsset);
 		virtual void FirstFrame();
 		virtual void PreRender();
 		virtual void PostRender();
@@ -46,6 +55,7 @@ namespace Renderer
 		ID3D12Fence* mFrameFence;
 		HANDLE mFrameDoneEvent;
 		ID3D12GraphicsCommandList* mGraphicsCmd;
+		ID3D12CommandAllocator* mGraphicsCmdAllocator;
 		std::shared_ptr<Resource::VertexBuffer> mVertexBuffer;
 		std::shared_ptr<Resource::VertexBuffer> mIndexBuffer;
 		std::shared_ptr<Resource::UploadBuffer> mUploadBuffer;
@@ -53,6 +63,7 @@ namespace Renderer
 		std::shared_ptr<Resource::UploadBuffer> mIndexUploadBuffer;
 
 		ID3D12PipelineState* mPipelineState;
+		ID3D12PipelineState* mPipelineStateDepthOnly;
 		ID3D12RootSignature* m_rootSignature;
 		AssetLoader::ModelAsset mCurrentModel;
 		std::unique_ptr<Gameplay::PerspectCamera> mDefaultCamera;
@@ -62,6 +73,8 @@ namespace Renderer
 		void* mFrameDataPtr;
 		int mWidth;
 		int mHeight;
+		std::unique_ptr<class tf::Taskflow> mRenderFlow;
+		std::unique_ptr<class tf::Executor> mRenderExecution;
 	};
 
 }

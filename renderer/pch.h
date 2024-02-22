@@ -80,6 +80,7 @@
 #include <optional>
 #include "color.h"
 #include <filesystem>
+#include <taskflow/taskflow.hpp>
 
 
 #pragma comment(lib,"dxgi.lib")

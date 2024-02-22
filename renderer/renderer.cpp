@@ -25,6 +25,8 @@ Renderer::BaseRenderer::BaseRenderer():
 	CreateBuffers();
 	CreateRootSignature();
 	CreatePipelineState();
+	CreateRenderTask();
+	//mRenderFlow.emplace()
 }
 
 Renderer::BaseRenderer::~BaseRenderer()
@@ -46,42 +48,78 @@ void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, in
 
 void Renderer::BaseRenderer::Update(float delta)
 {
-	UpdataFrameData();
-	IDXGISwapChain4* swapChain = (IDXGISwapChain4*)mDeviceManager->GetSwapChain();
-	mCurrentBackbufferIndex = swapChain->GetCurrentBackBufferIndex();
-	auto cmdAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT,mFenceValue);
-	mGraphicsCmd->Reset(cmdAllocator, mPipelineState);
-	if (mIsFirstFrame)
-	{
-		FirstFrame();
-		mIsFirstFrame = false;
-	}
-	TransitState(mGraphicsCmd, g_DisplayPlane[mCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV());
-	D3D12_VIEWPORT lViewPort = {0,0,mWidth,mHeight,0.0,1.0};
-	mGraphicsCmd->RSSetViewports(1, &lViewPort);
-	D3D12_RECT lRect = {0,0,mWidth,mHeight };
-	mGraphicsCmd->RSSetScissorRects(1, &lRect);
-	float ColorRGBA[4] = { 0.15f,0.25f,0.75f,1.0f };
-	mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), ColorRGBA, 1, &lRect);
-	mGraphicsCmd->ClearDepthStencilView(mDepthBuffer->GetDSV(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 1, &lRect);
-	mGraphicsCmd->SetPipelineState(mPipelineState);
-	mGraphicsCmd->SetGraphicsRootSignature(m_rootSignature);
-	mGraphicsCmd->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-	mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
-	RenderObject(mCurrentModel);
+	mRenderExecution->run(*mRenderFlow).wait();
+}
 
-	TransitState(mGraphicsCmd, g_DisplayPlane[mCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-	mGraphicsCmd->Close();
-	ID3D12CommandList* cmds[] = { mGraphicsCmd };
-	ID3D12CommandQueue* graphicsQueue =  mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
-	graphicsQueue->ExecuteCommandLists(1, cmds);
-	graphicsQueue->Signal(mFrameFence, mFenceValue);
-	mFrameFence->SetEventOnCompletion(mFenceValue, mFrameDoneEvent);
-	WaitForSingleObject(mFrameDoneEvent, INFINITE);
-	mCmdManager->Discard(D3D12_COMMAND_LIST_TYPE_DIRECT,cmdAllocator, mFenceValue);
-	mFenceValue++;
-	swapChain->Present(0, 0);
+void Renderer::BaseRenderer::CreateRenderTask()
+{
+	mRenderFlow = std::make_unique<tf::Taskflow>();
+	mRenderExecution = std::make_unique<tf::Executor>();
+	auto DepthOnlyPass = [this]()
+		{
+			UpdataFrameData();
+			IDXGISwapChain4* swapChain = (IDXGISwapChain4*)mDeviceManager->GetSwapChain();
+			//1.Reset CmdList
+			mCurrentBackbufferIndex = swapChain->GetCurrentBackBufferIndex();
+			mGraphicsCmdAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, mFenceValue);
+			mGraphicsCmd->Reset(mGraphicsCmdAllocator, nullptr);
+			if (mIsFirstFrame)
+			{
+				FirstFrame();
+				mIsFirstFrame = false;
+			}
+
+			//Setup RenderTarget
+			TransitState(mGraphicsCmd, g_DisplayPlane[mCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			mGraphicsCmd->OMSetRenderTargets(0, nullptr, true, &mDepthBuffer->GetDSV());
+			D3D12_VIEWPORT lViewPort = { 0,0,mWidth,mHeight,0.0,1.0 };
+			mGraphicsCmd->RSSetViewports(1, &lViewPort);
+			D3D12_RECT lRect = { 0,0,mWidth,mHeight };
+			mGraphicsCmd->RSSetScissorRects(1, &lRect);
+			float ColorRGBA[4] = { 0.15f,0.25f,0.75f,1.0f };
+			mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), ColorRGBA, 1, &lRect);
+			mGraphicsCmd->ClearDepthStencilView(mDepthBuffer->GetDSV(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 1, &lRect);
+
+			//Set Resources
+			mGraphicsCmd->SetGraphicsRootSignature(m_rootSignature);
+			mGraphicsCmd->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
+			mGraphicsCmd->IASetVertexBuffers(0, 1, &mVertexBuffer->VertexBufferView());
+			mGraphicsCmd->IASetIndexBuffer(&mIndexBuffer->IndexBufferView());
+			mGraphicsCmd->SetPipelineState(mPipelineStateDepthOnly);
+			RenderObject(mCurrentModel);
+		};
+
+	auto ColorPass = [this]()
+		{
+			//Render Scene
+			mGraphicsCmd->SetPipelineState(mPipelineState);
+			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
+			RenderObject(mCurrentModel);
+		};
+
+	auto PostRender = [this]()
+		{
+			//Flush CmdList
+			TransitState(mGraphicsCmd, g_DisplayPlane[mCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+			mGraphicsCmd->Close();
+			ID3D12CommandList* cmds[] = { mGraphicsCmd };
+			ID3D12CommandQueue* graphicsQueue = mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
+			graphicsQueue->ExecuteCommandLists(1, cmds);
+			graphicsQueue->Signal(mFrameFence, mFenceValue);
+
+			//Wait For cmd finished to reclaim cmd
+			mFrameFence->SetEventOnCompletion(mFenceValue, mFrameDoneEvent);
+			WaitForSingleObject(mFrameDoneEvent, INFINITE);
+			mCmdManager->Discard(D3D12_COMMAND_LIST_TYPE_DIRECT, mGraphicsCmdAllocator, mFenceValue);
+			mFenceValue++;
+			//Present
+			IDXGISwapChain4* swapChain = (IDXGISwapChain4*)mDeviceManager->GetSwapChain();
+			swapChain->Present(0, 0);
+		};
+	auto [depthOnlyPass, colorPass, postRender] = mRenderFlow->emplace(DepthOnlyPass,ColorPass,PostRender);
+	depthOnlyPass.precede(colorPass);
+	colorPass.precede(postRender);
 }
 
 void Renderer::BaseRenderer::CreateBuffers()
@@ -132,6 +170,11 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mFrameDataCPU.DirectionalLightDir = SimpleMath::Vector4(1.0, 1.0, 2.0,1.0f);
 }
 
+void Renderer::BaseRenderer::DepthOnlyPass(const AssetLoader::ModelAsset& InAsset)
+{
+
+}
+
 void Renderer::BaseRenderer::FirstFrame()
 {
 	TransitState(mGraphicsCmd, mUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -171,10 +214,10 @@ void Renderer::BaseRenderer::CreatePipelineState()
 
 	std::vector<D3D12_INPUT_ELEMENT_DESC> elements =
 	{
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "NORMAL", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "POSITION",	0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0,  0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "NORMAL",		0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "COLOR",		0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD",   0, DXGI_FORMAT_R32G32_FLOAT,	   0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 
 	};
 	lDesc.InputLayout.NumElements = static_cast<UINT>(elements.size());
@@ -185,7 +228,14 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	lDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	lDesc.SampleDesc.Count = 1;
 	lDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+	lDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
+	lDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_LESS_EQUAL;
 	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mPipelineState));
+	lDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
+	lDesc.NumRenderTargets = 0;
+	lDesc.PS = {};
+	lDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
+	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mPipelineStateDepthOnly));
 }
 
 void Renderer::BaseRenderer::CreateRootSignature()
@@ -215,8 +265,7 @@ void Renderer::BaseRenderer::CreateRootSignature()
 void Renderer::BaseRenderer::RenderObject(const AssetLoader::ModelAsset& InAsset)
 {
 	//Render 
-	mGraphicsCmd->IASetVertexBuffers(0, 1, &mVertexBuffer->VertexBufferView());
-	mGraphicsCmd->IASetIndexBuffer(&mIndexBuffer->IndexBufferView());
+	
 	for (const auto& mesh : InAsset.mMeshes)
 	{
 		mGraphicsCmd->DrawIndexedInstanced(mesh.mIndices.size(), 1, 0, 0, 0);

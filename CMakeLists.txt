@@ -29,6 +29,12 @@ CPMAddPackage(
           "GLFW_BULID_DOCS OFF"
 )
 
+CPMAddPackage(
+        NAME taskflow
+        GITHUB_REPOSITORY "taskflow/taskflow"
+        GIT_TAG v3.6.0
+)
+
 add_subdirectory(engine)
 add_subdirectory(renderer)
 add_subdirectory(game)

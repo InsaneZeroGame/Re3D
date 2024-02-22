@@ -3,6 +3,7 @@ set(TARGET Renderer)
 include_directories(${CMAKE_SOURCE_DIR}/engine)
 
 set(${TARGET}_Headers
+            render_pass.h
             color.h
             gpu_resource.h
             d3dx12.h
@@ -10,6 +11,7 @@ set(${TARGET}_Headers
             renderer.h)
 
 set(${TARGET}_Srcs 
+            render_pass.cpp
             gpu_resource.cpp
             device_manager.cpp
             renderer.cpp)
@@ -30,7 +32,7 @@ set_property(SOURCE ${HLSL_SHADER_FILES} PROPERTY VS_SHADER_ENABLE_DEBUG true)
 
 
 add_library(${TARGET} ${${TARGET}_Headers} ${${TARGET}_Srcs} ${HLSL_SHADER_FILES})
-target_link_libraries(${TARGET} GSL spdlog Engine)
+target_link_libraries(${TARGET} GSL spdlog Engine Taskflow)
 target_precompile_headers(${TARGET} PRIVATE pch.h)
 
 
