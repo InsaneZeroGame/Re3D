@@ -9,4 +9,17 @@ namespace Renderer
 		std::array<float, 4> color;
 		std::array<float, 2> textureCoord;
 	};
+
+	struct Light
+	{
+		std::array<float, 4> color;
+		std::array<float, 4> pos;
+		std::array<float, 4> radius_attenu;
+	};
+
+	struct Cluster
+	{	
+		std::array<uint32_t,128> light;
+		
+	};
 }

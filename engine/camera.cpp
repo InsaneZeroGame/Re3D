@@ -26,19 +26,24 @@ void Gameplay::BaseCamera::LookAt(SimpleMath::Vector3 InEye, SimpleMath::Vector3
 	mView = XMMatrixLookAtLH(mEye,mCenter,mUp);
 }
 
-const DirectX::SimpleMath::Matrix& Gameplay::BaseCamera::GetPrj()
+const DirectX::SimpleMath::Matrix& Gameplay::BaseCamera::GetPrj(bool UploadToGpu)
 {
-	return mPrj.Transpose();
+	return UploadToGpu ? mViewToClip.Transpose() : mViewToClip;
 }
 
-const DirectX::SimpleMath::Matrix& Gameplay::BaseCamera::GetView()
+const DirectX::SimpleMath::Matrix& Gameplay::BaseCamera::GetView(bool UploadToGpu)
 {
-	return mView.Transpose();
+	return UploadToGpu ? mView.Transpose(): mView;
 }
 
-const DirectX::SimpleMath::Matrix& Gameplay::BaseCamera::GetPrjView()
+const DirectX::SimpleMath::Matrix& Gameplay::BaseCamera::GetNormalMatrix(bool UploadToGpu /*= true*/)
 {
-	return (mView * mPrj).Transpose();
+	return UploadToGpu ? mView.Invert() : mView.Invert().Transpose();
+}
+
+const DirectX::SimpleMath::Matrix& Gameplay::BaseCamera::GetPrjView(bool UploadToGpu)
+{
+	return UploadToGpu ? (mView * mViewToClip).Transpose() : mView * mViewToClip;
 }
 
 void Gameplay::BaseCamera::KeyDown(int key, int scancode, int action, int mods)
@@ -70,6 +75,11 @@ void Gameplay::BaseCamera::KeyDown(int key, int scancode, int action, int mods)
 			break;
 		}
 	}
+}
+
+DirectX::SimpleMath::Matrix Gameplay::BaseCamera::GetClipToView(bool UploadToGpu)
+{
+	return UploadToGpu ? mClipToView.Transpose(): mClipToView;
 }
 
 void Gameplay::BaseCamera::Forward(float InSpeed)
@@ -118,7 +128,32 @@ Gameplay::PerspectCamera::PerspectCamera(float InWidth, float InHeight, float In
 	{
 		fovAngleY /= aspectRatio;
 	}
-	mPrj = XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, InNear, InFar);
+	mViewToClip = XMMatrixPerspectiveFovLH(fovAngleY, aspectRatio, InNear, InFar);
+	mClipToView = mViewToClip.Invert();
+}
+
+Gameplay::PerspectCamera::PerspectCamera(float InWidth, float InHeight, float InNear):
+	BaseCamera(),
+	mWidth(InWidth),
+	mHeight(InHeight),
+	mNear(InNear),
+	mFar(125.0)
+{
+	float aspectRatio = (float)InWidth / (float)InHeight;
+	float fovAngleY = 90.0 * XM_PI / 180.0f;
+
+	if (aspectRatio < 1.0f)
+	{
+		fovAngleY /= aspectRatio;
+	}
+	fovAngleY *= 0.5;
+	mViewToClip = SimpleMath::Matrix(
+		SimpleMath::Vector4(1.0f / tan(fovAngleY), 0.0f, 0.0f, 0.0f),
+		SimpleMath::Vector4(0.0f, InWidth / tan(fovAngleY) / InHeight, 0.0f, 0.0f),
+		SimpleMath::Vector4(0.0f, 0.0f, 0.0f, 1.0f),
+		SimpleMath::Vector4(0.0f, 0.0f, InNear, 0.0f)
+	);
+	mClipToView = mViewToClip.Invert();
 }
 
 Gameplay::PerspectCamera::PerspectCamera()
@@ -129,4 +164,14 @@ Gameplay::PerspectCamera::PerspectCamera()
 Gameplay::PerspectCamera::~PerspectCamera()
 {
 
+}
+
+float Gameplay::PerspectCamera::GetNear()
+{
+	return mNear;
+}
+
+float Gameplay::PerspectCamera::GetFar()
+{
+	return mFar;
 }

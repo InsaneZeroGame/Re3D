@@ -8,7 +8,8 @@ set(${TARGET}_Headers
             gpu_resource.h
             d3dx12.h
             device_manager.h
-            renderer.h)
+            renderer.h
+            )
 
 set(${TARGET}_Srcs 
             render_pass.cpp
@@ -20,11 +21,13 @@ set(${TARGET}_Srcs
             ${${TARGET}_Srcs}
             pch.h pch.cpp)
 
-set(HLSL_SHADER_FILES shaders/ForwardVS.hlsl shaders/ForwardPS.hlsl)
+set(HLSL_SHADER_FILES shaders/ForwardVS.hlsl shaders/ForwardPS.hlsl shaders/LightCull.hlsl shaders/shader_common.hlsli)
 set_property(SOURCE shaders/ForwardVS.hlsl PROPERTY VS_SHADER_TYPE Vertex)
 set_property(SOURCE shaders/ForwardPS.hlsl PROPERTY VS_SHADER_TYPE Pixel)
-set_property(SOURCE shaders/ForwardVS.hlsl PROPERTY VS_SHADER_MODEL 5.0)
-set_property(SOURCE shaders/ForwardPS.hlsl PROPERTY VS_SHADER_MODEL 5.0)
+set_property(SOURCE shaders/LightCull.hlsl PROPERTY VS_SHADER_TYPE Compute)
+set_property(SOURCE shaders/ForwardVS.hlsl PROPERTY VS_SHADER_MODEL 5.1)
+set_property(SOURCE shaders/ForwardPS.hlsl PROPERTY VS_SHADER_MODEL 5.1)
+set_property(SOURCE shaders/LightCull.hlsl PROPERTY VS_SHADER_MODEL 5.1)
 set_property(SOURCE ${HLSL_SHADER_FILES} PROPERTY VS_SHADER_DISABLE_OPTIMIZATIONS true)
 set_property(SOURCE ${HLSL_SHADER_FILES} PROPERTY VS_SHADER_ENABLE_DEBUG true)
 

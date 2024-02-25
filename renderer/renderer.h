@@ -17,13 +17,25 @@ namespace Renderer
 		class VertexBuffer;
 		class UploadBuffer;
 		class DepthBuffer;
+		class StructuredBuffer;
 	}
 
 	struct FrameData
 	{	
-		DirectX::SimpleMath::Matrix mPrjView;
+		DirectX::SimpleMath::Matrix PrjView;
+		DirectX::SimpleMath::Matrix View;
+		DirectX::SimpleMath::Matrix NormalMatrix;
 		DirectX::SimpleMath::Vector4 DirectionalLightDir;
 		DirectX::SimpleMath::Vector4 DirectionalLightColor;
+	};
+
+	struct LightCullViewData
+	{
+		DirectX::SimpleMath::Vector4 ViewSizeAndInvSize;
+		DirectX::SimpleMath::Matrix  ClipToView;
+		DirectX::SimpleMath::Matrix  ViewMatrix;
+		DirectX::SimpleMath::Vector4 LightGridZParams;
+		DirectX::SimpleMath::Vector4 InvDeviceZToWorldZTransform;
 	};
 
 	class BaseRenderer
@@ -52,8 +64,12 @@ namespace Renderer
 		bool mIsFirstFrame;
 		int mCurrentBackbufferIndex;
 		uint64_t mFenceValue;
+		uint64_t mComputeFenceValue;
+		HANDLE mComputeFenceHandle;
 		ID3D12Fence* mFrameFence;
+		ID3D12Fence* mComputeFence;
 		HANDLE mFrameDoneEvent;
+		ID3D12GraphicsCommandList* mComputeCmd;
 		ID3D12GraphicsCommandList* mGraphicsCmd;
 		ID3D12CommandAllocator* mGraphicsCmdAllocator;
 		std::shared_ptr<Resource::VertexBuffer> mVertexBuffer;
@@ -62,9 +78,11 @@ namespace Renderer
 		//temp 
 		std::shared_ptr<Resource::UploadBuffer> mIndexUploadBuffer;
 
-		ID3D12PipelineState* mPipelineState;
+		ID3D12PipelineState* mColorPassPipelineState;
 		ID3D12PipelineState* mPipelineStateDepthOnly;
-		ID3D12RootSignature* m_rootSignature;
+		ID3D12PipelineState* mLightCullPass;
+		ID3D12RootSignature* mColorPassRootSignature;
+		ID3D12RootSignature* mLightCullPassRootSignature;
 		AssetLoader::ModelAsset mCurrentModel;
 		std::unique_ptr<Gameplay::PerspectCamera> mDefaultCamera;
 		FrameData mFrameDataCPU;
@@ -78,7 +96,15 @@ namespace Renderer
 		D3D12_VIEWPORT mViewPort;
 		D3D12_RECT mRect;
 		float mColorRGBA[4] = { 0.15f,0.25f,0.75f,1.0f };
+		std::unique_ptr<Resource::StructuredBuffer> mLightBuffer;
+		std::shared_ptr<Resource::UploadBuffer> mLightUploadBuffer;
 
+		std::array<Light, 128> mLights{};
+		std::unique_ptr<Resource::StructuredBuffer> mClusterBuffer;
+		std::vector<Cluster> mCLusters;
+		LightCullViewData mLightCullViewData;
+		std::unique_ptr<Resource::UploadBuffer> mLightCullViewDataGpu;
+		void* mLightCullDataPtr;
 	};
 
 }
