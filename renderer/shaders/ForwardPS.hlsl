@@ -140,9 +140,9 @@ float4 main(PSInput input) : SV_TARGET
     float3 pointLight;
     uint GirdIndex = ComputeLightGridCellIndex(uint2(input.position.xy), input.position.w);
     uint3 GridCoord = ComputeLightGridCellCoordinate(uint2(input.position.xy), input.position.w, 0);
-    for (int i = 0; i < 128; ++i)
+    for (int i = 0; i < 256; ++i)
     {
-        if (clusters[GirdIndex].lightMask[i] == 1)
+        if ((clusters[GirdIndex].lightMask[i / 32] >> (i % 32)) & 0x1  == 1)
         {
             float4 lightViewSpace = mul(lights[i].pos, View.ViewMatrix);
             float4 lightDir = lightViewSpace - input.viewsSpacePos;

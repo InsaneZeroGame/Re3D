@@ -21,7 +21,8 @@ struct Light
 
 struct Cluster
 {
-    uint lightMask[128];
+    //32bit * 8
+    uint lightMask[8];
 };
 
 struct LightCullViewData

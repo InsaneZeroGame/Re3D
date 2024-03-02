@@ -99,7 +99,7 @@ namespace Renderer
 		std::unique_ptr<Resource::StructuredBuffer> mLightBuffer;
 		std::shared_ptr<Resource::UploadBuffer> mLightUploadBuffer;
 
-		std::array<Light, 128> mLights{};
+		std::array<Light, 256> mLights{};
 		std::unique_ptr<Resource::StructuredBuffer> mClusterBuffer;
 		std::vector<Cluster> mCLusters;
 		LightCullViewData mLightCullViewData;

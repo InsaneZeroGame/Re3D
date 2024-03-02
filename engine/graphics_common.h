@@ -19,7 +19,7 @@ namespace Renderer
 
 	struct Cluster
 	{	
-		std::array<uint32_t,128> light;
+		std::array<uint32_t,8> light;
 		
 	};
 }

@@ -114,8 +114,9 @@ void ComputeCellViewAABB(uint3 GridCoordinate, out float3 ViewTileMin, out float
     ViewTileMin.z = MinTileZ;
     ViewTileMax.z = MaxTileZ;
 }
-
-[numthreads(128, 1, 1)]
+//light max count 256
+//32 * 8
+[numthreads(32, 8, 1)]
 void main(
     uint3 GroupId : SV_GroupID,
 	uint3 DispatchThreadId : SV_DispatchThreadID,
@@ -123,6 +124,14 @@ void main(
     uint threadIndex:SV_GroupIndex)
 {
     uint clusterID = GroupId.x + (GroupId.y) * CLUSTER_X + GroupId.z * (CLUSTER_X * CLUSTER_Y);
+    if (GroupThreadId.x == 0 && GroupThreadId.y == 0)
+    {
+        for (int i = 0; i < 8;++i)
+        {
+            clusters[clusterID].lightMask[i] = 0;
+        }
+    }
+    GroupMemoryBarrier();
     float3 ViewTileMin;
     float3 ViewTileMax;
     ComputeCellViewAABB(GroupId, ViewTileMin, ViewTileMax);
@@ -130,17 +139,13 @@ void main(
     float3 ViewTileCenter = .5f * (ViewTileMin + ViewTileMax);
     float3 ViewTileExtent = ViewTileMax - ViewTileCenter;
    
-    uint LocalLightIndex = GroupThreadId.x;
+    uint LocalLightIndex = GroupThreadId.x + GroupThreadId.y * 32;
     float3 ViewSpaceLightPosition = mul(lights[LocalLightIndex].pos,View.ViewMatrix).xyz;
     float LightRadius = lights[LocalLightIndex].radius;
     float BoxDistanceSq = ComputeSquaredDistanceFromBoxToPoint(ViewTileCenter, ViewTileExtent, ViewSpaceLightPosition);
     if (BoxDistanceSq < LightRadius * LightRadius)
     {
-        clusters[clusterID].lightMask[LocalLightIndex] = 1;
+        InterlockedOr(clusters[clusterID].lightMask[GroupThreadId.y], (0x1 << GroupThreadId.x));
     }
-    else
-    {
-        clusters[clusterID].lightMask[LocalLightIndex] = 0;
-    }
-
+   
 }
