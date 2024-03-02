@@ -26,22 +26,22 @@ void Gameplay::BaseCamera::LookAt(SimpleMath::Vector3 InEye, SimpleMath::Vector3
 	mView = XMMatrixLookAtLH(mEye,mCenter,mUp);
 }
 
-const DirectX::SimpleMath::Matrix& Gameplay::BaseCamera::GetPrj(bool UploadToGpu)
+const DirectX::SimpleMath::Matrix Gameplay::BaseCamera::GetPrj(bool UploadToGpu)
 {
 	return UploadToGpu ? mViewToClip.Transpose() : mViewToClip;
 }
 
-const DirectX::SimpleMath::Matrix& Gameplay::BaseCamera::GetView(bool UploadToGpu)
+const DirectX::SimpleMath::Matrix Gameplay::BaseCamera::GetView(bool UploadToGpu)
 {
 	return UploadToGpu ? mView.Transpose(): mView;
 }
 
-const DirectX::SimpleMath::Matrix& Gameplay::BaseCamera::GetNormalMatrix(bool UploadToGpu /*= true*/)
+const DirectX::SimpleMath::Matrix Gameplay::BaseCamera::GetNormalMatrix(bool UploadToGpu /*= true*/)
 {
 	return UploadToGpu ? mView.Invert() : mView.Invert().Transpose();
 }
 
-const DirectX::SimpleMath::Matrix& Gameplay::BaseCamera::GetPrjView(bool UploadToGpu)
+const DirectX::SimpleMath::Matrix Gameplay::BaseCamera::GetPrjView(bool UploadToGpu)
 {
 	return UploadToGpu ? (mView * mViewToClip).Transpose() : mView * mViewToClip;
 }

@@ -9,10 +9,10 @@ namespace Gameplay
 		BaseCamera();
 		virtual ~BaseCamera();
 		virtual void LookAt(SimpleMath::Vector3 InEye, SimpleMath::Vector3 InCenter, SimpleMath::Vector3 InUp);
-		const SimpleMath::Matrix& GetPrj(bool UploadToGpu = true);
-		const SimpleMath::Matrix& GetView(bool UploadToGpu = true);
-		const SimpleMath::Matrix& GetNormalMatrix(bool UploadToGpu = true);
-		const SimpleMath::Matrix& GetPrjView(bool UploadToGpu = true);
+		const SimpleMath::Matrix GetPrj(bool UploadToGpu = true);
+		const SimpleMath::Matrix GetView(bool UploadToGpu = true);
+		const SimpleMath::Matrix GetNormalMatrix(bool UploadToGpu = true);
+		const SimpleMath::Matrix GetPrjView(bool UploadToGpu = true);
 		virtual void KeyDown(int key, int scancode, int action, int mods);
 		SimpleMath::Matrix GetClipToView(bool UploadToGpu = true);
 	protected:
