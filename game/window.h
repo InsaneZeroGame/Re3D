@@ -1,4 +1,5 @@
 #pragma once
+#pragma warning(disable : 4996)
 #include <GLFW/glfw3.h>
 #ifdef WIN32
 #define GLFW_EXPOSE_NATIVE_WIN32

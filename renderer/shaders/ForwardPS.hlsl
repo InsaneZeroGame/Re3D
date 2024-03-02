@@ -18,6 +18,76 @@ static float4 zliceColor[] =
         float4(1.0, 0.0, 1.0, 1.0f),
 };
 
+// Apply fresnel to modulate the specular albedo
+void FSchlick(inout float3 specular, inout float3 diffuse, float3 lightDir, float3 halfVec)
+{
+    float fresnel = pow(1.0 - saturate(dot(lightDir, halfVec)), 5.0);
+    specular = lerp(specular, 1, fresnel);
+    diffuse = lerp(diffuse, 0, fresnel);
+}
+
+float3 ApplyLightCommon(
+    float3 diffuseColor, // Diffuse albedo
+    float3 specularColor, // Specular albedo
+    float specularMask, // Where is it shiny or dingy?
+    float gloss, // Specular power
+    float3 normal, // World-space normal
+    float3 viewDir, // World-space vector from eye to point
+    float3 lightDir, // World-space vector from point to light
+    float3 lightColor // Radiance of directional light
+    )
+{
+    float3 halfVec = normalize(lightDir - viewDir);
+    float nDotH = saturate(dot(halfVec, normal));
+
+    FSchlick(diffuseColor, specularColor, lightDir, halfVec);
+
+    float specularFactor = nDotH;
+    //float specularFactor = specularMask * pow(nDotH, gloss) * (gloss + 2) / 8;
+    
+
+    float nDotL = saturate(dot(normal, lightDir));
+    
+    //return nDotL * lightColor * (diffuseColor + specularColor);
+
+    return nDotL * lightColor * (diffuseColor + specularFactor * specularColor);
+}
+
+float3 ApplyPointLight(
+    float3 diffuseColor, // Diffuse albedo
+    float3 specularColor, // Specular albedo
+    float specularMask, // Where is it shiny or dingy?
+    float gloss, // Specular power
+    float3 normal, // World-space normal
+    float3 viewDir, // World-space vector from eye to point
+    float3 worldPos, // World-space fragment position
+    float3 lightPos, // World-space light position
+    float lightRadiusSq,
+    float3 lightColor // Radiance of directional light
+    )
+{
+    float3 lightDir = lightPos - worldPos;
+    float lightDistSq = dot(lightDir, lightDir);
+    float invLightDist = rsqrt(lightDistSq);
+    lightDir *= invLightDist;
+
+    // modify 1/d^2 * R^2 to fall off at a fixed radius
+    // (R/d)^2 - d/R = [(1/d^2) - (1/R^2)*(d/R)] * R^2
+    float distanceFalloff = lightRadiusSq * (invLightDist * invLightDist);
+    distanceFalloff = max(0, distanceFalloff - rsqrt(distanceFalloff));
+
+    return distanceFalloff * ApplyLightCommon(
+        diffuseColor,
+        specularColor,
+        specularMask,
+        gloss,
+        normal,
+        viewDir,
+        lightDir,
+        lightColor
+        );
+}
+
 
 uint3 ComputeLightGridCellCoordinate(uint2 PixelPos, float SceneDepth, uint EyeIndex)
 {
@@ -59,29 +129,46 @@ float4 main(PSInput input) : SV_TARGET
      float4 colorAfterCorrection = pow(input.color, 1.0 / gamma);
     return (diffuse + ambient) * colorAfterCorrection;
 #else
-    float4 diffuse = 0.25;
+    float4 DirLightViewSpace = mul(float4(input.DirectionalLightDir.xyz, 0.0), View.ViewMatrix);
+    float DirLightIntense = 0.2f;
+    float3 directionalLight = ApplyLightCommon(
+    input.color.xyz,
+    input.color.xyz,
+    0, 0, input.normalViewSpace.xyz, input.viewsSpacePos, 
+    DirLightViewSpace, input.DirectionalLightColor) * DirLightIntense;
+    
+    float3 pointLight;
     uint GirdIndex = ComputeLightGridCellIndex(uint2(input.position.xy), input.position.w);
     uint3 GridCoord = ComputeLightGridCellCoordinate(uint2(input.position.xy), input.position.w, 0);
     for (int i = 0; i < 128; ++i)
     {
         if (clusters[GirdIndex].lightMask[i] == 1)
         {
-            //diffuse += lights[i].color;
-            float4 lightViewSpace = mul(float4(lights[i].pos.xyz, 1.0f), View.ViewMatrix);
-            float3 lightDir = (lightViewSpace - input.viewsSpacePos).xyz;
+            float4 lightViewSpace = mul(lights[i].pos, View.ViewMatrix);
+            float4 lightDir = lightViewSpace - input.viewsSpacePos;
             float d = length(lightDir);
             if (d < lights[i].radius)
             {
-                //Todo:attenutation
-                //float atten = 1.0f / (lights[i].radius_attenu.y + d * lights[i].radius_attenu.z, d * d * lights[i].radius_attenu.w);
-                float3 n = input.normalViewSpace.xyz;
-                float nDotl = max(dot(normalize(n), normalize(lightDir)), 0.0f);
-                diffuse += lights[i].color;
+                pointLight += ApplyPointLight(
+                input.color.xyz,
+                input.color.xyz,
+                0, 0, input.normalViewSpace.xyz,
+                input.viewsSpacePos.xyz,
+                input.viewsSpacePos.xyz,
+                lightViewSpace.xyz,
+                lights[i].radius,
+                lights[i].color.xyz);
+                //pointLight += lights[i].color.xyz;
             }
-            
+           
         }
     }
-    return diffuse;
+    pointLight += directionalLight;
+    float gamma = 2.2f;
+    float4 ambient = float4(0.15, 0.15, 0.15, 1.0f);
+    float4 color = float4(pointLight, 1.0f);
+    float4 colorAfterCorrection = pow(color, 1.0 / gamma);
+    return colorAfterCorrection;
     //if (input.position.x / screen_size  < 0.5)
     //{
     // return diffuse;
@@ -92,7 +179,7 @@ float4 main(PSInput input) : SV_TARGET
     //return zliceColor[GridCoord.z % 7];
     //}
     //
-    //return zliceColor[GridCoord.z % 7];
+    //return zliceColor[GridCoord.x % 7];
     
 #endif
-}
+} 

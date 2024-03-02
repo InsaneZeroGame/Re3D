@@ -50,15 +50,15 @@ SimpleMath::Vector3 GetLightGridZParams(float NearPlane, float FarPlane)
 	// slice = log2(z*B + O) * S
 
 	// Don't spend lots of resolution right in front of the near plane
-	double NearOffset = .095 * 100;
+	float NearOffset = .095f * 100;
 	// Space out the slices so they aren't all clustered at the near plane
-	double S = 4.05;
+	float S = 4.05f;
 
-	double N = NearPlane;
-	double F = FarPlane;
+	float N = NearPlane;
+	float F = FarPlane;
 
-	double O = (F - N * exp2((CLUSTER_Z - 1) / S)) / (F - N);
-	double B = (1 - O) / N;
+	float O = (F - N * exp2((CLUSTER_Z - 1) / S)) / (F - N);
+	float B = (1 - O) / N;
 
 	return SimpleMath::Vector3(B, O, S);
 }
@@ -149,12 +149,12 @@ void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, in
 	mHeight = InHeight;
 	mDeviceManager->SetTargetWindowAndCreateSwapChain(InWindow, InWidth, InHeight);
 	//Use Reverse Z
-	mDefaultCamera = std::make_unique<Gameplay::PerspectCamera>(InWidth, InHeight, 0.1);
+	mDefaultCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f);
 	//auto camera = std::make_shared<Gameplay::PerspectCamera>(InWidth, InHeight, 0.1,125);
 
-	mDefaultCamera->LookAt({ 0.0,1.0,2.0 }, { 0.0f,1.0f,0.0f }, { 0.0f,1.0f,0.0f });
+	mDefaultCamera->LookAt({ 0.0,3.0,2.0 }, { 0.0f,1.0f,0.0f }, { 0.0f,1.0f,0.0f });
 
-	mDepthBuffer = std::make_shared<Resource::DepthBuffer>(0.0, 0);
+	mDepthBuffer = std::make_shared<Resource::DepthBuffer>(0.0f, 0);
 	mDepthBuffer->Create(L"DepthBuffer", mWidth, mHeight, DXGI_FORMAT_D32_FLOAT);
 	mViewPort = { 0,0,(float)mWidth,(float)mHeight,0.0,1.0 };
 	mRect = { 0,0,mWidth,mHeight };
@@ -303,26 +303,48 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mFrameDataCPU.DirectionalLightDir = SimpleMath::Vector4(1.0, 1.0, 2.0,1.0f);
 
 	mLightBuffer = std::make_unique<Resource::StructuredBuffer>();
-	mLightBuffer->Create(L"LightBuffer", mLights.size(), sizeof(Light), nullptr);
+	mLightBuffer->Create(L"LightBuffer", (UINT32)mLights.size(), sizeof(Light), nullptr);
 
 	mLightUploadBuffer = std::make_shared<Resource::UploadBuffer>();
 	mLightUploadBuffer->Create(L"LightUploadBuffer", sizeof(Light) * mLights.size());
 
 	mLights[0].pos = { 0.0, 0.0, -5.0, 1.0f };
-	mLights[0].radius_attenu = { 3.0, 0.0, 0.0, 1.0f };
+	mLights[0].radius_attenu = { 200.0, 0.0, 0.0, 1.0f };
 	mLights[0].color = {1.0f,0.0f,0.0f,1.0f};
 
 	mLights[1].pos = { -5.0, 0.0, 0.0, 1.0f };
-	mLights[1].radius_attenu = { 1.0, 0.0, 0.0, 1.0f };
+	mLights[1].radius_attenu = { 200.0, 0.0, 0.0, 1.0f };
 	mLights[1].color = { 0.0f,1.0f,0.0f,1.0f };
 
 	mLights[3].pos = { 0.0, 0.0, 5.0, 1.0f };
-	mLights[3].radius_attenu = { 3.0, 0.0, 0.0, 1.0f };
+	mLights[3].radius_attenu = { 50.0, 0.0, 0.0, 1.0f };
 	mLights[3].color = { 1.0f,1.0f,0.0f,1.0f };
 
 	mLights[2].pos = { 5.0, 0.0, 0.0, 1.0f };
-	mLights[2].radius_attenu = { 1.0, 0.0, 0.0, 1.0f };
-	mLights[2].color = { 0.0f,1.0f,1.0f,1.0f };
+	mLights[2].radius_attenu = { 10.0, 0.0, 0.0, 1.0f };
+	mLights[2].color = { 1.0f,1.0f,1.0f,1.0f };
+	float size = 30.0f;
+
+	for (auto& light : mLights)
+	{
+		light.pos[0] = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+		light.pos[1] = float(rand()) / RAND_MAX;
+		light.pos[2] = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+
+		light.pos[0] *= size;
+		light.pos[1] *= 3.0f;
+		light.pos[2] *= size;
+		light.pos[3] = 1.0f;
+
+		light.color[0] = float(rand()) / RAND_MAX;
+		light.color[1] = float(rand()) / RAND_MAX;
+		light.color[2] = float(rand()) / RAND_MAX;
+		light.radius_attenu[0] = float(rand()) * 20.0f / RAND_MAX;
+		light.radius_attenu[1] = float(rand()) * 1.2f / RAND_MAX;
+		light.radius_attenu[2] = float(rand()) * 1.2f / RAND_MAX;
+		light.radius_attenu[3] = float(rand()) * 1.2f / RAND_MAX;
+	}
+
 	//
 	void* lightUploadBufferPtr = mLightUploadBuffer->Map();
 	memcpy(lightUploadBufferPtr, mLights.data(), mLights.size() * sizeof(Light));
@@ -330,7 +352,7 @@ void Renderer::BaseRenderer::CreateBuffers()
 
 	mClusterBuffer = std::make_unique<Resource::StructuredBuffer>();
 	mCLusters.resize(CLUSTER_X * CLUSTER_Y * CLUSTER_Z);
-	mClusterBuffer->Create(L"ClusterBuffer", mCLusters.size(), sizeof(Cluster), nullptr);
+	mClusterBuffer->Create(L"ClusterBuffer", (UINT32)mCLusters.size(), sizeof(Cluster), nullptr);
 
 	
 	mLightCullViewDataGpu = std::make_unique<Resource::UploadBuffer>();
@@ -514,7 +536,7 @@ void Renderer::BaseRenderer::RenderObject(const AssetLoader::ModelAsset& InAsset
 	
 	for (const auto& mesh : InAsset.mMeshes)
 	{
-		mGraphicsCmd->DrawIndexedInstanced(mesh.mIndices.size(), 1, 0, 0, 0);
+		mGraphicsCmd->DrawIndexedInstanced((UINT)mesh.mIndices.size(), 1, 0, 0, 0);
 	}
 }
 
@@ -553,7 +575,7 @@ void Renderer::BaseRenderer::UpdataFrameData()
 	mLightCullViewData.LightGridZParams.x = gridParas.x;
 	mLightCullViewData.LightGridZParams.y = gridParas.y;
 	mLightCullViewData.LightGridZParams.z = gridParas.z;
-	mLightCullViewData.ViewSizeAndInvSize = SimpleMath::Vector4(mWidth, mHeight, 1.0f / mWidth, 1.0f / mHeight);
+	mLightCullViewData.ViewSizeAndInvSize = SimpleMath::Vector4((float)mWidth, (float)mHeight, 1.0f / (float)mWidth, 1.0f / (float)mHeight);
 	mLightCullViewData.ClipToView = mDefaultCamera->GetClipToView();
 	mLightCullViewData.ViewMatrix = mDefaultCamera->GetView();
 	mLightCullViewData.InvDeviceZToWorldZTransform = CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));

@@ -147,7 +147,7 @@ std::optional<AssetLoader::ModelAsset> AssetLoader::ObjModelLoader::LoadAssetFro
 			{
 				int current_material_id = shapes[s].mesh.material_ids[f / 3];
 				float diffuse[3];
-				for (size_t i = 0; i < 3; i++) {
+				for (size_t i = 0; i < 3 && current_material_id > 0; i++) {
 					diffuse[i] = materials[current_material_id].diffuse[i];
 				}
 

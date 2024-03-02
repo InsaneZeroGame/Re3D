@@ -123,14 +123,6 @@ void main(
     uint threadIndex:SV_GroupIndex)
 {
     uint clusterID = GroupId.x + (GroupId.y) * CLUSTER_X + GroupId.z * (CLUSTER_X * CLUSTER_Y);
-    if (threadIndex == 0)
-    {
-        for (int i = 0; i < 128; ++i)
-        {
-            clusters[clusterID].lightMask[i] = 0;
-        }
-    }
-    GroupMemoryBarrierWithGroupSync();
     float3 ViewTileMin;
     float3 ViewTileMax;
     ComputeCellViewAABB(GroupId, ViewTileMin, ViewTileMax);
