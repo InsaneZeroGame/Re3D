@@ -222,7 +222,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			queue->Signal(mComputeFence, mComputeFenceValue);
 			mDeviceManager->GetCmdManager()->Discard(D3D12_COMMAND_LIST_TYPE_COMPUTE, cmdAllcator,mComputeFenceValue);
 			mComputeFence->SetEventOnCompletion(mComputeFenceValue, mComputeFenceHandle);
-			WaitForSingleObject(mComputeFenceHandle,INFINITE);
+			WaitForSingleObject(mComputeFenceHandle, INFINITE);
 			mComputeFenceValue++;
 		};
 
@@ -257,9 +257,8 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			swapChain->Present(0, 0);
 		};
 	auto [depthOnlyPass, colorPass, postRender,computePass] = mRenderFlow->emplace(DepthOnlyPass,ColorPass,PostRender, ComputePass);
-	depthOnlyPass.precede(colorPass);
-	computePass.precede(colorPass);
-	colorPass.precede(postRender);
+	colorPass.succeed(depthOnlyPass, computePass);
+	postRender.succeed(colorPass);
 }
 
 

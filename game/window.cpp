@@ -54,6 +54,8 @@ Window::BaseWindow::BaseWindow(int InWidth, int InHeight):
 
 	/* Create a windowed mode window and its OpenGL context */
 	mWindow = glfwCreateWindow(InWidth, InHeight, "Re3D", NULL, NULL);
+	glfwMakeContextCurrent(mWindow);
+
 	if (!mWindow)
 	{
 		glfwTerminate();

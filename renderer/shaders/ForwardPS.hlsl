@@ -117,7 +117,6 @@ float ConvertFromDeviceZ(float DeviceZ)
     return DeviceZ * View.InvDeviceZToWorldZTransform.x + View.InvDeviceZToWorldZTransform.y + 1.0f / (DeviceZ * View.InvDeviceZToWorldZTransform.z - View.InvDeviceZToWorldZTransform.w);
 }
 
-static int screen_size = 1280;
 
 float4 main(PSInput input) : SV_TARGET
 {
