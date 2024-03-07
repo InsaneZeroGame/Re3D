@@ -81,6 +81,7 @@
 #include "color.h"
 #include <filesystem>
 #include <taskflow/taskflow.hpp>
+#include <ResourceUploadBatch.h>
 
 
 #pragma comment(lib,"dxgi.lib")

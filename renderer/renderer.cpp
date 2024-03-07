@@ -5,6 +5,7 @@
 #include "utility.h"
 #include <camera.h>
 #include <d3dcompiler.h>
+#include <ResourceUploadBatch.h>
 
 constexpr int MAX_ELE_COUNT = 1000000;
 constexpr int VERTEX_SIZE_IN_BYTE = sizeof(Renderer::Vertex);
@@ -25,13 +26,16 @@ Renderer::BaseRenderer::BaseRenderer():
 	mGraphicsCmd(nullptr),
 	mComputeFenceValue(0)
 {
+	Ensures(AssetLoader::gStbTextureLoader);
 	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFrameFence)) == S_OK);
 	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mComputeFence)) == S_OK);
 	mFrameDoneEvent = CreateEvent(nullptr, false, false, nullptr);
 	mComputeFenceHandle = CreateEvent(nullptr, false, false, nullptr);
 	mGraphicsCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COMPUTE);
+	mBatchUploader = std::make_unique<ResourceUploadBatch>(g_Device);
 	CreateBuffers();
+	CreateTextures();
 	CreateRootSignature();
 	CreatePipelineState();
 	CreateRenderTask();
@@ -359,6 +363,26 @@ void Renderer::BaseRenderer::CreateBuffers()
 
 	mLightCullDataPtr = mLightCullViewDataGpu->Map();
 
+}
+
+void Renderer::BaseRenderer::CreateTextures()
+{
+	mDefaultTexture = std::make_shared<Resource::Texture>();
+	auto defaultTexture = AssetLoader::gStbTextureLoader->LoadTextureFromFile("uvmap.png");
+	if (defaultTexture.has_value())
+	{
+		AssetLoader::Texture* newTexture = defaultTexture.value();
+		auto RowPitchBytes = newTexture->mWidth * newTexture->mComponent;
+		mDefaultTexture->Create2D(RowPitchBytes, newTexture->mWidth, newTexture->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+		mBatchUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
+		D3D12_SUBRESOURCE_DATA sourceData = {};
+		sourceData.pData = newTexture->mdata;
+		sourceData.RowPitch = RowPitchBytes;
+		sourceData.SlicePitch = RowPitchBytes * newTexture->mHeight;
+		mBatchUploader->Upload(mDefaultTexture->GetResource(), 0, &sourceData, 1);
+		mBatchUploader->Transition(mDefaultTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
+	}
 }
 
 void Renderer::BaseRenderer::DepthOnlyPass(const AssetLoader::ModelAsset& InAsset)

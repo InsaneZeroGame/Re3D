@@ -9,4 +9,5 @@
 #include <optional>
 #include <SimpleMath.h>
 #include <spdlog/spdlog.h>
+#include <filesystem>
 

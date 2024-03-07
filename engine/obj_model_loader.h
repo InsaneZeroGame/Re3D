@@ -13,6 +13,5 @@ namespace AssetLoader
 		std::optional<ModelAsset> LoadAssetFromFile(std::string InFileName) override;
 
 	private:
-		std::filesystem::path mModulePath;
 	};
 }

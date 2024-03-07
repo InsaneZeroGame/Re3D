@@ -34,7 +34,7 @@ void Renderer::DeviceManager::CreateD3DDevice()
 	uint32_t useDebugLayers = 0;
 #if _DEBUG
 	// Default to true for debug builds
-	useDebugLayers = 0;
+	useDebugLayers = 1;
 #endif
 
 	DWORD dxgiFactoryFlags = 0;

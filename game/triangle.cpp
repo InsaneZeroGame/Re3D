@@ -1,12 +1,15 @@
 #include <iostream>
 #include "window.h"
 #include <renderer.h>
+#include "asset_loader.h"
 constexpr int WINDOW_WIDTH = 1280;
 constexpr int WINDOW_HEIGHT = 720;
 
 
 int main(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 {
+	//asset loader
+	AssetLoader::InitAssetLoader();
 	//1.Renderer
 	auto renderer = new Renderer::BaseRenderer;
 	//2.Window
@@ -17,5 +20,6 @@ int main(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 	//4.Window Message Loop
 	Window::gMainWindow->WindowLoop();
 	delete Window::gMainWindow;
+	AssetLoader::DestroyAssetLoader();
 	return 0;
 }

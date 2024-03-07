@@ -9,6 +9,10 @@ namespace tf
 	class Executor;
 }
 
+namespace DirectX
+{
+	class ResourceUploadBatch;
+}
 
 namespace Renderer
 {
@@ -18,6 +22,7 @@ namespace Renderer
 		class UploadBuffer;
 		class DepthBuffer;
 		class StructuredBuffer;
+		class Texture;
 	}
 
 	struct FrameData
@@ -48,6 +53,7 @@ namespace Renderer
 	protected:
 		void CreateRenderTask();
 		void CreateBuffers();
+		void CreateTextures();
 		void DepthOnlyPass(const AssetLoader::ModelAsset& InAsset);
 		virtual void FirstFrame();
 		virtual void PreRender();
@@ -105,6 +111,8 @@ namespace Renderer
 		LightCullViewData mLightCullViewData;
 		std::unique_ptr<Resource::UploadBuffer> mLightCullViewDataGpu;
 		void* mLightCullDataPtr;
+		std::shared_ptr<Resource::Texture> mDefaultTexture;
+		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
 	};
 
 }

@@ -2,12 +2,9 @@
 #define TINYOBJLOADER_IMPLEMENTATION
 #include "tiny_obj_loader.h"
 
-AssetLoader::ObjModelLoader::ObjModelLoader():mModulePath("")
+AssetLoader::ObjModelLoader::ObjModelLoader()
 {
-	char moduleName[_MAX_PATH] = {};
-	GetModuleFileNameA(nullptr, moduleName, _MAX_PATH);
-	std::filesystem::path modulePath(moduleName);
-	mModulePath = modulePath.parent_path();
+	
 }
 
 AssetLoader::ObjModelLoader::~ObjModelLoader()
