@@ -237,6 +237,9 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetGraphicsRootUnorderedAccessView(1, mClusterBuffer->GetGpuVirtualAddress());
 			mGraphicsCmd->SetGraphicsRootShaderResourceView(2, mLightBuffer->GetGpuVirtualAddress());
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
+			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
+			mGraphicsCmd->SetDescriptorHeaps(heaps.size(), heaps.data());
+			mGraphicsCmd->SetGraphicsRootDescriptorTable(4, mDefaultTexture->GetSRVGpu());
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
 			RenderObject(mCurrentModel);
 		};
@@ -408,6 +411,9 @@ void Renderer::BaseRenderer::FirstFrame()
 	TransitState(mGraphicsCmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 
 	TransitState(mGraphicsCmd, mDepthBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+
+	TransitState(mGraphicsCmd, mDefaultTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
 	auto gridParas = GetLightGridZParams(mDefaultCamera->GetFar(), mDefaultCamera->GetNear());
 	mLightCullViewData.LightGridZParams = 
 		SimpleMath::Vector4(gridParas.x,
@@ -505,12 +511,41 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		lightCullViewData.Descriptor.ShaderRegister = 3;
 		lightCullViewData.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
+		D3D12_ROOT_PARAMETER diffuseColorTexture = {};
+		diffuseColorTexture.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+
+		D3D12_DESCRIPTOR_RANGE diffuseRange = {};
+		//Texture table range
+		diffuseRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		diffuseRange.NumDescriptors = 1;
+		diffuseRange.BaseShaderRegister = 4;
+		diffuseRange.RegisterSpace = 0;
+		//auto descSize = g_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+		//auto offsetInByte = mDefaultTexture->GetSRVGpu().ptr - g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap()->GetGPUDescriptorHandleForHeapStart().ptr;
+		//auto offset = offsetInByte / descSize;
+		diffuseRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		std::vector<D3D12_DESCRIPTOR_RANGE> ranges = { diffuseRange };
+		diffuseColorTexture.DescriptorTable.NumDescriptorRanges = ranges.size();
+		diffuseColorTexture.DescriptorTable.pDescriptorRanges = ranges.data();
+		diffuseColorTexture.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+
+
 		std::vector<D3D12_ROOT_PARAMETER> parameters =
 		{
-			frameDataCBV,clusterBuffer,lightBuffer,lightCullViewData
+			frameDataCBV,//0
+			clusterBuffer,//1
+			lightBuffer,//2
+			lightCullViewData,//3
+			diffuseColorTexture//4
 		};
 
-		rootSignatureDesc.Init((UINT)parameters.size(), parameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		//Samplers
+		D3D12_STATIC_SAMPLER_DESC texture2DSampler = CD3DX12_STATIC_SAMPLER_DESC(0);
+		texture2DSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		std::vector<D3D12_STATIC_SAMPLER_DESC> samplers = { texture2DSampler };
+		//rootSignatureDesc.Init((UINT)parameters.size(), parameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		rootSignatureDesc.Init((UINT)parameters.size(), parameters.data(), samplers.size(), samplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 		ID3DBlob* signature;
 		ID3DBlob* error;

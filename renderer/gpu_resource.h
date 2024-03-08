@@ -397,6 +397,7 @@ namespace Renderer
 			}
 
 			const D3D12_CPU_DESCRIPTOR_HANDLE& GetSRV() const { return m_hCpuDescriptorHandle; }
+			const D3D12_GPU_DESCRIPTOR_HANDLE& GetSRVGpu() const { return m_hGpuDescriptorHandle; }
 
 			uint32_t GetWidth() const { return m_Width; }
 			uint32_t GetHeight() const { return m_Height; }
@@ -409,6 +410,8 @@ namespace Renderer
 			uint32_t m_Depth;
 
 			D3D12_CPU_DESCRIPTOR_HANDLE m_hCpuDescriptorHandle;
+			D3D12_GPU_DESCRIPTOR_HANDLE m_hGpuDescriptorHandle;
+
 		};
 	}
 }

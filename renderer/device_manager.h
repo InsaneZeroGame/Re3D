@@ -18,6 +18,7 @@ namespace Renderer
 		DescHeap(D3D12_DESCRIPTOR_HEAP_TYPE Type);
 		~DescHeap();
 		std::tuple<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> Allocate(int count = 1);
+		ID3D12DescriptorHeap* GetDescHeap();
 	private:
 		ID3D12DescriptorHeap* mDescHeap;
 		UINT mDescSize;

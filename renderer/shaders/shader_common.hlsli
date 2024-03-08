@@ -7,6 +7,7 @@ struct PSInput
     float3 DirectionalLightDir : COLOR1;
     float3 DirectionalLightColor : COLOR2;
     float4 viewsSpacePos : COLOR3;
+    float2 UVCoord : TEXCOORD0;
 };
 
 

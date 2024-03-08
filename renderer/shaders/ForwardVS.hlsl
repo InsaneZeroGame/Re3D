@@ -17,8 +17,7 @@ PSInput main(float4 pos : POSITION,float4 normal : NORMAL,float4 color : COLOR,f
     input.position = mul(pos,ViewPrj);
     input.viewsSpacePos = mul(pos, View);
     input.normalViewSpace = mul(float4(normal.xyz, 0.0), NormalMatrix);
-    //input.position = pos;
-    //input.color = float4(1.0, 0.0f, 0.0f, 1.0f);
+    input.UVCoord = textureCoord;
     input.color = color;
     input.normal = normal.xyz;
     input.DirectionalLightDir = DirectionalLightDir.xyz;

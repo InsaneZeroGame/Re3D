@@ -3,6 +3,8 @@
 StructuredBuffer<Light> lights : register(t1);
 RWStructuredBuffer<Cluster> clusters : register(u2);
 ConstantBuffer<LightCullViewData> View : register(b3);
+Texture2D<float4> defaultTexture : register(t4);
+SamplerState defaultSampler : register(s0);
 static const int CLUSTER_X = 32;
 static const int CLUSTER_Y = 16;
 static const int CLUSTER_Z = 16;
@@ -166,6 +168,8 @@ float4 main(PSInput input) : SV_TARGET
     float gamma = 2.2f;
     float4 ambient = float4(0.15, 0.15, 0.15, 1.0f);
     float4 color = float4(pointLight, 1.0f);
+    float4 diffuseColor = defaultTexture.Sample(defaultSampler, input.UVCoord);
+    color *= diffuseColor;
     float4 colorAfterCorrection = pow(color, 1.0 / gamma);
     return colorAfterCorrection;
     //if (input.position.x / screen_size  < 0.5)

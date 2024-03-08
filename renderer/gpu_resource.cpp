@@ -1027,6 +1027,8 @@ namespace Renderer
 			{
 				auto [cpuHandle, gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
 				m_hCpuDescriptorHandle = cpuHandle;
+				m_hGpuDescriptorHandle = gpuHandle;
+
 			}
 			g_Device->CreateShaderResourceView(m_pResource, nullptr, m_hCpuDescriptorHandle);
 		}
@@ -1076,6 +1078,7 @@ namespace Renderer
 			{
 				auto [cpuHandle, gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
 				m_hCpuDescriptorHandle = cpuHandle;
+				m_hGpuDescriptorHandle = gpuHandle;
 			}
 
 			D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc;

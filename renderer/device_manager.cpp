@@ -34,7 +34,7 @@ void Renderer::DeviceManager::CreateD3DDevice()
 	uint32_t useDebugLayers = 0;
 #if _DEBUG
 	// Default to true for debug builds
-	useDebugLayers = 1;
+	useDebugLayers = 0;
 #endif
 
 	DWORD dxgiFactoryFlags = 0;
@@ -478,4 +478,9 @@ std::tuple<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> Renderer::D
 	gpuHandle.ptr = mGpuStart.ptr + mCurrentIndex * mDescSize;
 	mCurrentIndex += count;
 	return {cpuHandle,gpuHandle};
+}
+
+ID3D12DescriptorHeap* Renderer::DescHeap::GetDescHeap()
+{
+	return mDescHeap;
 }
