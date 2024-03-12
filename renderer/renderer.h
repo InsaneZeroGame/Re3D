@@ -1,4 +1,6 @@
 #pragma once
+#include "skybox.h"
+
 #include <d3d12.h>
 #include <asset_loader.h>
 #include <camera.h>
@@ -62,7 +64,6 @@ namespace Renderer
 		virtual void CreateRootSignature();
 		virtual void RenderObject(const AssetLoader::ModelAsset& InAsset);
 		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter);
-		D3D12_SHADER_BYTECODE ReadShader(_In_z_ const wchar_t* name);
 		void UpdataFrameData();
 	protected:
 		std::unique_ptr<class DeviceManager> mDeviceManager;
@@ -113,6 +114,7 @@ namespace Renderer
 		void* mLightCullDataPtr;
 		std::shared_ptr<Resource::Texture> mDefaultTexture;
 		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
+		std::unique_ptr<Skybox> mSkybox;
 	};
 
 }

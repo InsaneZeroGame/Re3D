@@ -53,6 +53,7 @@
 #ifdef _DEBUG
 #include <dxgidebug.h>
 #endif
+#include <d3dcompiler.h>
 
 #define D3D12_GPU_VIRTUAL_ADDRESS_NULL      ((D3D12_GPU_VIRTUAL_ADDRESS)0)
 #define D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN   ((D3D12_GPU_VIRTUAL_ADDRESS)-1)
@@ -82,6 +83,11 @@
 #include <filesystem>
 #include <taskflow/taskflow.hpp>
 #include <ResourceUploadBatch.h>
+#include <GeometricPrimitive.h>
+#include "device_manager.h"
+#include "gpu_resource.h"
+#include "render_utils.h"
+#include "graphics_common.h"
 
 
 #pragma comment(lib,"dxgi.lib")

@@ -1,19 +1,7 @@
 #include "renderer.h"
-#include "device_manager.h"
-#include "gpu_resource.h"
 #include "obj_model_loader.h"
 #include "utility.h"
 #include <camera.h>
-#include <d3dcompiler.h>
-#include <ResourceUploadBatch.h>
-
-constexpr int MAX_ELE_COUNT = 1000000;
-constexpr int VERTEX_SIZE_IN_BYTE = sizeof(Renderer::Vertex);
-constexpr int MAX_LIGHT_PER_TYPE = 32;
-constexpr int CLUSTER_X = 32;
-constexpr int CLUSTER_Y = 16;
-constexpr int CLUSTER_Z = 16;
-
 
 Renderer::BaseRenderer::BaseRenderer():
 	mDeviceManager(std::make_unique<DeviceManager>()),
@@ -24,6 +12,7 @@ Renderer::BaseRenderer::BaseRenderer():
 	mFrameFence(nullptr),
 	mComputeFence(nullptr),
 	mGraphicsCmd(nullptr),
+	mSkybox(nullptr),
 	mComputeFenceValue(0)
 {
 	Ensures(AssetLoader::gStbTextureLoader);
@@ -39,111 +28,13 @@ Renderer::BaseRenderer::BaseRenderer():
 	CreateRootSignature();
 	CreatePipelineState();
 	CreateRenderTask();
+
+	mSkybox = std::make_unique<Skybox>();
 }
 
 Renderer::BaseRenderer::~BaseRenderer()
 {
 	
-}
-
-SimpleMath::Vector3 GetLightGridZParams(float NearPlane, float FarPlane)
-{
-	// S = distribution scale
-	// B, O are solved for given the z distances of the first+last slice, and the # of slices.
-	//
-	// slice = log2(z*B + O) * S
-
-	// Don't spend lots of resolution right in front of the near plane
-	float NearOffset = .095f * 100;
-	// Space out the slices so they aren't all clustered at the near plane
-	float S = 4.05f;
-
-	float N = NearPlane;
-	float F = FarPlane;
-
-	float O = (F - N * exp2((CLUSTER_Z - 1) / S)) / (F - N);
-	float B = (1 - O) / N;
-
-	return SimpleMath::Vector3(B, O, S);
-}
-
-SimpleMath::Vector4 CreateInvDeviceZToWorldZTransform(const SimpleMath::Matrix& ProjMatrix)
-{
-	// The perspective depth projection comes from the the following projection matrix:
-	//
-	// | 1  0  0  0 |
-	// | 0  1  0  0 |
-	// | 0  0  A  1 |
-	// | 0  0  B  0 |
-	//
-	// Z' = (Z * A + B) / Z
-	// Z' = A + B / Z
-	//
-	// So to get Z from Z' is just:
-	// Z = B / (Z' - A)
-	//
-	// Note a reversed Z projection matrix will have A=0.
-	//
-	// Done in shader as:
-	// Z = 1 / (Z' * C1 - C2)   --- Where C1 = 1/B, C2 = A/B
-	//
-
-	float DepthMul = (float)ProjMatrix.m[2][2];
-	float DepthAdd = (float)ProjMatrix.m[3][2];
-
-	if (DepthAdd == 0.f)
-	{
-		// Avoid dividing by 0 in this case
-		DepthAdd = 0.00000001f;
-	}
-
-	// perspective
-	// SceneDepth = 1.0f / (DeviceZ / ProjMatrix.M[3][2] - ProjMatrix.M[2][2] / ProjMatrix.M[3][2])
-
-	// ortho
-	// SceneDepth = DeviceZ / ProjMatrix.M[2][2] - ProjMatrix.M[3][2] / ProjMatrix.M[2][2];
-
-	// combined equation in shader to handle either
-	// SceneDepth = DeviceZ * View.InvDeviceZToWorldZTransform[0] + View.InvDeviceZToWorldZTransform[1] + 1.0f / (DeviceZ * View.InvDeviceZToWorldZTransform[2] - View.InvDeviceZToWorldZTransform[3]);
-
-	// therefore perspective needs
-	// View.InvDeviceZToWorldZTransform[0] = 0.0f
-	// View.InvDeviceZToWorldZTransform[1] = 0.0f
-	// View.InvDeviceZToWorldZTransform[2] = 1.0f / ProjMatrix.M[3][2]
-	// View.InvDeviceZToWorldZTransform[3] = ProjMatrix.M[2][2] / ProjMatrix.M[3][2]
-
-	// and ortho needs
-	// View.InvDeviceZToWorldZTransform[0] = 1.0f / ProjMatrix.M[2][2]
-	// View.InvDeviceZToWorldZTransform[1] = -ProjMatrix.M[3][2] / ProjMatrix.M[2][2] + 1.0f
-	// View.InvDeviceZToWorldZTransform[2] = 0.0f
-	// View.InvDeviceZToWorldZTransform[3] = 1.0f
-
-	bool bIsPerspectiveProjection = ProjMatrix.m[3][3] < 1.0f;
-
-	if (bIsPerspectiveProjection)
-	{
-		float SubtractValue = DepthMul / DepthAdd;
-
-		// Subtract a tiny number to avoid divide by 0 errors in the shader when a very far distance is decided from the depth buffer.
-		// This fixes fog not being applied to the black background in the editor.
-		SubtractValue -= 0.00000001f;
-
-		return SimpleMath::Vector4(
-			0.0f,
-			0.0f,
-			1.0f / DepthAdd,
-			SubtractValue
-		);
-	}
-	else
-	{
-		return SimpleMath::Vector4(
-			(float)(1.0f / ProjMatrix.m[2][2]),
-			(float)(-ProjMatrix.m[3][2] / ProjMatrix.m[2][2] + 1.0f),
-			0.0f,
-			1.0f
-		);
-	}
 }
 
 
@@ -238,7 +129,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetGraphicsRootShaderResourceView(2, mLightBuffer->GetGpuVirtualAddress());
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
-			mGraphicsCmd->SetDescriptorHeaps(heaps.size(), heaps.data());
+			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
 			mGraphicsCmd->SetGraphicsRootDescriptorTable(4, mDefaultTexture->GetSRVGpu());
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
 			RenderObject(mCurrentModel);
@@ -414,13 +305,11 @@ void Renderer::BaseRenderer::FirstFrame()
 
 	TransitState(mGraphicsCmd, mDefaultTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
-	auto gridParas = GetLightGridZParams(mDefaultCamera->GetFar(), mDefaultCamera->GetNear());
-	mLightCullViewData.LightGridZParams = 
-		SimpleMath::Vector4(gridParas.x,
-			gridParas.y, gridParas.z,0.0f);
+	auto gridParas = Utils::GetLightGridZParams(mDefaultCamera->GetFar(), mDefaultCamera->GetNear());
+	mLightCullViewData.LightGridZParams = SimpleMath::Vector4(gridParas.x,gridParas.y, gridParas.z,0.0f);
 	mLightCullViewData.ClipToView = mDefaultCamera->GetClipToView();
 	mLightCullViewData.ViewMatrix = mDefaultCamera->GetView();
-	mLightCullViewData.InvDeviceZToWorldZTransform = CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
+	mLightCullViewData.InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
 
 	memcpy(mLightCullDataPtr, &mLightCullViewData, sizeof(LightCullViewData));
 	
@@ -444,8 +333,8 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	lDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	lDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	lDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	lDesc.VS = ReadShader(L"ForwardVS.cso");
-	lDesc.PS = ReadShader(L"ForwardPS.cso");
+	lDesc.VS = Utils::ReadShader(L"ForwardVS.cso");
+	lDesc.PS = Utils::ReadShader(L"ForwardPS.cso");
 	lDesc.SampleMask = UINT_MAX;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> elements =
 	{
@@ -476,7 +365,7 @@ void Renderer::BaseRenderer::CreatePipelineState()
 
 	//Compute:Light Cull Pass
 	D3D12_COMPUTE_PIPELINE_STATE_DESC lightCullPassDesc = {};
-	lightCullPassDesc.CS = ReadShader(L"LightCull.cso");
+	lightCullPassDesc.CS = Utils::ReadShader(L"LightCull.cso");
 	lightCullPassDesc.pRootSignature = mLightCullPassRootSignature;
 	g_Device->CreateComputePipelineState(&lightCullPassDesc, IID_PPV_ARGS(&mLightCullPass));
 }
@@ -525,7 +414,7 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		//auto offset = offsetInByte / descSize;
 		diffuseRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 		std::vector<D3D12_DESCRIPTOR_RANGE> ranges = { diffuseRange };
-		diffuseColorTexture.DescriptorTable.NumDescriptorRanges = ranges.size();
+		diffuseColorTexture.DescriptorTable.NumDescriptorRanges = (UINT)ranges.size();
 		diffuseColorTexture.DescriptorTable.pDescriptorRanges = ranges.data();
 		diffuseColorTexture.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
@@ -545,7 +434,7 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		texture2DSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 		std::vector<D3D12_STATIC_SAMPLER_DESC> samplers = { texture2DSampler };
 		//rootSignatureDesc.Init((UINT)parameters.size(), parameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
-		rootSignatureDesc.Init((UINT)parameters.size(), parameters.data(), samplers.size(), samplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+		rootSignatureDesc.Init((UINT)parameters.size(), parameters.data(), (UINT)samplers.size(), samplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 		ID3DBlob* signature;
 		ID3DBlob* error;
@@ -610,16 +499,6 @@ void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D
 	InCmd->ResourceBarrier(1, &barrier);
 }
 
-D3D12_SHADER_BYTECODE Renderer::BaseRenderer::ReadShader(_In_z_ const wchar_t* name)
-{
-	auto shaderByteCode = Utility::ReadData(name);
-	ID3DBlob* vertexBlob;
-	D3DCreateBlob(shaderByteCode.size(), &vertexBlob);
-	void* vertexPtr = vertexBlob->GetBufferPointer();
-	memcpy(vertexPtr, shaderByteCode.data(), shaderByteCode.size());
-	return CD3DX12_SHADER_BYTECODE(vertexBlob);
-};
-
 void Renderer::BaseRenderer::UpdataFrameData()
 {
 	//mFrameDataCPU.mPrj = mDefaultCamera->GetPrj();
@@ -629,13 +508,13 @@ void Renderer::BaseRenderer::UpdataFrameData()
 	mFrameDataCPU.NormalMatrix = mDefaultCamera->GetNormalMatrix();
 	mFrameDataCPU.DirectionalLightDir.Normalize();
 	memcpy(mFrameDataPtr,&mFrameDataCPU,sizeof(mFrameDataCPU));
-	auto gridParas = GetLightGridZParams(mDefaultCamera->GetNear(), mDefaultCamera->GetFar());
+	auto gridParas = Utils::GetLightGridZParams(mDefaultCamera->GetNear(), mDefaultCamera->GetFar());
 	mLightCullViewData.LightGridZParams.x = gridParas.x;
 	mLightCullViewData.LightGridZParams.y = gridParas.y;
 	mLightCullViewData.LightGridZParams.z = gridParas.z;
 	mLightCullViewData.ViewSizeAndInvSize = SimpleMath::Vector4((float)mWidth, (float)mHeight, 1.0f / (float)mWidth, 1.0f / (float)mHeight);
 	mLightCullViewData.ClipToView = mDefaultCamera->GetClipToView();
 	mLightCullViewData.ViewMatrix = mDefaultCamera->GetView();
-	mLightCullViewData.InvDeviceZToWorldZTransform = CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
+	mLightCullViewData.InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
 	memcpy(mLightCullDataPtr, &mLightCullViewData, sizeof(LightCullViewData));
 }

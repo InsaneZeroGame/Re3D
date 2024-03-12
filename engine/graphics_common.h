@@ -18,8 +18,15 @@ namespace Renderer
 	};
 
 	struct Cluster
-	{	
-		std::array<uint32_t,8> light;
-		
+	{
+		std::array<uint32_t, 8> light;
+
 	};
+
+	constexpr int MAX_ELE_COUNT = 1000000;
+	constexpr int VERTEX_SIZE_IN_BYTE = sizeof(Renderer::Vertex);
+	constexpr int MAX_LIGHT_PER_TYPE = 32;
+	constexpr int CLUSTER_X = 32;
+	constexpr int CLUSTER_Y = 16;
+	constexpr int CLUSTER_Z = 16;
 }
