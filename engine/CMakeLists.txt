@@ -17,9 +17,12 @@ set(${TARGET}_Headers
             stb_image.h
             stb_texture_loader.h
             utility.h
-            tiny_obj_loader.h)
+            tiny_obj_loader.h
+            components.h
+)
 
 set(${TARGET}_Srcs 
+            components.cpp
             delegates.cpp
             SimpleMath.cpp
             camera.cpp
@@ -34,5 +37,5 @@ set(${TARGET}_Srcs
             pch.h pch.cpp)
 
 add_library(${TARGET} ${${TARGET}_Headers} ${${TARGET}_Srcs} )
-target_link_libraries(${TARGET} GSL spdlog glfw DirectXTK12)
+target_link_libraries(${TARGET} GSL spdlog glfw DirectXTK12 entt)
 target_precompile_headers(${TARGET} PRIVATE pch.h)

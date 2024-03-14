@@ -1,14 +1,8 @@
 #pragma once
-#include "graphics_common.h"
+#include "components.h"
 
 namespace AssetLoader
 {
-	struct Mesh
-	{	
-		std::vector<Renderer::Vertex> mVertices;
-		std::vector<int> mIndices;
-	};
-
 	struct Texture
 	{
 		int mWidth;
@@ -25,11 +19,6 @@ namespace AssetLoader
 				mdata = nullptr;
 			}
 		}
-	};
-
-	struct ModelAsset
-	{	
-		std::vector<Mesh> mMeshes;
 	};
 
 	class BaseAssetLoader
@@ -49,7 +38,7 @@ namespace AssetLoader
 
 		virtual ~ModelAssetLoader() {};
 
-		virtual std::optional<ModelAsset> LoadAssetFromFile(std::string InFileName) { return {}; };
+		virtual std::optional<ECS::RenderComponent> LoadAssetFromFile(std::string InFileName) { return {}; };
 
 	private:
 

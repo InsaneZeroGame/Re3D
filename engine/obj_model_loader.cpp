@@ -37,7 +37,7 @@ static void CalcNormal(float N[3], float v0[3], float v1[3], float v2[3]) {
 	}
 }
 
-std::optional<AssetLoader::ModelAsset> AssetLoader::ObjModelLoader::LoadAssetFromFile(std::string InFileName)
+std::optional<ECS::RenderComponent> AssetLoader::ObjModelLoader::LoadAssetFromFile(std::string InFileName)
 {
 	auto fileName = mModulePath.string() + "\\" + InFileName;
 	if (!std::filesystem::exists(std::filesystem::path(fileName)))
@@ -52,7 +52,7 @@ std::optional<AssetLoader::ModelAsset> AssetLoader::ObjModelLoader::LoadAssetFro
 
 	// Loop over shapes
 	// shape = mesh
-	ModelAsset newModelAsset;
+	ECS::RenderComponent newModelAsset;
 
 		tinyobj::attrib_t attrib;
 		auto mtlDir = std::filesystem::path(fileName).parent_path();

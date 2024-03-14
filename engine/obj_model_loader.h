@@ -10,7 +10,7 @@ namespace AssetLoader
 
 		~ObjModelLoader();
 
-		std::optional<ModelAsset> LoadAssetFromFile(std::string InFileName) override;
+		std::optional<ECS::RenderComponent> LoadAssetFromFile(std::string InFileName) override;
 
 	private:
 	};

@@ -10,4 +10,5 @@
 #include <SimpleMath.h>
 #include <spdlog/spdlog.h>
 #include <filesystem>
+#include "graphics_common.h"
 

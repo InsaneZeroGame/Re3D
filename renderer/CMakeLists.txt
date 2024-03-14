@@ -46,7 +46,7 @@ if(DEBUG)
     set_property(SOURCE ${HLSL_SHADER_FILES} PROPERTY VS_SHADER_ENABLE_DEBUG true)
 endif()
 add_library(${TARGET} ${HLSL_SHADER_FILES} ${${TARGET}_Headers} ${${TARGET}_Srcs})
-target_link_libraries(${TARGET} GSL spdlog Engine Taskflow)
+target_link_libraries(${TARGET} GSL spdlog Engine Taskflow entt)
 target_precompile_headers(${TARGET} PRIVATE pch.h)
 
 

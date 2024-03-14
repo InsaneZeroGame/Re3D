@@ -1,6 +1,6 @@
 #pragma once
 #include "skybox.h"
-
+#include "components.h"
 #include <d3d12.h>
 #include <asset_loader.h>
 #include <camera.h>
@@ -56,13 +56,13 @@ namespace Renderer
 		void CreateRenderTask();
 		void CreateBuffers();
 		void CreateTextures();
-		void DepthOnlyPass(const AssetLoader::ModelAsset& InAsset);
+		void DepthOnlyPass(const ECS::RenderComponent& InAsset);
 		virtual void FirstFrame();
 		virtual void PreRender();
 		virtual void PostRender();
 		virtual void CreatePipelineState();
 		virtual void CreateRootSignature();
-		virtual void RenderObject(const AssetLoader::ModelAsset& InAsset);
+		virtual void RenderObject(const ECS::RenderComponent& InAsset);
 		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter);
 		void UpdataFrameData();
 	protected:
@@ -90,7 +90,7 @@ namespace Renderer
 		ID3D12PipelineState* mLightCullPass;
 		ID3D12RootSignature* mColorPassRootSignature;
 		ID3D12RootSignature* mLightCullPassRootSignature;
-		AssetLoader::ModelAsset mCurrentModel;
+		ECS::RenderComponent mCurrentModel;
 		std::unique_ptr<Gameplay::PerspectCamera> mDefaultCamera;
 		FrameData mFrameDataCPU;
 		std::shared_ptr<Resource::UploadBuffer> mFrameDataGPU;
@@ -106,7 +106,7 @@ namespace Renderer
 		std::unique_ptr<Resource::StructuredBuffer> mLightBuffer;
 		std::shared_ptr<Resource::UploadBuffer> mLightUploadBuffer;
 
-		std::array<Light, 256> mLights{};
+		std::array<ECS::LightComponent, 256> mLights{};
 		std::unique_ptr<Resource::StructuredBuffer> mClusterBuffer;
 		std::vector<Cluster> mCLusters;
 		LightCullViewData mLightCullViewData;

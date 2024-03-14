@@ -35,6 +35,12 @@ CPMAddPackage(
         GIT_TAG v3.6.0
 )
 
+CPMAddPackage(
+        NAME entt
+        GITHUB_REPOSITORY "skypjack/entt"
+        GIT_TAG v3.13.1
+)
+
 add_subdirectory(engine)
 add_subdirectory(renderer)
 add_subdirectory(game)

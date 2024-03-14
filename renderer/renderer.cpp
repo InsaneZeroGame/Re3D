@@ -200,10 +200,10 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mFrameDataCPU.DirectionalLightDir = SimpleMath::Vector4(1.0, 1.0, 2.0,1.0f);
 
 	mLightBuffer = std::make_unique<Resource::StructuredBuffer>();
-	mLightBuffer->Create(L"LightBuffer", (UINT32)mLights.size(), sizeof(Light), nullptr);
+	mLightBuffer->Create(L"LightBuffer", (UINT32)mLights.size(), sizeof(ECS::LightComponent), nullptr);
 
 	mLightUploadBuffer = std::make_shared<Resource::UploadBuffer>();
-	mLightUploadBuffer->Create(L"LightUploadBuffer", sizeof(Light) * mLights.size());
+	mLightUploadBuffer->Create(L"LightUploadBuffer", sizeof(ECS::LightComponent) * mLights.size());
 
 	mLights[0].pos = { 0.0, 0.0, -5.0, 1.0f };
 	mLights[0].radius_attenu = { 200.0, 0.0, 0.0, 1.0f };
@@ -244,7 +244,7 @@ void Renderer::BaseRenderer::CreateBuffers()
 
 	//
 	void* lightUploadBufferPtr = mLightUploadBuffer->Map();
-	memcpy(lightUploadBufferPtr, mLights.data(), mLights.size() * sizeof(Light));
+	memcpy(lightUploadBufferPtr, mLights.data(), mLights.size() * sizeof(ECS::LightComponent));
 	mLightUploadBuffer->Unmap();
 
 	mClusterBuffer = std::make_unique<Resource::StructuredBuffer>();
@@ -279,7 +279,7 @@ void Renderer::BaseRenderer::CreateTextures()
 	}
 }
 
-void Renderer::BaseRenderer::DepthOnlyPass(const AssetLoader::ModelAsset& InAsset)
+void Renderer::BaseRenderer::DepthOnlyPass(const ECS::RenderComponent& InAsset)
 {
 
 }
@@ -477,7 +477,7 @@ void Renderer::BaseRenderer::CreateRootSignature()
 	
 }
 
-void Renderer::BaseRenderer::RenderObject(const AssetLoader::ModelAsset& InAsset)
+void Renderer::BaseRenderer::RenderObject(const ECS::RenderComponent& InAsset)
 {
 	//Render 
 	
