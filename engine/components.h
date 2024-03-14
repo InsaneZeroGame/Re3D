@@ -3,6 +3,8 @@
 
 namespace ECS
 {
+	inline entt::registry gRegistry;
+
 	struct RenderComponent
 	{
 		struct Mesh
@@ -28,6 +30,5 @@ namespace ECS
 		virtual ~System();
 
 	protected:
-
 	};
 }

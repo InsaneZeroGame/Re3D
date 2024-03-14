@@ -90,7 +90,6 @@ namespace Renderer
 		ID3D12PipelineState* mLightCullPass;
 		ID3D12RootSignature* mColorPassRootSignature;
 		ID3D12RootSignature* mLightCullPassRootSignature;
-		ECS::RenderComponent mCurrentModel;
 		std::unique_ptr<Gameplay::PerspectCamera> mDefaultCamera;
 		FrameData mFrameDataCPU;
 		std::shared_ptr<Resource::UploadBuffer> mFrameDataGPU;
@@ -105,8 +104,6 @@ namespace Renderer
 		float mColorRGBA[4] = { 0.15f,0.25f,0.75f,1.0f };
 		std::unique_ptr<Resource::StructuredBuffer> mLightBuffer;
 		std::shared_ptr<Resource::UploadBuffer> mLightUploadBuffer;
-
-		std::array<ECS::LightComponent, 256> mLights{};
 		std::unique_ptr<Resource::StructuredBuffer> mClusterBuffer;
 		std::vector<Cluster> mCLusters;
 		LightCullViewData mLightCullViewData;
@@ -115,6 +112,7 @@ namespace Renderer
 		std::shared_ptr<Resource::Texture> mDefaultTexture;
 		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
 		std::unique_ptr<Skybox> mSkybox;
+		std::array<ECS::LightComponent, 256> mLights;
 	};
 
 }

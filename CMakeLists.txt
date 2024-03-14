@@ -36,10 +36,17 @@ CPMAddPackage(
 )
 
 CPMAddPackage(
-        NAME entt
-        GITHUB_REPOSITORY "skypjack/entt"
-        GIT_TAG v3.13.1
+  NAME EnTT
+  GIT_TAG v3.13.1
+  GITHUB_REPOSITORY skypjack/entt
+  # EnTT's CMakeLists screws with configuration options
+  DOWNLOAD_ONLY True
 )
+
+if (EnTT_ADDED)
+  add_library(EnTT INTERFACE)
+  target_include_directories(EnTT INTERFACE ${EnTT_SOURCE_DIR}/src)
+endif()
 
 add_subdirectory(engine)
 add_subdirectory(renderer)

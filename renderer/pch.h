@@ -88,7 +88,8 @@
 #include "gpu_resource.h"
 #include "render_utils.h"
 #include "graphics_common.h"
-
+#include <entt/entt.hpp>
+#include <entt/entity/registry.hpp>
 
 #pragma comment(lib,"dxgi.lib")
 #pragma comment(lib,"d3d12.lib")

@@ -2,6 +2,7 @@
 #include "obj_model_loader.h"
 #include "utility.h"
 #include <camera.h>
+#include "components.h"
 
 Renderer::BaseRenderer::BaseRenderer():
 	mDeviceManager(std::make_unique<DeviceManager>()),
@@ -97,7 +98,12 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->IASetVertexBuffers(0, 1, &mVertexBuffer->VertexBufferView());
 			mGraphicsCmd->IASetIndexBuffer(&mIndexBuffer->IndexBufferView());
 			mGraphicsCmd->SetPipelineState(mPipelineStateDepthOnly);
-			RenderObject(mCurrentModel);
+			using namespace ECS;
+			auto renderEntities = gRegistry.view<RenderComponent>();
+			renderEntities.each([=](auto entity,auto component) 
+				{
+					RenderObject(component);
+				});
 		};
 
 	auto ComputePass = [this]() 
@@ -132,7 +138,12 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
 			mGraphicsCmd->SetGraphicsRootDescriptorTable(4, mDefaultTexture->GetSRVGpu());
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
-			RenderObject(mCurrentModel);
+			using namespace ECS;
+			auto renderEntities = gRegistry.view<RenderComponent>();
+			renderEntities.each([=](auto entity, auto component)
+				{
+					RenderObject(component);
+				});
 		};
 
 	auto PostRender = [this]()
@@ -166,9 +177,12 @@ void Renderer::BaseRenderer::CreateBuffers()
 	AssetLoader::ObjModelLoader* objLoader = new AssetLoader::ObjModelLoader;
 	auto model = objLoader->LoadAssetFromFile("scene.obj");
 	Ensures(model.has_value());
-	mCurrentModel = model.value();
-	auto& vertices = mCurrentModel.mMeshes[0].mVertices;
-	auto& indices = mCurrentModel.mMeshes[0].mIndices;
+	auto modelValue = model.value();
+	using namespace ECS;
+	auto entity = gRegistry.create();
+	gRegistry.emplace_or_replace<RenderComponent>(entity, modelValue);
+	auto& vertices = modelValue.mMeshes[0].mVertices;
+	auto& indices = modelValue.mMeshes[0].mIndices;
 
 	//auto& vertices = triangle;
 	//1.Vertex Buffer
