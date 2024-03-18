@@ -65,6 +65,11 @@ void Renderer::BaseRenderer::Update(float delta)
 	mRenderExecution->run(*mRenderFlow).wait();
 }
 
+void Renderer::BaseRenderer::LoadScene(std::shared_ptr<Scene> InScene)
+{
+
+}
+
 void Renderer::BaseRenderer::CreateRenderTask()
 {
 	mRenderFlow = std::make_unique<tf::Taskflow>();
@@ -95,15 +100,8 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetGraphicsRootSignature(mColorPassRootSignature);
 			mGraphicsCmd->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
-			mGraphicsCmd->IASetVertexBuffers(0, 1, &mVertexBuffer->VertexBufferView());
-			mGraphicsCmd->IASetIndexBuffer(&mIndexBuffer->IndexBufferView());
 			mGraphicsCmd->SetPipelineState(mPipelineStateDepthOnly);
-			using namespace ECS;
-			auto renderEntities = gRegistry.view<RenderComponent>();
-			renderEntities.each([=](auto entity,auto component) 
-				{
-					RenderObject(component);
-				});
+			RenderScene(mCurrentScene);
 		};
 
 	auto ComputePass = [this]() 
@@ -138,12 +136,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
 			mGraphicsCmd->SetGraphicsRootDescriptorTable(4, mDefaultTexture->GetSRVGpu());
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
-			using namespace ECS;
-			auto renderEntities = gRegistry.view<RenderComponent>();
-			renderEntities.each([=](auto entity, auto component)
-				{
-					RenderObject(component);
-				});
+			RenderScene(mCurrentScene);
 		};
 
 	auto PostRender = [this]()
@@ -186,11 +179,11 @@ void Renderer::BaseRenderer::CreateBuffers()
 
 	//auto& vertices = triangle;
 	//1.Vertex Buffer
-	mVertexBuffer = std::make_shared<Resource::VertexBuffer>();
-	mVertexBuffer->Create(L"VertexBuffer", MAX_ELE_COUNT, VERTEX_SIZE_IN_BYTE);
+	mVertexBufferGpu = std::make_shared<Resource::VertexBuffer>();
+	mVertexBufferGpu->Create(L"VertexBuffer", MAX_ELE_COUNT, VERTEX_SIZE_IN_BYTE);
 
-	mIndexBuffer = std::make_shared<Resource::VertexBuffer>();
-	mIndexBuffer->Create(L"IndexBuffer", MAX_ELE_COUNT, VERTEX_SIZE_IN_BYTE);
+	mIndexBufferGpu = std::make_shared<Resource::VertexBuffer>();
+	mIndexBufferGpu->Create(L"IndexBuffer", MAX_ELE_COUNT, VERTEX_SIZE_IN_BYTE);
 
 	//2.Upload Buffer
 	mUploadBuffer = std::make_shared<Resource::UploadBuffer>();
@@ -219,21 +212,7 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mLightUploadBuffer = std::make_shared<Resource::UploadBuffer>();
 	mLightUploadBuffer->Create(L"LightUploadBuffer", sizeof(ECS::LightComponent) * mLights.size());
 
-	mLights[0].pos = { 0.0, 0.0, -5.0, 1.0f };
-	mLights[0].radius_attenu = { 200.0, 0.0, 0.0, 1.0f };
-	mLights[0].color = {1.0f,0.0f,0.0f,1.0f};
-
-	mLights[1].pos = { -5.0, 0.0, 0.0, 1.0f };
-	mLights[1].radius_attenu = { 200.0, 0.0, 0.0, 1.0f };
-	mLights[1].color = { 0.0f,1.0f,0.0f,1.0f };
-
-	mLights[3].pos = { 0.0, 0.0, 5.0, 1.0f };
-	mLights[3].radius_attenu = { 50.0, 0.0, 0.0, 1.0f };
-	mLights[3].color = { 1.0f,1.0f,0.0f,1.0f };
-
-	mLights[2].pos = { 5.0, 0.0, 0.0, 1.0f };
-	mLights[2].radius_attenu = { 10.0, 0.0, 0.0, 1.0f };
-	mLights[2].color = { 1.0f,1.0f,1.0f,1.0f };
+	
 	float size = 30.0f;
 
 	for (auto& light : mLights)
@@ -301,14 +280,14 @@ void Renderer::BaseRenderer::DepthOnlyPass(const ECS::RenderComponent& InAsset)
 void Renderer::BaseRenderer::FirstFrame()
 {
 	TransitState(mGraphicsCmd, mUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	TransitState(mGraphicsCmd, mVertexBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	mGraphicsCmd->CopyResource(mVertexBuffer->GetResource(), mUploadBuffer->GetResource());
-	TransitState(mGraphicsCmd, mVertexBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	TransitState(mGraphicsCmd, mVertexBufferGpu->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	mGraphicsCmd->CopyResource(mVertexBufferGpu->GetResource(), mUploadBuffer->GetResource());
+	TransitState(mGraphicsCmd, mVertexBufferGpu->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	
 	TransitState(mGraphicsCmd, mIndexUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	mGraphicsCmd->CopyResource(mIndexBuffer->GetResource(), mIndexUploadBuffer->GetResource());
-	TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+	TransitState(mGraphicsCmd, mIndexBufferGpu->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	mGraphicsCmd->CopyResource(mIndexBufferGpu->GetResource(), mIndexUploadBuffer->GetResource());
+	TransitState(mGraphicsCmd, mIndexBufferGpu->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
 
 	TransitState(mGraphicsCmd, mLightUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	TransitState(mGraphicsCmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -324,7 +303,6 @@ void Renderer::BaseRenderer::FirstFrame()
 	mLightCullViewData.ClipToView = mDefaultCamera->GetClipToView();
 	mLightCullViewData.ViewMatrix = mDefaultCamera->GetView();
 	mLightCullViewData.InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
-
 	memcpy(mLightCullDataPtr, &mLightCullViewData, sizeof(LightCullViewData));
 	
 }
@@ -499,6 +477,19 @@ void Renderer::BaseRenderer::RenderObject(const ECS::RenderComponent& InAsset)
 	{
 		mGraphicsCmd->DrawIndexedInstanced((UINT)mesh.mIndices.size(), 1, 0, 0, 0);
 	}
+}
+
+void Renderer::BaseRenderer::RenderScene(std::shared_ptr<SceneGpu> InScene)
+{
+
+	mGraphicsCmd->IASetVertexBuffers(0, 1, &InScene->mSceneBuffer->mVertexBufferGpu->VertexBufferView());
+	mGraphicsCmd->IASetIndexBuffer(&InScene->mSceneBuffer->mIndexBufferGpu->IndexBufferView());
+	using namespace ECS;
+	auto renderEntities = gRegistry.view<RenderComponent>();
+	renderEntities.each([=](auto entity, auto component)
+		{
+			RenderObject(component);
+		});
 }
 
 void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter)

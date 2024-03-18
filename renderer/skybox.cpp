@@ -9,6 +9,7 @@ Renderer::Skybox::Skybox():BaseRenderPass(L"SkyboxVS.cso",L"SkyboxPS.cso")
 	GeometricPrimitive::VertexCollection vertices;
 	GeometricPrimitive::IndexCollection indices;
 	GeometricPrimitive::CreateBox(vertices, indices, { 1.0f,1.0f,1.0f }, false, false);
+
 }
 
 Renderer::Skybox::~Skybox()

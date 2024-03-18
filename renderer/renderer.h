@@ -45,6 +45,26 @@ namespace Renderer
 		DirectX::SimpleMath::Vector4 InvDeviceZToWorldZTransform;
 	};
 
+	struct SceneBuffer
+	{
+		std::unique_ptr<Resource::VertexBuffer> mVertexBufferGpu;
+		std::unique_ptr<Resource::VertexBuffer> mIndexBufferGpu;
+		std::unique_ptr<Resource::UploadBuffer> mUploadBuffer;
+		std::unique_ptr<Resource::UploadBuffer> mIndexUploadBuffer;
+	};
+
+	struct Scene
+	{	
+	};
+
+	struct SceneGpu 
+	{	
+		std::shared_ptr<SceneBuffer> mSceneBuffer;
+		SceneGpu() {};
+		~SceneGpu() {};
+	};
+
+
 	class BaseRenderer
 	{
 	public:
@@ -52,6 +72,7 @@ namespace Renderer
 		virtual ~BaseRenderer();
 		void SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight);
 		void Update(float delta);
+		void LoadScene(std::shared_ptr<Scene> InScene);
 	protected:
 		void CreateRenderTask();
 		void CreateBuffers();
@@ -63,6 +84,7 @@ namespace Renderer
 		virtual void CreatePipelineState();
 		virtual void CreateRootSignature();
 		virtual void RenderObject(const ECS::RenderComponent& InAsset);
+		virtual void RenderScene(std::shared_ptr<SceneGpu> InScene);
 		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter);
 		void UpdataFrameData();
 	protected:
@@ -79,12 +101,7 @@ namespace Renderer
 		ID3D12GraphicsCommandList* mComputeCmd;
 		ID3D12GraphicsCommandList* mGraphicsCmd;
 		ID3D12CommandAllocator* mGraphicsCmdAllocator;
-		std::shared_ptr<Resource::VertexBuffer> mVertexBuffer;
-		std::shared_ptr<Resource::VertexBuffer> mIndexBuffer;
-		std::shared_ptr<Resource::UploadBuffer> mUploadBuffer;
-		//temp 
-		std::shared_ptr<Resource::UploadBuffer> mIndexUploadBuffer;
-
+		SceneBuffer mSceneBuffer;
 		ID3D12PipelineState* mColorPassPipelineState;
 		ID3D12PipelineState* mPipelineStateDepthOnly;
 		ID3D12PipelineState* mLightCullPass;
@@ -113,6 +130,7 @@ namespace Renderer
 		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
 		std::unique_ptr<Skybox> mSkybox;
 		std::array<ECS::LightComponent, 256> mLights;
+		std::shared_ptr<SceneGpu> mCurrentScene;
 	};
 
 }
