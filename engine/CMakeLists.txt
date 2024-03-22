@@ -19,9 +19,11 @@ set(${TARGET}_Headers
             utility.h
             tiny_obj_loader.h
             components.h
+            game_scene.h
 )
 
 set(${TARGET}_Srcs 
+            game_scene.cpp
             components.cpp
             delegates.cpp
             SimpleMath.cpp

@@ -14,7 +14,8 @@ Renderer::BaseRenderer::BaseRenderer():
 	mComputeFence(nullptr),
 	mGraphicsCmd(nullptr),
 	mSkybox(nullptr),
-	mComputeFenceValue(0)
+	mComputeFenceValue(0),
+	mCurrentScene(nullptr)
 {
 	Ensures(AssetLoader::gStbTextureLoader);
 	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFrameFence)) == S_OK);
@@ -29,7 +30,6 @@ Renderer::BaseRenderer::BaseRenderer():
 	CreateRootSignature();
 	CreatePipelineState();
 	CreateRenderTask();
-
 	mSkybox = std::make_unique<Skybox>();
 }
 
@@ -54,15 +54,30 @@ void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, in
 	mDepthBuffer->Create(L"DepthBuffer", mWidth, mHeight, DXGI_FORMAT_D32_FLOAT);
 	mViewPort = { 0,0,(float)mWidth,(float)mHeight,0.0,1.0 };
 	mRect = { 0,0,mWidth,mHeight };
-
-	
-
 }
 
 void Renderer::BaseRenderer::Update(float delta)
 {
 	UpdataFrameData();
 	mRenderExecution->run(*mRenderFlow).wait();
+}
+       
+void Renderer::BaseRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene)
+{
+	mCurrentScene = InGameScene;
+	entt::registry& sceneRegistery = mCurrentScene->GetRegistery();
+	auto& allRenderComponents = sceneRegistery.view<ECS::RenderComponent>();
+	allRenderComponents.each([this](auto entity, ECS::RenderComponent renderComponent) 
+		{
+			auto& vertices = renderComponent.mMeshes[0].mVertices;
+			auto& indices = renderComponent.mMeshes[0].mIndices;
+			void* uploadBufferPtr = mUploadBuffer->Map();
+			memcpy(uploadBufferPtr, vertices.data(), vertices.size() * sizeof(Vertex));
+			mUploadBuffer->Unmap();
+			void* indexUploadBufferPtr = mIndexUploadBuffer->Map();
+			memcpy(indexUploadBufferPtr, indices.data(), indices.size() * sizeof(uint32_t));
+			mIndexUploadBuffer->Unmap();
+		});
 }
 
 void Renderer::BaseRenderer::CreateRenderTask()
@@ -174,15 +189,8 @@ void Renderer::BaseRenderer::CreateRenderTask()
 
 void Renderer::BaseRenderer::CreateBuffers()
 {
-	AssetLoader::ObjModelLoader* objLoader = new AssetLoader::ObjModelLoader;
-	auto model = objLoader->LoadAssetFromFile("scene.obj");
-	Ensures(model.has_value());
-	auto modelValue = model.value();
-	using namespace ECS;
-	auto entity = gRegistry.create();
-	gRegistry.emplace_or_replace<RenderComponent>(entity, modelValue);
-	auto& vertices = modelValue.mMeshes[0].mVertices;
-	auto& indices = modelValue.mMeshes[0].mIndices;
+
+	
 
 	//auto& vertices = triangle;
 	//1.Vertex Buffer
@@ -196,15 +204,11 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mUploadBuffer = std::make_shared<Resource::UploadBuffer>();
 	constexpr int uploadBufferSize = MAX_ELE_COUNT * VERTEX_SIZE_IN_BYTE;
 	mUploadBuffer->Create(L"UploadBuffer", uploadBufferSize);
-	void* uploadBufferPtr = mUploadBuffer->Map();
-	memcpy(uploadBufferPtr, vertices.data(), vertices.size() * sizeof(Vertex));
-	mUploadBuffer->Unmap();
+	
 
 	mIndexUploadBuffer = std::make_shared<Resource::UploadBuffer>();
 	mIndexUploadBuffer->Create(L"UploadBuffer", uploadBufferSize);
-	void* indexUploadBufferPtr = mIndexUploadBuffer->Map();
-	memcpy(indexUploadBufferPtr, indices.data(), indices.size() * sizeof(uint32_t));
-	mIndexUploadBuffer->Unmap();
+	
 
 	mFrameDataGPU = std::make_shared<Resource::UploadBuffer>();
 	mFrameDataGPU->Create(L"FrameData", sizeof(mFrameDataCPU));

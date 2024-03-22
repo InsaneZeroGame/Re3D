@@ -1,9 +1,10 @@
 #include "asset_loader.h"
 #include "stb_texture_loader.h"
+#include "obj_model_loader.h"
 
 namespace AssetLoader
 {
-	TextureAssetLoader* gStbTextureLoader = nullptr;
+
 
 	BaseAssetLoader::BaseAssetLoader() :mModulePath("")
 	{
@@ -28,6 +29,7 @@ AssetLoader::TextureAssetLoader::~TextureAssetLoader()
 void AssetLoader::InitAssetLoader()
 {
 	gStbTextureLoader = new StbTextureAssetLoader;
+	gObjModelLoader = new ObjModelLoader;
 }
 
 void AssetLoader::DestroyAssetLoader()
@@ -36,5 +38,10 @@ void AssetLoader::DestroyAssetLoader()
 	{
 		delete gStbTextureLoader;
 		gStbTextureLoader = nullptr;
+	}
+	if (gObjModelLoader)
+	{
+		delete gObjModelLoader;
+		gObjModelLoader = nullptr;
 	}
 }

@@ -57,7 +57,8 @@ namespace AssetLoader
 
 	};
 
-	extern TextureAssetLoader* gStbTextureLoader;
+	inline TextureAssetLoader* gStbTextureLoader;
+	inline class ObjModelLoader* gObjModelLoader;
 
 	void InitAssetLoader();
 	void DestroyAssetLoader();

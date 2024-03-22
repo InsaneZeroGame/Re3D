@@ -14,4 +14,5 @@ namespace AssetLoader
 
 	private:
 	};
+
 }

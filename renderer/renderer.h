@@ -4,6 +4,7 @@
 #include <d3d12.h>
 #include <asset_loader.h>
 #include <camera.h>
+#include "game_scene.h"
 
 namespace tf
 {
@@ -52,6 +53,7 @@ namespace Renderer
 		virtual ~BaseRenderer();
 		void SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight);
 		void Update(float delta);
+		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene);
 	protected:
 		void CreateRenderTask();
 		void CreateBuffers();
@@ -113,6 +115,7 @@ namespace Renderer
 		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
 		std::unique_ptr<Skybox> mSkybox;
 		std::array<ECS::LightComponent, 256> mLights;
+		std::shared_ptr<GAS::GameScene> mCurrentScene;
 	};
 
 }

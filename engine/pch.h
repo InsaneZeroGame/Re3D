@@ -14,3 +14,4 @@
 #include "SimpleMath.h"
 #include "graphics_common.h"
 #include <entt/entt.hpp>
+#include <gsl/gsl>
