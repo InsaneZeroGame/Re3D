@@ -71,12 +71,12 @@ void Renderer::BaseRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGam
 		{
 			auto& vertices = renderComponent.mMeshes[0].mVertices;
 			auto& indices = renderComponent.mMeshes[0].mIndices;
-			void* uploadBufferPtr = mUploadBuffer->Map();
+			void* uploadBufferPtr = mVertexBufferCpu->Map();
 			memcpy(uploadBufferPtr, vertices.data(), vertices.size() * sizeof(Vertex));
-			mUploadBuffer->Unmap();
-			void* indexUploadBufferPtr = mIndexUploadBuffer->Map();
+			mVertexBufferCpu->Unmap();
+			void* indexUploadBufferPtr = mIndexBufferCpu->Map();
 			memcpy(indexUploadBufferPtr, indices.data(), indices.size() * sizeof(uint32_t));
-			mIndexUploadBuffer->Unmap();
+			mIndexBufferCpu->Unmap();
 		});
 }
 
@@ -203,13 +203,13 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mIndexBuffer->Create(L"IndexBuffer", MAX_ELE_COUNT, VERTEX_SIZE_IN_BYTE);
 
 	//2.Upload Buffer
-	mUploadBuffer = std::make_shared<Resource::UploadBuffer>();
+	mVertexBufferCpu = std::make_shared<Resource::UploadBuffer>();
 	constexpr int uploadBufferSize = MAX_ELE_COUNT * VERTEX_SIZE_IN_BYTE;
-	mUploadBuffer->Create(L"UploadBuffer", uploadBufferSize);
+	mVertexBufferCpu->Create(L"UploadBuffer", uploadBufferSize);
 	
 
-	mIndexUploadBuffer = std::make_shared<Resource::UploadBuffer>();
-	mIndexUploadBuffer->Create(L"UploadBuffer", uploadBufferSize);
+	mIndexBufferCpu = std::make_shared<Resource::UploadBuffer>();
+	mIndexBufferCpu->Create(L"UploadBuffer", uploadBufferSize);
 	
 
 	mFrameDataGPU = std::make_shared<Resource::UploadBuffer>();
@@ -306,14 +306,14 @@ void Renderer::BaseRenderer::DepthOnlyPass(const ECS::RenderComponent& InAsset)
 
 void Renderer::BaseRenderer::FirstFrame()
 {
-	TransitState(mGraphicsCmd, mUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	TransitState(mGraphicsCmd, mVertexBufferCpu->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	TransitState(mGraphicsCmd, mVertexBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	mGraphicsCmd->CopyResource(mVertexBuffer->GetResource(), mUploadBuffer->GetResource());
+	mGraphicsCmd->CopyResource(mVertexBuffer->GetResource(), mVertexBufferCpu->GetResource());
 	TransitState(mGraphicsCmd, mVertexBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 	
-	TransitState(mGraphicsCmd, mIndexUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	TransitState(mGraphicsCmd, mIndexBufferCpu->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	mGraphicsCmd->CopyResource(mIndexBuffer->GetResource(), mIndexUploadBuffer->GetResource());
+	mGraphicsCmd->CopyResource(mIndexBuffer->GetResource(), mIndexBufferCpu->GetResource());
 	TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
 
 	TransitState(mGraphicsCmd, mLightUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -503,7 +503,7 @@ void Renderer::BaseRenderer::RenderObject(const ECS::RenderComponent& InAsset)
 	
 	for (const auto& mesh : InAsset.mMeshes)
 	{
-		mGraphicsCmd->DrawIndexedInstanced((UINT)mesh.mIndices.size(), 1, 0, 0, 0);
+		mGraphicsCmd->DrawIndexedInstanced((UINT)mesh.mIndexCount,1, mesh.StartIndexLocation, mesh.BaseVertexLocation, 0);
 	}
 }
 

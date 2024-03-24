@@ -11,6 +11,10 @@ namespace ECS
 		{
 			std::vector<Renderer::Vertex> mVertices;
 			std::vector<int> mIndices;
+			UINT mVertexCount;
+			UINT mIndexCount;
+			UINT StartIndexLocation;
+			INT BaseVertexLocation;
 		};
 
 		std::vector<Mesh> mMeshes;
