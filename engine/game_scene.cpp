@@ -22,8 +22,8 @@ entt::entity GAS::GameScene::CreateEntityWithMesh(const std::string InMeshFilePa
 	Ensures(model.has_value());
 	auto modelValue = model.value();
 	using namespace ECS;
-	auto entity = gRegistry.create();
-	gRegistry.emplace_or_replace<RenderComponent>(entity, modelValue);
+	auto entity = mRegistery.create();
+	mRegistery.emplace_or_replace<RenderComponent>(entity, modelValue);
 	return entity;
 }
 

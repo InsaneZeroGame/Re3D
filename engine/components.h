@@ -3,7 +3,7 @@
 
 namespace ECS
 {
-	inline entt::registry gRegistry;
+	//inline entt::registry gRegistry;
 
 	struct RenderComponent
 	{

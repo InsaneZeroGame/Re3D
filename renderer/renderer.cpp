@@ -114,7 +114,8 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->IASetIndexBuffer(&mIndexBuffer->IndexBufferView());
 			mGraphicsCmd->SetPipelineState(mPipelineStateDepthOnly);
 			using namespace ECS;
-			auto renderEntities = gRegistry.view<RenderComponent>();
+			auto& sceneRegistry = mCurrentScene->GetRegistery();
+			auto renderEntities = sceneRegistry.view<RenderComponent>();
 			renderEntities.each([=](auto entity,auto component) 
 				{
 					RenderObject(component);
@@ -154,7 +155,8 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetGraphicsRootDescriptorTable(4, mDefaultTexture->GetSRVGpu());
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
 			using namespace ECS;
-			auto renderEntities = gRegistry.view<RenderComponent>();
+			auto& sceneRegistry = mCurrentScene->GetRegistery();
+			auto renderEntities = sceneRegistry.view<RenderComponent>();
 			renderEntities.each([=](auto entity, auto component)
 				{
 					RenderObject(component);
