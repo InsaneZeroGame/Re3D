@@ -66,8 +66,8 @@ void Renderer::BaseRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGam
 {
 	mCurrentScene = InGameScene;
 	entt::registry& sceneRegistery = mCurrentScene->GetRegistery();
-	auto& allRenderComponents = sceneRegistery.view<ECS::StaticMeshComponent>();
-	allRenderComponents.each([this](auto entity, ECS::StaticMeshComponent renderComponent) 
+	auto allStaticMeshComponents = sceneRegistery.view<ECS::StaticMeshComponent>();
+	allStaticMeshComponents.each([this](auto entity, ECS::StaticMeshComponent renderComponent) 
 		{
 			auto& vertices = renderComponent.mVertices;
 			auto& indices = renderComponent.mIndices;
@@ -110,8 +110,10 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetGraphicsRootSignature(mColorPassRootSignature);
 			mGraphicsCmd->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
-			mGraphicsCmd->IASetVertexBuffers(0, 1, &mVertexBuffer->VertexBufferView());
-			mGraphicsCmd->IASetIndexBuffer(&mIndexBuffer->IndexBufferView());
+			auto vbview = mVertexBuffer->VertexBufferView();
+			mGraphicsCmd->IASetVertexBuffers(0, 1, &vbview);
+			auto ibview = mIndexBuffer->IndexBufferView();
+			mGraphicsCmd->IASetIndexBuffer(&ibview);
 			mGraphicsCmd->SetPipelineState(mPipelineStateDepthOnly);
 			using namespace ECS;
 			auto& sceneRegistry = mCurrentScene->GetRegistery();

@@ -69,6 +69,7 @@
 #include <cwctype>
 #include <exception>
 #include <fstream>
+#include <span>
 
 #include <ppltasks.h>
 #include <functional>

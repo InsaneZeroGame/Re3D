@@ -7,10 +7,10 @@ Renderer::BaseRenderPass::BaseRenderPass(const wchar_t* InVertexShader, const wc
 {
 	Ensures(g_Device);
 	mUploadBuffer = std::make_unique<DirectX::ResourceUploadBatch>(g_Device);
-	mVertexShader = &Utils::ReadShader(InVertexShader);
+	mVertexShader = Utils::ReadShader(InVertexShader);
 	if (InPixelShader)
 	{
-		mPixelShader = &Utils::ReadShader(InPixelShader);
+		mPixelShader = Utils::ReadShader(InPixelShader);
 	}
 }
 

@@ -13,3 +13,4 @@
 #include <filesystem>
 #include "graphics_common.h"
 #include <entt/entt.hpp>
+#include <d3d12.h>

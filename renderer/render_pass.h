@@ -19,8 +19,8 @@ namespace Renderer
 		struct ID3D12PipelineState* mPipelineState;
 		struct ID3D12RootSignature* mRS;
 		std::unique_ptr<DirectX::ResourceUploadBatch> mUploadBuffer;
-		struct D3D12_SHADER_BYTECODE* mVertexShader;
-		struct D3D12_SHADER_BYTECODE* mPixelShader;
+		struct D3D12_SHADER_BYTECODE mVertexShader;
+		struct D3D12_SHADER_BYTECODE mPixelShader;
 	};
 	
 }
