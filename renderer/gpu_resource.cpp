@@ -856,12 +856,12 @@ namespace Renderer
 #endif
 		}
 
-		void* UploadBuffer::Map(void)
+		uint8_t* UploadBuffer::Map(void)
 		{
 			void* Memory;
 			auto range = CD3DX12_RANGE(0, m_BufferSize);
 			m_pResource->Map(0, &range, &Memory);
-			return Memory;
+			return static_cast<uint8_t*>(Memory);
 		}
 
 		void UploadBuffer::Unmap(size_t begin /*= 0*/, size_t end /*= -1*/)

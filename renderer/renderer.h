@@ -67,6 +67,7 @@ namespace Renderer
 		virtual void RenderObject(const ECS::StaticMeshComponent& InAsset);
 		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter);
 		void UpdataFrameData();
+		void LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent);
 	protected:
 		std::unique_ptr<class DeviceManager> mDeviceManager;
 		std::shared_ptr<class CmdManager> mCmdManager;
@@ -96,7 +97,7 @@ namespace Renderer
 		FrameData mFrameDataCPU;
 		std::shared_ptr<Resource::UploadBuffer> mFrameDataGPU;
 		std::shared_ptr<Resource::DepthBuffer> mDepthBuffer;
-		void* mFrameDataPtr;
+		//void* mFrameDataPtr;
 		int mWidth;
 		int mHeight;
 		std::unique_ptr<class tf::Taskflow> mRenderFlow;
@@ -110,7 +111,7 @@ namespace Renderer
 		std::vector<Cluster> mCLusters;
 		LightCullViewData mLightCullViewData;
 		std::unique_ptr<Resource::UploadBuffer> mLightCullViewDataGpu;
-		void* mLightCullDataPtr;
+		//void* mLightCullDataPtr;
 		std::shared_ptr<Resource::Texture> mDefaultTexture;
 		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
 		std::unique_ptr<Skybox> mSkybox;

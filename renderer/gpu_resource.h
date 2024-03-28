@@ -184,20 +184,38 @@ namespace Renderer
 			virtual ~UploadBuffer() { Destroy(); }
 
 			void Create(const std::wstring& name, size_t BufferSize);
-
-			void* Map(void);
-			void Unmap(size_t begin = 0, size_t end = -1);
+			
 			size_t GetBufferSize() const { return m_BufferSize; }
 			template<class T>
-			void UpdataData(std::span<T> InData);
+			size_t UploadData(std::span<T> InData)
+			{
+				auto sizeToUpload = InData.size_bytes();
+				Ensures(m_BufferSize >= sizeToUpload + mOffset);
+				memcpy(Map() + mOffset, InData.data(), sizeToUpload);
+				Unmap();
+				mOffset += sizeToUpload;
+				return mOffset;
+			};
+			template<class T>
+			void UpdataData(const T& InData)
+			{
+				auto sizeToUpload = sizeof(T);
+				Ensures(m_BufferSize >= sizeToUpload);
+				memcpy(Map(), &InData, sizeToUpload);
+				Unmap();
+			}
+			size_t GetOffset() const { return mOffset; }
 		protected:
 
 			size_t m_BufferSize;
 
 			size_t mOffset;
 
-		};
+			uint8_t* Map(void);
 
+			void Unmap(size_t begin = 0, size_t end = -1);
+
+		};
 
 		class GpuBuffer : public GpuResource
 		{

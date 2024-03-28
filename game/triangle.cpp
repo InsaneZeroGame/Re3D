@@ -14,7 +14,9 @@ int main(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 	AssetLoader::InitAssetLoader();
 	//Game Scene 
 	std::shared_ptr<GAS::GameScene> newScene = std::make_shared<GAS::GameScene>();
-	newScene->CreateEntityWithMesh("scene.obj");
+	newScene->CreateEntityWithMesh("surface.obj");
+	newScene->CreateEntityWithMesh("cube.obj");
+	newScene->CreateEntityWithMesh("sphere.obj");
 
 	//1.Renderer
 	std::unique_ptr<Renderer::BaseRenderer> renderer = std::make_unique<Renderer::BaseRenderer>();

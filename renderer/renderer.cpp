@@ -67,16 +67,9 @@ void Renderer::BaseRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGam
 	mCurrentScene = InGameScene;
 	entt::registry& sceneRegistery = mCurrentScene->GetRegistery();
 	auto allStaticMeshComponents = sceneRegistery.view<ECS::StaticMeshComponent>();
-	allStaticMeshComponents.each([this](auto entity, ECS::StaticMeshComponent renderComponent) 
+	allStaticMeshComponents.each([this](auto entity, ECS::StaticMeshComponent& renderComponent) 
 		{
-			auto& vertices = renderComponent.mVertices;
-			auto& indices = renderComponent.mIndices;
-			void* uploadBufferPtr = mVertexBufferCpu->Map();
-			memcpy(uploadBufferPtr, vertices.data(), vertices.size() * sizeof(Vertex));
-			mVertexBufferCpu->Unmap();
-			void* indexUploadBufferPtr = mIndexBufferCpu->Map();
-			memcpy(indexUploadBufferPtr, indices.data(), indices.size() * sizeof(uint32_t));
-			mIndexBufferCpu->Unmap();
+			LoadStaticMeshToGpu(renderComponent);
 		});
 }
 
@@ -216,7 +209,6 @@ void Renderer::BaseRenderer::CreateBuffers()
 
 	mFrameDataGPU = std::make_shared<Resource::UploadBuffer>();
 	mFrameDataGPU->Create(L"FrameData", sizeof(mFrameDataCPU));
-	mFrameDataPtr = mFrameDataGPU->Map();
 
 	mFrameDataCPU.DirectionalLightColor = SimpleMath::Vector4(1.0f, 1.0f, 1.0f,1.0f);
 	mFrameDataCPU.DirectionalLightDir = SimpleMath::Vector4(1.0, 1.0, 2.0,1.0f);
@@ -265,20 +257,13 @@ void Renderer::BaseRenderer::CreateBuffers()
 	}
 
 	//
-	void* lightUploadBufferPtr = mLightUploadBuffer->Map();
-	memcpy(lightUploadBufferPtr, mLights.data(), mLights.size() * sizeof(ECS::LightComponent));
-	mLightUploadBuffer->Unmap();
+	mLightUploadBuffer->UploadData<ECS::LightComponent>(mLights);
 
 	mClusterBuffer = std::make_unique<Resource::StructuredBuffer>();
 	mCLusters.resize(CLUSTER_X * CLUSTER_Y * CLUSTER_Z);
 	mClusterBuffer->Create(L"ClusterBuffer", (UINT32)mCLusters.size(), sizeof(Cluster), nullptr);
-
-	
 	mLightCullViewDataGpu = std::make_unique<Resource::UploadBuffer>();
 	mLightCullViewDataGpu->Create(L"LightCullViewData", sizeof(LightCullViewData));
-
-	mLightCullDataPtr = mLightCullViewDataGpu->Map();
-
 }
 
 void Renderer::BaseRenderer::CreateTextures()
@@ -332,9 +317,7 @@ void Renderer::BaseRenderer::FirstFrame()
 	mLightCullViewData.ClipToView = mDefaultCamera->GetClipToView();
 	mLightCullViewData.ViewMatrix = mDefaultCamera->GetView();
 	mLightCullViewData.InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
-
-	memcpy(mLightCullDataPtr, &mLightCullViewData, sizeof(LightCullViewData));
-	
+	mLightCullViewDataGpu->UpdataData<LightCullViewData>(mLightCullViewData);
 }
 
 void Renderer::BaseRenderer::PreRender()
@@ -520,13 +503,11 @@ void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D
 
 void Renderer::BaseRenderer::UpdataFrameData()
 {
-	//mFrameDataCPU.mPrj = mDefaultCamera->GetPrj();
-	//mFrameDataCPU.mView = mDefaultCamera->GetView();
 	mFrameDataCPU.PrjView = mDefaultCamera->GetPrjView();
 	mFrameDataCPU.View = mDefaultCamera->GetView();
 	mFrameDataCPU.NormalMatrix = mDefaultCamera->GetNormalMatrix();
 	mFrameDataCPU.DirectionalLightDir.Normalize();
-	memcpy(mFrameDataPtr,&mFrameDataCPU,sizeof(mFrameDataCPU));
+	mFrameDataGPU->UpdataData<FrameData>(mFrameDataCPU);
 	auto gridParas = Utils::GetLightGridZParams(mDefaultCamera->GetNear(), mDefaultCamera->GetFar());
 	mLightCullViewData.LightGridZParams.x = gridParas.x;
 	mLightCullViewData.LightGridZParams.y = gridParas.y;
@@ -535,5 +516,16 @@ void Renderer::BaseRenderer::UpdataFrameData()
 	mLightCullViewData.ClipToView = mDefaultCamera->GetClipToView();
 	mLightCullViewData.ViewMatrix = mDefaultCamera->GetView();
 	mLightCullViewData.InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
-	memcpy(mLightCullDataPtr, &mLightCullViewData, sizeof(LightCullViewData));
+	mLightCullViewDataGpu->UpdataData<LightCullViewData>(mLightCullViewData);
+
+}
+
+void Renderer::BaseRenderer::LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent)
+{
+	auto& vertices = InComponent.mVertices;
+	auto& indices = InComponent.mIndices;
+	InComponent.BaseVertexLocation = mVertexBufferCpu->GetOffset() / sizeof(Vertex);
+	InComponent.StartIndexLocation = mIndexBufferCpu->GetOffset() / sizeof(int);
+	mVertexBufferCpu->UploadData<Vertex>(vertices);
+	mIndexBufferCpu->UploadData<int>(indices);
 }
