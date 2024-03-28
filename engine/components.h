@@ -5,19 +5,24 @@ namespace ECS
 {
 	//inline entt::registry gRegistry;
 
-	struct RenderComponent
+	struct StaticMesh
 	{
-		struct Mesh
-		{
-			std::vector<Renderer::Vertex> mVertices;
-			std::vector<int> mIndices;
-			UINT mVertexCount;
-			UINT mIndexCount;
-			UINT StartIndexLocation;
-			INT BaseVertexLocation;
-		};
+		std::vector<Renderer::Vertex> mVertices;
+		std::vector<int> mIndices;
+	};
 
-		std::vector<Mesh> mMeshes;
+	struct StaticMeshComponent
+	{
+		std::vector<Renderer::Vertex> mVertices;
+		std::vector<int> mIndices;
+		UINT mVertexCount;
+		UINT mIndexCount;
+		UINT StartIndexLocation;
+		INT BaseVertexLocation;
+		StaticMeshComponent(std::vector<Renderer::Vertex>&& Vertices, std::vector<int>&& Indices);
+		StaticMeshComponent(StaticMesh&& InMesh);
+		//StaticMeshComponent(const StaticMeshComponent&) = delete;
+		//StaticMeshComponent& operator=(const StaticMeshComponent&) = delete;
 	};
 
 	struct LightComponent

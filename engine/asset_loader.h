@@ -38,7 +38,7 @@ namespace AssetLoader
 
 		virtual ~ModelAssetLoader() {};
 
-		virtual std::optional<ECS::RenderComponent> LoadAssetFromFile(std::string InFileName) { return {}; };
+		virtual std::optional<ECS::StaticMesh> LoadAssetFromFile(std::string InFileName) { return {}; };
 
 	private:
 

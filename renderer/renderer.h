@@ -58,13 +58,13 @@ namespace Renderer
 		void CreateRenderTask();
 		void CreateBuffers();
 		void CreateTextures();
-		void DepthOnlyPass(const ECS::RenderComponent& InAsset);
+		void DepthOnlyPass(const ECS::StaticMeshComponent& InAsset);
 		virtual void FirstFrame();
 		virtual void PreRender();
 		virtual void PostRender();
 		virtual void CreatePipelineState();
 		virtual void CreateRootSignature();
-		virtual void RenderObject(const ECS::RenderComponent& InAsset);
+		virtual void RenderObject(const ECS::StaticMeshComponent& InAsset);
 		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter);
 		void UpdataFrameData();
 	protected:
@@ -83,9 +83,9 @@ namespace Renderer
 		ID3D12CommandAllocator* mGraphicsCmdAllocator;
 		std::shared_ptr<Resource::VertexBuffer> mVertexBuffer;
 		std::shared_ptr<Resource::VertexBuffer> mIndexBuffer;
-		std::shared_ptr<Resource::UploadBuffer> mUploadBuffer;
+		std::shared_ptr<Resource::UploadBuffer> mVertexBufferCpu;
 		//temp 
-		std::shared_ptr<Resource::UploadBuffer> mIndexUploadBuffer;
+		std::shared_ptr<Resource::UploadBuffer> mIndexBufferCpu;
 
 		ID3D12PipelineState* mColorPassPipelineState;
 		ID3D12PipelineState* mPipelineStateDepthOnly;

@@ -66,11 +66,11 @@ void Renderer::BaseRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGam
 {
 	mCurrentScene = InGameScene;
 	entt::registry& sceneRegistery = mCurrentScene->GetRegistery();
-	auto& allRenderComponents = sceneRegistery.view<ECS::RenderComponent>();
-	allRenderComponents.each([this](auto entity, ECS::RenderComponent renderComponent) 
+	auto& allRenderComponents = sceneRegistery.view<ECS::StaticMeshComponent>();
+	allRenderComponents.each([this](auto entity, ECS::StaticMeshComponent renderComponent) 
 		{
-			auto& vertices = renderComponent.mMeshes[0].mVertices;
-			auto& indices = renderComponent.mMeshes[0].mIndices;
+			auto& vertices = renderComponent.mVertices;
+			auto& indices = renderComponent.mIndices;
 			void* uploadBufferPtr = mVertexBufferCpu->Map();
 			memcpy(uploadBufferPtr, vertices.data(), vertices.size() * sizeof(Vertex));
 			mVertexBufferCpu->Unmap();
@@ -115,7 +115,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetPipelineState(mPipelineStateDepthOnly);
 			using namespace ECS;
 			auto& sceneRegistry = mCurrentScene->GetRegistery();
-			auto renderEntities = sceneRegistry.view<RenderComponent>();
+			auto renderEntities = sceneRegistry.view<StaticMeshComponent>();
 			renderEntities.each([=](auto entity,auto component) 
 				{
 					RenderObject(component);
@@ -156,7 +156,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
 			using namespace ECS;
 			auto& sceneRegistry = mCurrentScene->GetRegistery();
-			auto renderEntities = sceneRegistry.view<RenderComponent>();
+			auto renderEntities = sceneRegistry.view<StaticMeshComponent>();
 			renderEntities.each([=](auto entity, auto component)
 				{
 					RenderObject(component);
@@ -299,7 +299,7 @@ void Renderer::BaseRenderer::CreateTextures()
 	}
 }
 
-void Renderer::BaseRenderer::DepthOnlyPass(const ECS::RenderComponent& InAsset)
+void Renderer::BaseRenderer::DepthOnlyPass(const ECS::StaticMeshComponent& InAsset)
 {
 
 }
@@ -497,14 +497,11 @@ void Renderer::BaseRenderer::CreateRootSignature()
 	
 }
 
-void Renderer::BaseRenderer::RenderObject(const ECS::RenderComponent& InAsset)
+void Renderer::BaseRenderer::RenderObject(const ECS::StaticMeshComponent& InAsset)
 {
 	//Render 
-	
-	for (const auto& mesh : InAsset.mMeshes)
-	{
-		mGraphicsCmd->DrawIndexedInstanced((UINT)mesh.mIndexCount,1, mesh.StartIndexLocation, mesh.BaseVertexLocation, 0);
-	}
+	mGraphicsCmd->DrawIndexedInstanced((UINT)InAsset.mIndexCount, 1, InAsset.StartIndexLocation, InAsset.BaseVertexLocation, 0);
+
 }
 
 void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter)

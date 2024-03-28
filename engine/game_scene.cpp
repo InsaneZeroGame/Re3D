@@ -20,10 +20,10 @@ entt::entity GAS::GameScene::CreateEntityWithMesh(const std::string InMeshFilePa
 	AssetLoader::ObjModelLoader* objLoader = AssetLoader::gObjModelLoader;
 	auto model = objLoader->LoadAssetFromFile(InMeshFilePath);
 	Ensures(model.has_value());
-	auto modelValue = model.value();
+	auto& modelValue = model.value();
 	using namespace ECS;
 	auto entity = mRegistery.create();
-	mRegistery.emplace_or_replace<RenderComponent>(entity, modelValue);
+	mRegistery.emplace_or_replace<StaticMeshComponent>(entity, std::move(model.value()));
 	return entity;
 }
 
