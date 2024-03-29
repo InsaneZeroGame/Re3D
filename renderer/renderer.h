@@ -32,6 +32,7 @@ namespace Renderer
 	{	
 		DirectX::SimpleMath::Matrix PrjView;
 		DirectX::SimpleMath::Matrix View;
+		DirectX::SimpleMath::Matrix Prj;
 		DirectX::SimpleMath::Matrix NormalMatrix;
 		DirectX::SimpleMath::Vector4 DirectionalLightDir;
 		DirectX::SimpleMath::Vector4 DirectionalLightColor;
@@ -59,6 +60,7 @@ namespace Renderer
 		void CreateBuffers();
 		void CreateTextures();
 		void DepthOnlyPass(const ECS::StaticMeshComponent& InAsset);
+		void CreateSkybox();
 		virtual void FirstFrame();
 		virtual void PreRender();
 		virtual void PostRender();

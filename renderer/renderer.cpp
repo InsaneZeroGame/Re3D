@@ -30,7 +30,7 @@ Renderer::BaseRenderer::BaseRenderer():
 	CreateRootSignature();
 	CreatePipelineState();
 	CreateRenderTask();
-	mSkybox = std::make_unique<Skybox>();
+	CreateSkybox();
 }
 
 Renderer::BaseRenderer::~BaseRenderer()
@@ -78,6 +78,20 @@ void Renderer::BaseRenderer::CreateRenderTask()
 	mRenderFlow = std::make_unique<tf::Taskflow>();
 	mRenderExecution = std::make_unique<tf::Executor>();
 
+	auto SkyboxPass = [this]()
+		{
+			//Render Scene
+			mGraphicsCmd->SetPipelineState(mSkybox->GetPipelineState());
+			mGraphicsCmd->SetGraphicsRootSignature(mSkybox->GetRS());
+			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
+			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
+			//mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
+			//mGraphicsCmd->SetGraphicsRootDescriptorTable(4, mDefaultTexture->GetSRVGpu());
+			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, nullptr);
+			mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), mColorRGBA, 1, &mRect);
+			RenderObject(*mSkybox->GetStaticMeshComponent());
+		};
+
 	auto DepthOnlyPass = [this]()
 		{
 			IDXGISwapChain4* swapChain = (IDXGISwapChain4*)mDeviceManager->GetSwapChain();
@@ -96,7 +110,6 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->OMSetRenderTargets(0, nullptr, true, &mDepthBuffer->GetDSV());
 			mGraphicsCmd->RSSetViewports(1, &mViewPort);
 			mGraphicsCmd->RSSetScissorRects(1, &mRect);
-			mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), mColorRGBA, 1, &mRect);
 			mGraphicsCmd->ClearDepthStencilView(mDepthBuffer->GetDSV(), D3D12_CLEAR_FLAG_DEPTH, 0.0f, 0, 1, &mRect);
 
 			//Set Resources
@@ -142,6 +155,8 @@ void Renderer::BaseRenderer::CreateRenderTask()
 		{
 			//Render Scene
 			mGraphicsCmd->SetPipelineState(mColorPassPipelineState);
+			mGraphicsCmd->SetGraphicsRootSignature(mColorPassRootSignature);
+			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
 			mGraphicsCmd->SetGraphicsRootUnorderedAccessView(1, mClusterBuffer->GetGpuVirtualAddress());
 			mGraphicsCmd->SetGraphicsRootShaderResourceView(2, mLightBuffer->GetGpuVirtualAddress());
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
@@ -177,8 +192,9 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			IDXGISwapChain4* swapChain = (IDXGISwapChain4*)mDeviceManager->GetSwapChain();
 			swapChain->Present(0, 0);
 		};
-	auto [depthOnlyPass, colorPass, postRender,computePass] = mRenderFlow->emplace(DepthOnlyPass,ColorPass,PostRender, ComputePass);
-	colorPass.succeed(depthOnlyPass, computePass);
+	auto [depthOnlyPass,skyboxpass, colorPass, postRender,computePass] = mRenderFlow->emplace(DepthOnlyPass,SkyboxPass,ColorPass,PostRender, ComputePass);
+	skyboxpass.succeed(depthOnlyPass, computePass);
+	colorPass.succeed(skyboxpass);
 	postRender.succeed(colorPass);
 }
 
@@ -288,6 +304,11 @@ void Renderer::BaseRenderer::DepthOnlyPass(const ECS::StaticMeshComponent& InAss
 
 }
 
+void Renderer::BaseRenderer::CreateSkybox()
+{
+	mSkybox = std::make_unique<Skybox>();
+}
+
 void Renderer::BaseRenderer::FirstFrame()
 {
 	TransitState(mGraphicsCmd, mVertexBufferCpu->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -356,6 +377,7 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	lDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 	lDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mColorPassPipelineState));
+	mColorPassPipelineState->SetName(L"mColorPassPipelineState");
 	
 	//Depth Only pipeline state
 	lDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
@@ -363,12 +385,14 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	lDesc.PS = {};
 	lDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mPipelineStateDepthOnly));
+	mPipelineStateDepthOnly->SetName(L"mPipelineStateDepthOnly");
 
 	//Compute:Light Cull Pass
 	D3D12_COMPUTE_PIPELINE_STATE_DESC lightCullPassDesc = {};
 	lightCullPassDesc.CS = Utils::ReadShader(L"LightCull.cso");
 	lightCullPassDesc.pRootSignature = mLightCullPassRootSignature;
 	g_Device->CreateComputePipelineState(&lightCullPassDesc, IID_PPV_ARGS(&mLightCullPass));
+	mLightCullPass->SetName(L"mLightCullPass");
 }
 
 void Renderer::BaseRenderer::CreateRootSignature()
@@ -501,6 +525,7 @@ void Renderer::BaseRenderer::UpdataFrameData()
 {
 	mFrameDataCPU.PrjView = mDefaultCamera->GetPrjView();
 	mFrameDataCPU.View = mDefaultCamera->GetView();
+	mFrameDataCPU.Prj = mDefaultCamera->GetPrj();
 	mFrameDataCPU.NormalMatrix = mDefaultCamera->GetNormalMatrix();
 	mFrameDataCPU.DirectionalLightDir.Normalize();
 	mFrameDataGPU->UpdataData<FrameData>(mFrameDataCPU);
@@ -513,7 +538,6 @@ void Renderer::BaseRenderer::UpdataFrameData()
 	mLightCullViewData.ViewMatrix = mDefaultCamera->GetView();
 	mLightCullViewData.InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
 	mLightCullViewDataGpu->UpdataData<LightCullViewData>(mLightCullViewData);
-
 }
 
 void Renderer::BaseRenderer::LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent)

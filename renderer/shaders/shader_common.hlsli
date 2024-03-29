@@ -35,3 +35,19 @@ struct LightCullViewData
     float4 InvDeviceZToWorldZTransform;
     
 };
+
+struct FrameData 
+{
+    float4x4 ViewPrj;
+    float4x4 View;
+    float4x4 Prj;
+    float4x4 NormalMatrix;
+    float4 DirectionalLightDir;
+    float4 DirectionalLightColor;
+};
+
+struct SkyBoxPsInput
+{
+    float4 pos : SV_Position;
+    float2 texcoord : TEXCOORD0;
+};
