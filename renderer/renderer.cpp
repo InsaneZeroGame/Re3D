@@ -186,9 +186,6 @@ void Renderer::BaseRenderer::CreateRenderTask()
 
 void Renderer::BaseRenderer::CreateBuffers()
 {
-
-	
-
 	//auto& vertices = triangle;
 	//1.Vertex Buffer
 	mVertexBuffer = std::make_shared<Resource::VertexBuffer>();
@@ -345,8 +342,7 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	{
 		{ "POSITION",	0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0,  0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "NORMAL",		0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR",		0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD",   0, DXGI_FORMAT_R32G32_FLOAT,	   0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "TEXCOORD",   0, DXGI_FORMAT_R32G32_FLOAT,	   0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 
 	};
 	lDesc.InputLayout.NumElements = static_cast<UINT>(elements.size());

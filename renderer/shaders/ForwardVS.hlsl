@@ -11,7 +11,7 @@ cbuffer FrameData: register(b0)
 
 
 
-PSInput main(float4 pos : POSITION,float4 normal : NORMAL,float4 color : COLOR,float2 textureCoord:TEXCOORD)
+PSInput main(float4 pos : POSITION,float4 normal : NORMAL,float2 textureCoord:TEXCOORD)
 {
     PSInput input;
     input.position = mul(pos,ViewPrj);
