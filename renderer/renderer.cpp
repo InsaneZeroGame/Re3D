@@ -85,7 +85,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetGraphicsRootSignature(mSkybox->GetRS());
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
-			//mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
+			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
 			//mGraphicsCmd->SetGraphicsRootDescriptorTable(4, mDefaultTexture->GetSRVGpu());
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, nullptr);
 			mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), mColorRGBA, 1, &mRect);
@@ -307,6 +307,7 @@ void Renderer::BaseRenderer::DepthOnlyPass(const ECS::StaticMeshComponent& InAss
 void Renderer::BaseRenderer::CreateSkybox()
 {
 	mSkybox = std::make_unique<Skybox>();
+	LoadStaticMeshToGpu(*mSkybox->GetStaticMeshComponent());
 }
 
 void Renderer::BaseRenderer::FirstFrame()

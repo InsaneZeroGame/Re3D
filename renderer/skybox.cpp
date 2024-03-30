@@ -34,6 +34,8 @@ void Renderer::Skybox::CreatePipelineState()
 	lDesc.pRootSignature = mRS;
 	lDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	lDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+	lDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	lDesc.RasterizerState.FrontCounterClockwise = TRUE;
 	lDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
 	lDesc.VS = mVertexShader;
 	lDesc.PS = mPixelShader;
@@ -69,7 +71,18 @@ void Renderer::Skybox::CreateRS()
 	frameDataCBV.Descriptor.ShaderRegister = 0;
 	frameDataCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
-	std::vector<D3D12_ROOT_PARAMETER> lParameters = { frameDataCBV };
+	D3D12_ROOT_PARAMETER skyboxCubeTexture = {};
+	skyboxCubeTexture.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+	skyboxCubeTexture.DescriptorTable.NumDescriptorRanges = 1;
+	D3D12_DESCRIPTOR_RANGE cubeTextureRange = {};
+	cubeTextureRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+	cubeTextureRange.BaseShaderRegister = 1;
+	cubeTextureRange.NumDescriptors = 1;
+	cubeTextureRange.OffsetInDescriptorsFromTableStart = 0;
+	cubeTextureRange.RegisterSpace = 0;
+	skyboxCubeTexture.DescriptorTable.pDescriptorRanges = &cubeTextureRange;
+
+	std::vector<D3D12_ROOT_PARAMETER> lParameters = { frameDataCBV,skyboxCubeTexture };
 
 	lDesc.pParameters = lParameters.data();
 	lDesc.NumParameters = lParameters.size();
