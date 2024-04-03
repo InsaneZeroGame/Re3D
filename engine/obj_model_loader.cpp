@@ -157,10 +157,10 @@ std::optional<ECS::StaticMesh> AssetLoader::ObjModelLoader::LoadAssetFromFile(st
 				vertex.normal[1] = attrib.normals[3 * idx.normal_index + 1];
 				vertex.normal[2] = attrib.normals[3 * idx.normal_index + 2];
 				vertex.normal[3] = 1.0f;
-				vertex.color[0] = diffuse[0];
-				vertex.color[1] = diffuse[1];
-				vertex.color[2] = diffuse[2];
-				vertex.color[3] = 1.0f;
+				//vertex.color[0] = diffuse[0];
+				//vertex.color[1] = diffuse[1];
+				//vertex.color[2] = diffuse[2];
+				//vertex.color[3] = 1.0f;
 
 
 				if (idx.texcoord_index < 0)

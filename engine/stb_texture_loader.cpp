@@ -16,6 +16,7 @@ namespace AssetLoader
 		const auto& filePath = std::filesystem::path(fileName);
 		const auto& fileExtension = filePath.extension();
 		stbi_uc* data = stbi_load(filePath.string().c_str(), &newTexutre->mWidth, &newTexutre->mHeight, &newTexutre->mComponent, 4);
+		newTexutre->mComponent = 4;
 		if (!data)
 		{
 			return {};

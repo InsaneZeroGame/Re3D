@@ -1,5 +1,6 @@
 #pragma once
 #include "render_pass.h"
+#include "components.h"
 
 namespace DirectX
 {
@@ -24,8 +25,12 @@ namespace Renderer
 
 		void CreateRS() override;
 
+		void SetEntity(entt::entity InEntity);
+
+		std::shared_ptr < ECS::StaticMeshComponent> GetStaticMeshComponent();
 	private:
 		std::unique_ptr<DirectX::DX12::GeometricPrimitive> mBox;
 
+		std::shared_ptr<ECS::StaticMeshComponent> mStaticMeshComponent;
 	};
 }

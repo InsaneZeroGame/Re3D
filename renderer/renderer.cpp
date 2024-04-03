@@ -30,7 +30,7 @@ Renderer::BaseRenderer::BaseRenderer():
 	CreateRootSignature();
 	CreatePipelineState();
 	CreateRenderTask();
-	mSkybox = std::make_unique<Skybox>();
+	CreateSkybox();
 }
 
 Renderer::BaseRenderer::~BaseRenderer()
@@ -78,6 +78,20 @@ void Renderer::BaseRenderer::CreateRenderTask()
 	mRenderFlow = std::make_unique<tf::Taskflow>();
 	mRenderExecution = std::make_unique<tf::Executor>();
 
+	auto SkyboxPass = [this]()
+		{
+			//Render Scene
+			mGraphicsCmd->SetPipelineState(mSkybox->GetPipelineState());
+			mGraphicsCmd->SetGraphicsRootSignature(mSkybox->GetRS());
+			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
+			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
+			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
+			mGraphicsCmd->SetGraphicsRootDescriptorTable(1, mSkyboxTexture->GetSRVGpu());
+			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, nullptr);
+			mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), mColorRGBA, 1, &mRect);
+			RenderObject(*mSkybox->GetStaticMeshComponent());
+		};
+
 	auto DepthOnlyPass = [this]()
 		{
 			IDXGISwapChain4* swapChain = (IDXGISwapChain4*)mDeviceManager->GetSwapChain();
@@ -96,7 +110,6 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->OMSetRenderTargets(0, nullptr, true, &mDepthBuffer->GetDSV());
 			mGraphicsCmd->RSSetViewports(1, &mViewPort);
 			mGraphicsCmd->RSSetScissorRects(1, &mRect);
-			mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), mColorRGBA, 1, &mRect);
 			mGraphicsCmd->ClearDepthStencilView(mDepthBuffer->GetDSV(), D3D12_CLEAR_FLAG_DEPTH, 0.0f, 0, 1, &mRect);
 
 			//Set Resources
@@ -142,6 +155,8 @@ void Renderer::BaseRenderer::CreateRenderTask()
 		{
 			//Render Scene
 			mGraphicsCmd->SetPipelineState(mColorPassPipelineState);
+			mGraphicsCmd->SetGraphicsRootSignature(mColorPassRootSignature);
+			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
 			mGraphicsCmd->SetGraphicsRootUnorderedAccessView(1, mClusterBuffer->GetGpuVirtualAddress());
 			mGraphicsCmd->SetGraphicsRootShaderResourceView(2, mLightBuffer->GetGpuVirtualAddress());
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
@@ -177,8 +192,9 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			IDXGISwapChain4* swapChain = (IDXGISwapChain4*)mDeviceManager->GetSwapChain();
 			swapChain->Present(0, 0);
 		};
-	auto [depthOnlyPass, colorPass, postRender,computePass] = mRenderFlow->emplace(DepthOnlyPass,ColorPass,PostRender, ComputePass);
-	colorPass.succeed(depthOnlyPass, computePass);
+	auto [depthOnlyPass,skyboxpass, colorPass, postRender,computePass] = mRenderFlow->emplace(DepthOnlyPass,SkyboxPass,ColorPass,PostRender, ComputePass);
+	skyboxpass.succeed(depthOnlyPass, computePass);
+	colorPass.succeed(skyboxpass);
 	postRender.succeed(colorPass);
 }
 
@@ -186,9 +202,6 @@ void Renderer::BaseRenderer::CreateRenderTask()
 
 void Renderer::BaseRenderer::CreateBuffers()
 {
-
-	
-
 	//auto& vertices = triangle;
 	//1.Vertex Buffer
 	mVertexBuffer = std::make_shared<Resource::VertexBuffer>();
@@ -270,25 +283,70 @@ void Renderer::BaseRenderer::CreateTextures()
 {
 	mDefaultTexture = std::make_shared<Resource::Texture>();
 	auto defaultTexture = AssetLoader::gStbTextureLoader->LoadTextureFromFile("uvmap.png");
-	if (defaultTexture.has_value())
-	{
-		AssetLoader::Texture* newTexture = defaultTexture.value();
-		auto RowPitchBytes = newTexture->mWidth * newTexture->mComponent;
-		mDefaultTexture->Create2D(RowPitchBytes, newTexture->mWidth, newTexture->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
-		mBatchUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
-		D3D12_SUBRESOURCE_DATA sourceData = {};
-		sourceData.pData = newTexture->mdata;
-		sourceData.RowPitch = RowPitchBytes;
-		sourceData.SlicePitch = RowPitchBytes * newTexture->mHeight;
-		mBatchUploader->Upload(mDefaultTexture->GetResource(), 0, &sourceData, 1);
-		mBatchUploader->Transition(mDefaultTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
-	}
+	Ensures(defaultTexture.has_value());
+	AssetLoader::Texture* newTexture = defaultTexture.value();
+	auto RowPitchBytes = newTexture->mWidth * newTexture->mComponent;
+	mDefaultTexture->Create2D(RowPitchBytes, newTexture->mWidth, newTexture->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+	mBatchUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
+	D3D12_SUBRESOURCE_DATA sourceData = {};
+	sourceData.pData = newTexture->mdata;
+	sourceData.RowPitch = RowPitchBytes;
+	sourceData.SlicePitch = RowPitchBytes * newTexture->mHeight;
+	mBatchUploader->Upload(mDefaultTexture->GetResource(), 0, &sourceData, 1);
+	mBatchUploader->Transition(mDefaultTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
 }
 
 void Renderer::BaseRenderer::DepthOnlyPass(const ECS::StaticMeshComponent& InAsset)
 {
+	
 
+}
+
+void Renderer::BaseRenderer::CreateSkybox()
+{
+	mSkybox = std::make_unique<Skybox>();
+	LoadStaticMeshToGpu(*mSkybox->GetStaticMeshComponent());
+
+	mSkyboxTexture = std::make_shared<Resource::Texture>();
+	auto skybox_bottom = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/bottom.jpg");
+	auto skybox_top = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/top.jpg");
+	auto skybox_front = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/front.jpg");
+	auto skybox_back = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/back.jpg");
+	auto skybox_left = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/left.jpg");
+	auto skybox_right = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/right.jpg");
+	Ensures(skybox_bottom.has_value());
+	Ensures(skybox_top.has_value());
+	Ensures(skybox_front.has_value());
+	Ensures(skybox_back.has_value());
+	Ensures(skybox_left.has_value());
+	Ensures(skybox_right.has_value());
+	std::vector<AssetLoader::Texture*> textures =
+	{
+		skybox_right.value(),
+		skybox_left.value(),
+		skybox_top.value(),
+		skybox_bottom.value(),
+		skybox_front.value(),
+		skybox_back.value()
+	};
+
+	auto RowPitchBytes = textures[0]->mWidth * textures[0]->mComponent;
+	mSkyboxTexture->CreateCube(RowPitchBytes, textures[0]->mWidth, textures[0]->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+	mBatchUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
+	int i = 0;
+	std::array<D3D12_SUBRESOURCE_DATA, 6> subResourceData;
+	for (AssetLoader::Texture* newTexture : textures)
+	{
+		D3D12_SUBRESOURCE_DATA& sourceData = subResourceData[i];
+		sourceData.pData = newTexture->mdata;
+		sourceData.RowPitch = RowPitchBytes;
+		sourceData.SlicePitch = RowPitchBytes * newTexture->mHeight;
+		++i;
+	}
+	mBatchUploader->Upload(mSkyboxTexture->GetResource(), 0, subResourceData.data(), subResourceData.size());
+	//mBatchUploader->Transition(mSkyboxTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
 }
 
 void Renderer::BaseRenderer::FirstFrame()
@@ -311,6 +369,11 @@ void Renderer::BaseRenderer::FirstFrame()
 	TransitState(mGraphicsCmd, mDepthBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 	TransitState(mGraphicsCmd, mDefaultTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
+	{
+		TransitState(mGraphicsCmd, mSkyboxTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, cubeFace);
+	}
 
 	auto gridParas = Utils::GetLightGridZParams(mDefaultCamera->GetFar(), mDefaultCamera->GetNear());
 	mLightCullViewData.LightGridZParams = SimpleMath::Vector4(gridParas.x,gridParas.y, gridParas.z,0.0f);
@@ -345,8 +408,7 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	{
 		{ "POSITION",	0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0,  0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
 		{ "NORMAL",		0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "COLOR",		0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD",   0, DXGI_FORMAT_R32G32_FLOAT,	   0, 48, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "TEXCOORD",   0, DXGI_FORMAT_R32G32_FLOAT,	   0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 
 	};
 	lDesc.InputLayout.NumElements = static_cast<UINT>(elements.size());
@@ -360,6 +422,7 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	lDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 	lDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mColorPassPipelineState));
+	mColorPassPipelineState->SetName(L"mColorPassPipelineState");
 	
 	//Depth Only pipeline state
 	lDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
@@ -367,12 +430,14 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	lDesc.PS = {};
 	lDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mPipelineStateDepthOnly));
+	mPipelineStateDepthOnly->SetName(L"mPipelineStateDepthOnly");
 
 	//Compute:Light Cull Pass
 	D3D12_COMPUTE_PIPELINE_STATE_DESC lightCullPassDesc = {};
 	lightCullPassDesc.CS = Utils::ReadShader(L"LightCull.cso");
 	lightCullPassDesc.pRootSignature = mLightCullPassRootSignature;
 	g_Device->CreateComputePipelineState(&lightCullPassDesc, IID_PPV_ARGS(&mLightCullPass));
+	mLightCullPass->SetName(L"mLightCullPass");
 }
 
 void Renderer::BaseRenderer::CreateRootSignature()
@@ -489,12 +554,12 @@ void Renderer::BaseRenderer::RenderObject(const ECS::StaticMeshComponent& InAsse
 
 }
 
-void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter)
+void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter, UINT InSubResource)
 {
 	D3D12_RESOURCE_BARRIER barrier = {};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	barrier.Transition.Subresource = 0;
+	barrier.Transition.Subresource = InSubResource;
 	barrier.Transition.StateBefore = InBefore;
 	barrier.Transition.StateAfter = InAfter;
 	barrier.Transition.pResource = InResource;
@@ -505,6 +570,7 @@ void Renderer::BaseRenderer::UpdataFrameData()
 {
 	mFrameDataCPU.PrjView = mDefaultCamera->GetPrjView();
 	mFrameDataCPU.View = mDefaultCamera->GetView();
+	mFrameDataCPU.Prj = mDefaultCamera->GetPrj();
 	mFrameDataCPU.NormalMatrix = mDefaultCamera->GetNormalMatrix();
 	mFrameDataCPU.DirectionalLightDir.Normalize();
 	mFrameDataGPU->UpdataData<FrameData>(mFrameDataCPU);
@@ -517,7 +583,6 @@ void Renderer::BaseRenderer::UpdataFrameData()
 	mLightCullViewData.ViewMatrix = mDefaultCamera->GetView();
 	mLightCullViewData.InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
 	mLightCullViewDataGpu->UpdataData<LightCullViewData>(mLightCullViewData);
-
 }
 
 void Renderer::BaseRenderer::LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent)

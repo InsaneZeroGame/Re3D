@@ -32,6 +32,7 @@ namespace Renderer
 	{	
 		DirectX::SimpleMath::Matrix PrjView;
 		DirectX::SimpleMath::Matrix View;
+		DirectX::SimpleMath::Matrix Prj;
 		DirectX::SimpleMath::Matrix NormalMatrix;
 		DirectX::SimpleMath::Vector4 DirectionalLightDir;
 		DirectX::SimpleMath::Vector4 DirectionalLightColor;
@@ -59,13 +60,14 @@ namespace Renderer
 		void CreateBuffers();
 		void CreateTextures();
 		void DepthOnlyPass(const ECS::StaticMeshComponent& InAsset);
+		void CreateSkybox();
 		virtual void FirstFrame();
 		virtual void PreRender();
 		virtual void PostRender();
 		virtual void CreatePipelineState();
 		virtual void CreateRootSignature();
 		virtual void RenderObject(const ECS::StaticMeshComponent& InAsset);
-		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter);
+		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter,UINT InSubResource = 0);
 		void UpdataFrameData();
 		void LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent);
 	protected:
@@ -113,6 +115,7 @@ namespace Renderer
 		std::unique_ptr<Resource::UploadBuffer> mLightCullViewDataGpu;
 		//void* mLightCullDataPtr;
 		std::shared_ptr<Resource::Texture> mDefaultTexture;
+		std::shared_ptr<Resource::Texture> mSkyboxTexture;
 		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
 		std::unique_ptr<Skybox> mSkybox;
 		std::array<ECS::LightComponent, 256> mLights;
