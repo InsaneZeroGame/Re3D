@@ -49,5 +49,5 @@ struct FrameData
 struct SkyBoxPsInput
 {
     float4 pos : SV_Position;
-    float2 texcoord : TEXCOORD0;
+    float3 texcoord : TEXCOORD0;
 };

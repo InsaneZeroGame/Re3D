@@ -86,7 +86,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
-			//mGraphicsCmd->SetGraphicsRootDescriptorTable(4, mDefaultTexture->GetSRVGpu());
+			mGraphicsCmd->SetGraphicsRootDescriptorTable(1, mSkyboxTexture->GetSRVGpu());
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, nullptr);
 			mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), mColorRGBA, 1, &mRect);
 			RenderObject(*mSkybox->GetStaticMeshComponent());
@@ -283,24 +283,23 @@ void Renderer::BaseRenderer::CreateTextures()
 {
 	mDefaultTexture = std::make_shared<Resource::Texture>();
 	auto defaultTexture = AssetLoader::gStbTextureLoader->LoadTextureFromFile("uvmap.png");
-	if (defaultTexture.has_value())
-	{
-		AssetLoader::Texture* newTexture = defaultTexture.value();
-		auto RowPitchBytes = newTexture->mWidth * newTexture->mComponent;
-		mDefaultTexture->Create2D(RowPitchBytes, newTexture->mWidth, newTexture->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
-		mBatchUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
-		D3D12_SUBRESOURCE_DATA sourceData = {};
-		sourceData.pData = newTexture->mdata;
-		sourceData.RowPitch = RowPitchBytes;
-		sourceData.SlicePitch = RowPitchBytes * newTexture->mHeight;
-		mBatchUploader->Upload(mDefaultTexture->GetResource(), 0, &sourceData, 1);
-		mBatchUploader->Transition(mDefaultTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-		mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
-	}
+	Ensures(defaultTexture.has_value());
+	AssetLoader::Texture* newTexture = defaultTexture.value();
+	auto RowPitchBytes = newTexture->mWidth * newTexture->mComponent;
+	mDefaultTexture->Create2D(RowPitchBytes, newTexture->mWidth, newTexture->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+	mBatchUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
+	D3D12_SUBRESOURCE_DATA sourceData = {};
+	sourceData.pData = newTexture->mdata;
+	sourceData.RowPitch = RowPitchBytes;
+	sourceData.SlicePitch = RowPitchBytes * newTexture->mHeight;
+	mBatchUploader->Upload(mDefaultTexture->GetResource(), 0, &sourceData, 1);
+	mBatchUploader->Transition(mDefaultTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
 }
 
 void Renderer::BaseRenderer::DepthOnlyPass(const ECS::StaticMeshComponent& InAsset)
 {
+	
 
 }
 
@@ -308,6 +307,46 @@ void Renderer::BaseRenderer::CreateSkybox()
 {
 	mSkybox = std::make_unique<Skybox>();
 	LoadStaticMeshToGpu(*mSkybox->GetStaticMeshComponent());
+
+	mSkyboxTexture = std::make_shared<Resource::Texture>();
+	auto skybox_bottom = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/bottom.jpg");
+	auto skybox_top = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/top.jpg");
+	auto skybox_front = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/front.jpg");
+	auto skybox_back = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/back.jpg");
+	auto skybox_left = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/left.jpg");
+	auto skybox_right = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/right.jpg");
+	Ensures(skybox_bottom.has_value());
+	Ensures(skybox_top.has_value());
+	Ensures(skybox_front.has_value());
+	Ensures(skybox_back.has_value());
+	Ensures(skybox_left.has_value());
+	Ensures(skybox_right.has_value());
+	std::vector<AssetLoader::Texture*> textures =
+	{
+		skybox_right.value(),
+		skybox_left.value(),
+		skybox_top.value(),
+		skybox_bottom.value(),
+		skybox_front.value(),
+		skybox_back.value()
+	};
+
+	auto RowPitchBytes = textures[0]->mWidth * textures[0]->mComponent;
+	mSkyboxTexture->CreateCube(RowPitchBytes, textures[0]->mWidth, textures[0]->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+	mBatchUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
+	int i = 0;
+	std::array<D3D12_SUBRESOURCE_DATA, 6> subResourceData;
+	for (AssetLoader::Texture* newTexture : textures)
+	{
+		D3D12_SUBRESOURCE_DATA& sourceData = subResourceData[i];
+		sourceData.pData = newTexture->mdata;
+		sourceData.RowPitch = RowPitchBytes;
+		sourceData.SlicePitch = RowPitchBytes * newTexture->mHeight;
+		++i;
+	}
+	mBatchUploader->Upload(mSkyboxTexture->GetResource(), 0, subResourceData.data(), subResourceData.size());
+	//mBatchUploader->Transition(mSkyboxTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
 }
 
 void Renderer::BaseRenderer::FirstFrame()
@@ -330,6 +369,11 @@ void Renderer::BaseRenderer::FirstFrame()
 	TransitState(mGraphicsCmd, mDepthBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 	TransitState(mGraphicsCmd, mDefaultTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+	for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
+	{
+		TransitState(mGraphicsCmd, mSkyboxTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, cubeFace);
+	}
 
 	auto gridParas = Utils::GetLightGridZParams(mDefaultCamera->GetFar(), mDefaultCamera->GetNear());
 	mLightCullViewData.LightGridZParams = SimpleMath::Vector4(gridParas.x,gridParas.y, gridParas.z,0.0f);
@@ -510,12 +554,12 @@ void Renderer::BaseRenderer::RenderObject(const ECS::StaticMeshComponent& InAsse
 
 }
 
-void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter)
+void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter, UINT InSubResource)
 {
 	D3D12_RESOURCE_BARRIER barrier = {};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
 	barrier.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
-	barrier.Transition.Subresource = 0;
+	barrier.Transition.Subresource = InSubResource;
 	barrier.Transition.StateBefore = InBefore;
 	barrier.Transition.StateAfter = InAfter;
 	barrier.Transition.pResource = InResource;

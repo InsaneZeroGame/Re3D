@@ -78,15 +78,28 @@ void Renderer::Skybox::CreateRS()
 	cubeTextureRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 	cubeTextureRange.BaseShaderRegister = 1;
 	cubeTextureRange.NumDescriptors = 1;
-	cubeTextureRange.OffsetInDescriptorsFromTableStart = 0;
+	cubeTextureRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 	cubeTextureRange.RegisterSpace = 0;
 	skyboxCubeTexture.DescriptorTable.pDescriptorRanges = &cubeTextureRange;
+	skyboxCubeTexture.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 	std::vector<D3D12_ROOT_PARAMETER> lParameters = { frameDataCBV,skyboxCubeTexture };
 
 	lDesc.pParameters = lParameters.data();
 	lDesc.NumParameters = lParameters.size();
-	lDesc.Init((UINT)lParameters.size(), lParameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+
+	D3D12_STATIC_SAMPLER_DESC cubeSampler = {};
+	cubeSampler.ShaderRegister = 0;
+	cubeSampler.RegisterSpace = 0;
+	cubeSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+	cubeSampler.Filter = D3D12_FILTER_MIN_MAG_MIP_LINEAR;
+	cubeSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	cubeSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+	cubeSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_BORDER;
+
+
+	lDesc.Init((UINT)lParameters.size(), lParameters.data(), 1, &cubeSampler, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
 	ID3DBlob* signature;
 	ID3DBlob* error;

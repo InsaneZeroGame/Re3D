@@ -1,6 +1,6 @@
 #include "shader_common.hlsli"
 
-ConstantBuffer<FrameData> frameData;
+ConstantBuffer<FrameData> frameData : register(b0);
 
 SkyBoxPsInput main(float4 pos : POSITION, float4 normal : NORMAL, float2 textureCoord : TEXCOORD)
 {
@@ -9,6 +9,6 @@ SkyBoxPsInput main(float4 pos : POSITION, float4 normal : NORMAL, float2 texture
     viewMatrixWithOutTranslation._14_24_34_44 = float4(0.0, 0.0, 0.0, 1.0);
     viewMatrixWithOutTranslation._41_42_43_44 = float4(0.0, 0.0, 0.0, 1.0);
     output.pos = mul(mul(pos, viewMatrixWithOutTranslation), frameData.Prj);
-    output.texcoord = textureCoord;
+    output.texcoord = pos.xyz;
     return output;
 }
