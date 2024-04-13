@@ -14,19 +14,36 @@ namespace Window
 	class BaseWindow
 	{
 	public:
-		explicit BaseWindow(int InWidth, int InHeight);
+		BaseWindow(int InWidth, int InHeight);
 		virtual ~BaseWindow();
-		void OnResize(int InWidth, int InHeight);
-		void* GetNativeWindow();
-		int GetWidth() const { return mWidth; }
-		int GetHeight() const { return mHeight; };
-		void WindowLoop();
+		virtual void OnResize(int InWidth, int InHeight) = 0;
+		virtual void* GetNativeWindow() = 0;
+		int GetWidth();
+		int GetHeight();
+		virtual void WindowLoop() = 0;
 		void SetRenderFunc(std::function<void(float)> InFunc);
-	private:
+	protected:
 		int mWidth;
 		int mHeight;
-		GLFWwindow* mWindow;
 		std::function<void(float)> mRenderFunc;
+
 	};
-	inline BaseWindow* gMainWindow = nullptr;
+
+	class GlfwWindow : public BaseWindow
+	{
+	public:
+		explicit GlfwWindow(int InWidth, int InHeight);
+		virtual ~GlfwWindow();
+
+		void OnResize(int InWidth, int InHeight) override;
+
+		void* GetNativeWindow() override;
+
+		void WindowLoop() override;
+
+	private:
+		
+		GLFWwindow* mWindow;
+	};
+	inline GlfwWindow* gMainWindow = nullptr;
 }
