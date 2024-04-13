@@ -48,7 +48,7 @@ void Renderer::DeviceManager::CreateD3DDevice()
 
 			uint32_t useGPUBasedValidation = 0;
 #if _DEBUG
-			useGPUBasedValidation = 1;
+			useGPUBasedValidation = 0;
 #endif
 			if (useGPUBasedValidation)
 			{

@@ -4,8 +4,8 @@
 #include "asset_loader.h"
 #include <memory>
 #include "game_scene.h"
-constexpr int WINDOW_WIDTH = 1280;
-constexpr int WINDOW_HEIGHT = 720;
+constexpr int WINDOW_WIDTH = 1920;
+constexpr int WINDOW_HEIGHT = 1080;
 
 
 int main(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
@@ -22,7 +22,7 @@ int main(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
 	std::unique_ptr<Renderer::BaseRenderer> renderer = std::make_unique<Renderer::BaseRenderer>();
 	renderer->LoadGameScene(newScene);
 	//2.Window
-	Window::gMainWindow = new Window::BaseWindow(WINDOW_WIDTH, WINDOW_HEIGHT);
+	Window::gMainWindow = new Window::GlfwWindow(WINDOW_WIDTH, WINDOW_HEIGHT);
 	//3.Bind renderer and window
 	renderer->SetTargetWindowAndCreateSwapChain((HWND)Window::gMainWindow->GetNativeWindow(), Window::gMainWindow->GetWidth(), Window::gMainWindow->GetHeight());
 	Window::gMainWindow->SetRenderFunc(std::bind(&Renderer::BaseRenderer::Update,renderer.get(), std::placeholders::_1));

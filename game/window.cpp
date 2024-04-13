@@ -43,17 +43,44 @@ namespace Window
 			Delegate(key, scancode, action, mods);
 		}
 	}
+
+	BaseWindow::BaseWindow(int InWidth, int InHeight):
+		mWidth(InWidth),
+		mHeight(InHeight)
+	{
+
+	}
+
+	BaseWindow::~BaseWindow()
+	{
+
+	}
+
+	int BaseWindow::GetWidth()
+	{
+		return mWidth;
+	}
+
+	int BaseWindow::GetHeight()
+	{
+		return mHeight;
+	}
+
+	void BaseWindow::SetRenderFunc(std::function<void(float)> InFunc)
+	{
+		mRenderFunc = InFunc;
+	}
+
 }
 
-Window::BaseWindow::BaseWindow(int InWidth, int InHeight):
-	mWidth(InWidth),
-	mHeight(InHeight)
+Window::GlfwWindow::GlfwWindow(int InWidth, int InHeight):
+	BaseWindow(InWidth,InHeight)
 {
 	/* Initialize the library */
 	Ensures(glfwInit());
 
 	/* Create a windowed mode window and its OpenGL context */
-	mWindow = glfwCreateWindow(InWidth, InHeight, "Re3D", NULL, NULL);
+	mWindow = glfwCreateWindow(mWidth, mHeight, "Re3D", NULL, NULL);
 	glfwMakeContextCurrent(mWindow);
 
 	if (!mWindow)
@@ -69,23 +96,23 @@ Window::BaseWindow::BaseWindow(int InWidth, int InHeight):
 	glfwSwapInterval(0);
 }
 
-Window::BaseWindow::~BaseWindow()
+Window::GlfwWindow::~GlfwWindow()
 {
 	glfwDestroyWindow(mWindow);
 	glfwTerminate();
 }
 
-void Window::BaseWindow::OnResize(int InWidth, int InHeight)
+void Window::GlfwWindow::OnResize(int InWidth, int InHeight)
 {
 	std::cout << "Width : " << InWidth << " Height : " << InHeight << std::endl;
 }
 
-void* Window::BaseWindow::GetNativeWindow()
+void* Window::GlfwWindow::GetNativeWindow()
 {
 	return glfwGetWin32Window(mWindow);
 }
 
-void Window::BaseWindow::WindowLoop()
+void Window::GlfwWindow::WindowLoop()
 {
 	/* Loop until the user closes the window */
 	while (!glfwWindowShouldClose(mWindow))
@@ -103,7 +130,3 @@ void Window::BaseWindow::WindowLoop()
 	}
 }
 
-void Window::BaseWindow::SetRenderFunc(std::function<void(float)> InFunc)
-{
-	mRenderFunc = InFunc;
-}
