@@ -5,6 +5,7 @@
 #include <asset_loader.h>
 #include <camera.h>
 #include "game_scene.h"
+#include <future>
 
 namespace tf
 {
@@ -56,6 +57,7 @@ namespace Renderer
 		void Update(float delta);
 		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene);
 	protected:
+        void CreateGui();
 		void CreateRenderTask();
 		void CreateBuffers();
 		void CreateTextures();
@@ -120,6 +122,10 @@ namespace Renderer
 		std::unique_ptr<Skybox> mSkybox;
 		std::array<ECS::LightComponent, 256> mLights;
 		std::shared_ptr<GAS::GameScene> mCurrentScene;
+        HWND mWindow;
+        std::shared_ptr<class Gui> mGui;
+        bool mHasSkybox = true;
+        std::future<void> mLoadResourceFuture;
 	};
 
 }

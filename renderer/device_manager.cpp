@@ -7,7 +7,6 @@
 constexpr static bool RequireDXRSupport = true;
 static bool g_bTypedUAVLoadSupport_R11G11B10_FLOAT = false;
 static bool g_bTypedUAVLoadSupport_R16G16B16A16_FLOAT = false;
-constexpr static DXGI_FORMAT SwapChainFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
 constexpr int MAX_DESC_NUM = 256;
 
 // Check adapter support for DirectX Raytracing.
@@ -34,7 +33,7 @@ void Renderer::DeviceManager::CreateD3DDevice()
 	uint32_t useDebugLayers = 0;
 #if _DEBUG
 	// Default to true for debug builds
-	useDebugLayers = 0;
+	useDebugLayers = 1;
 #endif
 
 	DWORD dxgiFactoryFlags = 0;
@@ -282,7 +281,7 @@ void Renderer::DeviceManager::CreateSwapChain()
 	DXGI_SWAP_CHAIN_DESC1 swapChainDesc = {};
 	swapChainDesc.Width = mWidth;
 	swapChainDesc.Height = mHeight;
-	swapChainDesc.Format = SwapChainFormat;
+    swapChainDesc.Format = g_DisplayFormat;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.BufferCount = SWAP_CHAIN_BUFFER_COUNT;
 	swapChainDesc.SampleDesc.Count = 1;

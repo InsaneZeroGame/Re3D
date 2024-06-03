@@ -13,8 +13,8 @@ Renderer::Skybox::Skybox():
 	GeometricPrimitive::CreateBox(vertices, indices, { 1.0f,1.0f,1.0f }, false, false);
 	AssetLoader::ObjModelLoader* objLoader = AssetLoader::gObjModelLoader;
 	auto mesh = objLoader->LoadAssetFromFile("cube.obj");
-	Ensures(mesh.has_value());
-	mStaticMeshComponent = std::make_shared<ECS::StaticMeshComponent>(std::move(mesh.value()));
+	Ensures(!mesh.empty());
+    mStaticMeshComponent = std::make_shared<ECS::StaticMeshComponent>(std::move(mesh[0]));
 	CreateRS();
 	CreatePipelineState();
 }

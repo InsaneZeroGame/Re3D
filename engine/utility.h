@@ -1,5 +1,9 @@
 #pragma once
 #include <fstream>
+// Compile-time array size
+template<typename T, int N>
+char (&dim_helper(T (&)[N]))[N];
+#define dim(x) (sizeof(dim_helper(x)))
 
 namespace Utility
 {
@@ -50,5 +54,16 @@ namespace Utility
 
 		return blob;
 	}
+
+	inline std::filesystem::path GetDirectoryWithExecutable() {
+
+        char path[MAX_PATH] = { 0 };
+        if (GetModuleFileNameA(nullptr, path, dim(path)) == 0)
+            return "";
+        std::filesystem::path result = path;
+        result = result.parent_path();
+
+        return result;
+    }
 
 }

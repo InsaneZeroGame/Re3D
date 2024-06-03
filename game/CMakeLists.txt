@@ -16,6 +16,6 @@ set(${TARGET}_Srcs
 
 include_directories(${CMAKE_SOURCE_DIR}/renderer)
 
-add_executable(${TARGET} triangle.cpp ${${TARGET}_Headers} ${${TARGET}_Srcs})
+add_executable(${TARGET} WIN32 triangle.cpp ${${TARGET}_Headers} ${${TARGET}_Srcs})
 target_link_libraries(${TARGET} glfw GSL Renderer spdlog EnTT)
 target_precompile_headers(${TARGET} PRIVATE pch.h)

@@ -29,6 +29,22 @@ namespace Window
 
 	};
 
+	class Win32NavtiveWindow : public BaseWindow{
+    public:
+        Win32NavtiveWindow(int InWidth, int InHeight,HINSTANCE hInst, int nCmdShow);
+        ~Win32NavtiveWindow();
+        // Inherited via BaseWindow
+        void OnResize(int InWidth, int InHeight) override;
+        void* GetNativeWindow() override;
+        void WindowLoop() override;
+
+    private:
+        HWND mNativeWindow;
+        static LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam);
+        std::unique_ptr<DirectX::Keyboard> mKeyboard; 
+    };
+
+
 	class GlfwWindow : public BaseWindow
 	{
 	public:
@@ -45,5 +61,6 @@ namespace Window
 		
 		GLFWwindow* mWindow;
 	};
-	inline GlfwWindow* gMainWindow = nullptr;
-}
+	//inline GlfwWindow* gMainWindow = nullptr;
+    inline Win32NavtiveWindow* gMainWindow = nullptr;
+    }

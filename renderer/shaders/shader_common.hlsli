@@ -46,6 +46,11 @@ struct FrameData
     float4 DirectionalLightColor;
 };
 
+struct ObjectData
+{
+    float4x4 ModelMatrix;
+};
+
 struct SkyBoxPsInput
 {
     float4 pos : SV_Position;

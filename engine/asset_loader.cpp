@@ -1,6 +1,7 @@
 #include "asset_loader.h"
 #include "stb_texture_loader.h"
 #include "obj_model_loader.h"
+#include "fbx_loader.h"
 
 namespace AssetLoader
 {
@@ -11,7 +12,7 @@ namespace AssetLoader
 		char moduleName[_MAX_PATH] = {};
 		GetModuleFileNameA(nullptr, moduleName, _MAX_PATH);
 		std::filesystem::path modulePath(moduleName);
-		mModulePath = modulePath.parent_path();
+        mModulePath = modulePath.parent_path().string() + "\\";
 	}
 
 }
@@ -30,6 +31,7 @@ void AssetLoader::InitAssetLoader()
 {
 	gStbTextureLoader = new StbTextureAssetLoader;
 	gObjModelLoader = new ObjModelLoader;
+    gFbxModelLoader = new FbxLoader;
 }
 
 void AssetLoader::DestroyAssetLoader()

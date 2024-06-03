@@ -1,4 +1,7 @@
 #include "window.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_win32.h"
+#include "imgui/imgui_impl_dx12.h"
 
 namespace Window
 {
@@ -36,14 +39,6 @@ namespace Window
 
 	}
 
-	static void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods)
-	{
-		for (auto& Delegate : Delegates::KeyPressDelegate)
-		{
-			Delegate(key, scancode, action, mods);
-		}
-	}
-
 	BaseWindow::BaseWindow(int InWidth, int InHeight):
 		mWidth(InWidth),
 		mHeight(InHeight)
@@ -71,7 +66,111 @@ namespace Window
 		mRenderFunc = InFunc;
 	}
 
-}
+    LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+
+
+	Win32NavtiveWindow::Win32NavtiveWindow(int InWidth, int InHeight, HINSTANCE hInst, int nCmdShow):
+	BaseWindow(InWidth,InHeight)
+	{
+        // Register class
+        WNDCLASSEX wcex;
+        wcex.cbSize = sizeof(WNDCLASSEX);
+        wcex.style = CS_HREDRAW | CS_VREDRAW;
+        wcex.lpfnWndProc = &Win32NavtiveWindow::WndProc;
+       // wcex.lpfnWndProc = std::bind(&Win32NavtiveWindow::WndProc, this, std::placeholders::_1, std::placeholders::_2,
+       //                              std::placeholders::_3, std::placeholders::_4);
+        wcex.cbClsExtra = 0;
+        wcex.cbWndExtra = 0;
+        wcex.hInstance = hInst;
+        wcex.hIcon = LoadIcon(hInst, IDI_APPLICATION);
+        wcex.hCursor = LoadCursor(nullptr, IDC_ARROW);
+        wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+        wcex.lpszMenuName = nullptr;
+        wcex.lpszClassName = "Re3D";
+        wcex.hIconSm = LoadIcon(hInst, IDI_APPLICATION);
+        Ensures(0 != RegisterClassEx(&wcex));
+
+        // Create window
+        RECT rc = { 0, 0, (LONG)InWidth, (LONG)InHeight };
+        AdjustWindowRect(&rc, WS_OVERLAPPEDWINDOW, FALSE);
+
+        mNativeWindow = CreateWindow("Re3D", "Re3D", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
+                              rc.right - rc.left, rc.bottom - rc.top, nullptr, nullptr, hInst, nullptr);
+
+        Ensures(mNativeWindow != 0);
+
+        //InitializeApplication(app);
+
+        ShowWindow(mNativeWindow, nCmdShow /*SW_SHOWDEFAULT*/);
+        mKeyboard = std::make_unique<DirectX::Keyboard>();
+    }
+
+	//--------------------------------------------------------------------------------------
+    // Called every time the application receives a message
+    //--------------------------------------------------------------------------------------
+    //extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+    LRESULT CALLBACK Win32NavtiveWindow::WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) {
+        switch (message) {
+            case WM_SIZE:
+                //if (mRenderFunc) {
+                //    mRenderFunc(0.0f);
+                //}
+                break;
+            case WM_ACTIVATEAPP:
+                DirectX::Keyboard::ProcessMessage(message, wParam, lParam);
+                //ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam);
+                break;
+            case WM_DESTROY:
+                PostQuitMessage(0);
+                break;
+            case WM_KEYDOWN:
+            case WM_KEYUP:
+            case WM_SYSKEYUP:
+                DirectX::Keyboard::ProcessMessage(message, wParam, lParam);
+                break;
+            default:
+                ImGui_ImplWin32_WndProcHandler(hWnd, message, wParam, lParam);
+                return DefWindowProc(hWnd, message, wParam, lParam);
+        }
+
+        return 0;
+    }
+
+    Win32NavtiveWindow::~Win32NavtiveWindow() {
+    }
+
+    void Win32NavtiveWindow::OnResize(int InWidth, int InHeight) {
+    }
+
+    void* Win32NavtiveWindow::GetNativeWindow() {
+        return mNativeWindow;
+    }
+
+    void Win32NavtiveWindow::WindowLoop() 
+	{
+        do {
+            MSG msg = {};
+            bool done = false;
+            while (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+                TranslateMessage(&msg);
+                DispatchMessage(&msg);
+                auto kb = DirectX::Keyboard::Get().GetState();
+                for (auto& Delegate: Delegates::KeyPressDelegate) 
+				{
+                    Delegate(kb);
+                }
+				
+                if (msg.message == WM_QUIT)
+                    done = true;
+            }
+            mRenderFunc(0.0f);
+            if (done)
+                break;
+        } while (mRenderFunc);  // Returns false to quit loop
+    }
+
+    }  // namespace Window
 
 Window::GlfwWindow::GlfwWindow(int InWidth, int InHeight):
 	BaseWindow(InWidth,InHeight)
@@ -92,7 +191,6 @@ Window::GlfwWindow::GlfwWindow(int InWidth, int InHeight):
 	glfwSetCursorPosCallback(mWindow, &sCursorPos);
 	glfwSetCursorEnterCallback(mWindow, &sOnMouseEntered);
 	glfwSetScrollCallback(mWindow, &scroll_callback);
-	glfwSetKeyCallback(mWindow, &key_callback);
 	glfwSwapInterval(0);
 }
 

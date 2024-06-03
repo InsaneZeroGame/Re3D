@@ -6,10 +6,7 @@
 Gameplay::BaseCamera::BaseCamera()
 {
 	Delegates::KeyPressDelegate.push_back(std::bind(&BaseCamera::KeyDown, this,
-		std::placeholders::_1,
-		std::placeholders::_2,
-		std::placeholders::_3,
-		std::placeholders::_4
+		std::placeholders::_1
 	));
 }
 
@@ -46,36 +43,54 @@ const DirectX::SimpleMath::Matrix Gameplay::BaseCamera::GetPrjView(bool UploadTo
 	return UploadToGpu ? (mView * mViewToClip).Transpose() : mView * mViewToClip;
 }
 
-void Gameplay::BaseCamera::KeyDown(int key, int scancode, int action, int mods)
+void Gameplay::BaseCamera::KeyDown(Keyboard::State InState) 
 {
-	
-	if (action == GLFW_PRESS || action == GLFW_REPEAT)
-	{
-		switch (key)
-		{
-		case GLFW_KEY_W:
-			Forward(0.1f);
-			break;
-		case GLFW_KEY_S:
-			Forward(-0.1f);
-			break;
-		case GLFW_KEY_A:
-			Right(0.1f);
-			break;
-		case GLFW_KEY_D:
-			Right(-0.1f);
-			break;
-		case GLFW_KEY_Q:
-			Yaw(-0.1f);
-			break;
-		case GLFW_KEY_E:
-			Yaw(0.1f);
-			break;
-		default:
-			break;
-		}
-	}
+	if (InState.IsKeyDown(Keyboard::W)){
+        Forward(0.1f);
+    } else if (InState.IsKeyDown(Keyboard::S)) {
+        Forward(-0.1f);
+	} else if (InState.IsKeyDown(Keyboard::A)) {
+        Right(0.1f);
+    } else if (InState.IsKeyDown(Keyboard::D)) {
+        Right(-0.1f);
+    } else if (InState.IsKeyDown(Keyboard::Q)) {
+        Yaw(-0.1f);
+    } else if (InState.IsKeyDown(Keyboard::E))
+    {
+        Yaw(0.1f);
+    }
 }
+
+//void Gameplay::BaseCamera::KeyDown(int key, int scancode, int action, int mods)
+//{
+//	
+//	if (action == GLFW_PRESS || action == GLFW_REPEAT)
+//	{
+//		switch (key)
+//		{
+//		case GLFW_KEY_W:
+//			Forward(0.1f);
+//			break;
+//		case GLFW_KEY_S:
+//			Forward(-0.1f);
+//			break;
+//		case GLFW_KEY_A:
+//			Right(0.1f);
+//			break;
+//		case GLFW_KEY_D:
+//			Right(-0.1f);
+//			break;
+//		case GLFW_KEY_Q:
+//			Yaw(-0.1f);
+//			break;
+//		case GLFW_KEY_E:
+//			Yaw(0.1f);
+//			break;
+//		default:
+//			break;
+//		}
+//	}
+//}
 
 DirectX::SimpleMath::Matrix Gameplay::BaseCamera::GetClipToView(bool UploadToGpu)
 {
@@ -137,7 +152,7 @@ Gameplay::PerspectCamera::PerspectCamera(float InWidth, float InHeight, float In
 	mWidth(InWidth),
 	mHeight(InHeight),
 	mNear(InNear),
-	mFar(125.0)
+	mFar(12500.0)
 {
 	float aspectRatio = (float)InWidth / (float)InHeight;
 	float fovAngleY = 90.0 * XM_PI / 180.0f;

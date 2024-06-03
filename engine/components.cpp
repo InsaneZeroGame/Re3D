@@ -10,16 +10,16 @@ ECS::System::~System()
 
 }
 
-ECS::StaticMeshComponent::StaticMeshComponent(std::vector<Renderer::Vertex>&& Vertices, std::vector<int>&& Indices):
-	mVertices(Vertices),
-	mIndices(Indices),
-	mIndexCount(Indices.size()),
-	mVertexCount(Vertices.size()),
-	StartIndexLocation(0),
-	BaseVertexLocation(0)
-{
-
-}
+//ECS::StaticMeshComponent::StaticMeshComponent(std::vector<Renderer::Vertex>&& Vertices, std::vector<int>&& Indices):
+//	mVertices(Vertices),
+//	mIndices(Indices),
+//	mIndexCount(Indices.size()),
+//	mVertexCount(Vertices.size()),
+//	StartIndexLocation(0),
+//	BaseVertexLocation(0)
+//{
+//
+//}
 
 ECS::StaticMeshComponent::StaticMeshComponent(StaticMesh&& InMesh):
 mVertices(InMesh.mVertices),
@@ -27,7 +27,55 @@ mIndices(InMesh.mIndices),
 mIndexCount(InMesh.mIndices.size()),
 mVertexCount(InMesh.mVertices.size()),
 StartIndexLocation(0),
-BaseVertexLocation(0)
+BaseVertexLocation(0),
+mSubMeshes(InMesh.mSubmeshMap) 
 {
+	//for (auto& submesh : mSubMeshes)
+	//{
+    //    submesh.IndexCount = submesh.TriangleCount * 3;
+	//}
+}
 
+ ECS::TransformComponent::TransformComponent(StaticMesh&& InMesh) : 
+	 mRotation(InMesh.Rotation), mScale(InMesh.Scale), mTranslation(InMesh.Translation)
+ {
+    Translate(mTranslation);
+    Scale(mScale);
+ }
+
+const DirectX::SimpleMath::Matrix& ECS::TransformComponent::GetModelMatrix(bool UploadToGpu /*= true*/) 
+{
+    mMat = 
+        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(X_AXIS, mRotation.x) *
+        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(Y_AXIS, mRotation.y) * 
+        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(Z_AXIS, mRotation.z) *
+        DirectX::SimpleMath::Matrix::CreateTranslation(mTranslation) *
+        DirectX::SimpleMath::Matrix::CreateScale(mScale);
+    return UploadToGpu ? mMat.Transpose() : mMat;
+}
+
+ void ECS::TransformComponent::Translate(const DirectX::SimpleMath::Vector3& InTranslate) {
+
+    mTranslation = InTranslate;
+}
+
+void ECS::TransformComponent::Scale(const DirectX::SimpleMath::Vector3& InScale) {
+    mScale = InScale;
+}
+
+void ECS::TransformComponent::Rotate(const DirectX::SimpleMath::Vector3& InAngles) {
+    mRotation = DirectX::SimpleMath::Vector3(InAngles.x, InAngles.y, InAngles.z);
+}
+
+DirectX::SimpleMath::Vector3& ECS::TransformComponent::GetTranslate() 
+{
+    return  mTranslation;
+}
+
+DirectX::SimpleMath::Vector3& ECS::TransformComponent::GetScale() {
+    return mScale;
+}
+
+DirectX::SimpleMath::Vector3& ECS::TransformComponent::GetRotation() {
+    return mRotation;
 }

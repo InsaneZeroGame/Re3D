@@ -3,6 +3,7 @@
 #include "utility.h"
 #include <camera.h>
 #include "components.h"
+#include "gui.h"
 
 Renderer::BaseRenderer::BaseRenderer():
 	mDeviceManager(std::make_unique<DeviceManager>()),
@@ -41,19 +42,19 @@ Renderer::BaseRenderer::~BaseRenderer()
 
 void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight)
 {
+    mWindow = InWindow;
 	mWidth = InWidth;
 	mHeight = InHeight;
 	mDeviceManager->SetTargetWindowAndCreateSwapChain(InWindow, InWidth, InHeight);
 	//Use Reverse Z
 	mDefaultCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f);
 	//auto camera = std::make_shared<Gameplay::PerspectCamera>(InWidth, InHeight, 0.1,125);
-
 	mDefaultCamera->LookAt({ 0.0,3.0,2.0 }, { 0.0f,1.0f,0.0f }, { 0.0f,1.0f,0.0f });
-
 	mDepthBuffer = std::make_shared<Resource::DepthBuffer>(0.0f, 0);
 	mDepthBuffer->Create(L"DepthBuffer", mWidth, mHeight, DXGI_FORMAT_D32_FLOAT);
 	mViewPort = { 0,0,(float)mWidth,(float)mHeight,0.0,1.0 };
 	mRect = { 0,0,mWidth,mHeight };
+    CreateGui();
 }
 
 void Renderer::BaseRenderer::Update(float delta)
@@ -66,11 +67,20 @@ void Renderer::BaseRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGam
 {
 	mCurrentScene = InGameScene;
 	entt::registry& sceneRegistery = mCurrentScene->GetRegistery();
-	auto allStaticMeshComponents = sceneRegistery.view<ECS::StaticMeshComponent>();
-	allStaticMeshComponents.each([this](auto entity, ECS::StaticMeshComponent& renderComponent) 
+    mLoadResourceFuture = std::async(std::launch::async, [&]() 
 		{
-			LoadStaticMeshToGpu(renderComponent);
+			auto allStaticMeshComponents = sceneRegistery.view<ECS::StaticMeshComponent>();
+			allStaticMeshComponents.each([this](auto entity, ECS::StaticMeshComponent& renderComponent) {
+				LoadStaticMeshToGpu(renderComponent);
+			});
 		});
+    mGui->SetCurrentScene(InGameScene);
+}
+
+void Renderer::BaseRenderer::CreateGui() 
+{
+    mGui = std::make_shared<Gui>();
+    mGui->CreateGui(mWindow);
 }
 
 void Renderer::BaseRenderer::CreateRenderTask()
@@ -81,6 +91,10 @@ void Renderer::BaseRenderer::CreateRenderTask()
 	auto SkyboxPass = [this]()
 		{
 			//Render Scene
+			if (!mHasSkybox)
+			{
+                return;
+			}
 			mGraphicsCmd->SetPipelineState(mSkybox->GetPipelineState());
 			mGraphicsCmd->SetGraphicsRootSignature(mSkybox->GetRS());
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
@@ -122,12 +136,17 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->IASetIndexBuffer(&ibview);
 			mGraphicsCmd->SetPipelineState(mPipelineStateDepthOnly);
 			using namespace ECS;
-			auto& sceneRegistry = mCurrentScene->GetRegistery();
-			auto renderEntities = sceneRegistry.view<StaticMeshComponent>();
-			renderEntities.each([=](auto entity,auto component) 
-				{
-					RenderObject(component);
-				});
+			if (mCurrentScene && mCurrentScene->IsSceneReady())
+			{
+                auto& sceneRegistry = mCurrentScene->GetRegistery();
+                auto renderEntities = sceneRegistry.view<StaticMeshComponent, TransformComponent>();
+                //auto renderEntitiesCount = renderEntities.size();
+                renderEntities.each([=](auto entity, auto& renderComponent, auto& transformComponent) {
+                    auto modelMatrix = transformComponent.GetModelMatrix();
+                    mGraphicsCmd->SetGraphicsRoot32BitConstants(4, 16, &modelMatrix, 0);
+                    RenderObject(renderComponent);
+                });
+			}
 		};
 
 	auto ComputePass = [this]() 
@@ -162,16 +181,26 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
-			mGraphicsCmd->SetGraphicsRootDescriptorTable(4, mDefaultTexture->GetSRVGpu());
+			mGraphicsCmd->SetGraphicsRootDescriptorTable(5, mDefaultTexture->GetSRVGpu());
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
 			using namespace ECS;
-			auto& sceneRegistry = mCurrentScene->GetRegistery();
-			auto renderEntities = sceneRegistry.view<StaticMeshComponent>();
-			renderEntities.each([=](auto entity, auto component)
-				{
-					RenderObject(component);
-				});
+            if (mCurrentScene && mCurrentScene->IsSceneReady()) 
+			{
+                auto& sceneRegistry = mCurrentScene->GetRegistery();
+                auto renderEntities = sceneRegistry.view<StaticMeshComponent, TransformComponent>();
+                renderEntities.each([=](auto entity, auto& renderComponent, auto& transformComponent) {
+                    auto modelMatrix = transformComponent.GetModelMatrix();
+                    mGraphicsCmd->SetGraphicsRoot32BitConstants(4, 16, &modelMatrix, 0);
+                    RenderObject(renderComponent);
+                });
+			}
 		};
+
+	auto GuiPass = [=] {
+        mGui->BeginGui();
+        mGui->Render();
+		mGui->EndGui(mGraphicsCmd);
+    };
 
 	auto PostRender = [this]()
 		{
@@ -192,10 +221,12 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			IDXGISwapChain4* swapChain = (IDXGISwapChain4*)mDeviceManager->GetSwapChain();
 			swapChain->Present(0, 0);
 		};
-	auto [depthOnlyPass,skyboxpass, colorPass, postRender,computePass] = mRenderFlow->emplace(DepthOnlyPass,SkyboxPass,ColorPass,PostRender, ComputePass);
+    auto [depthOnlyPass, skyboxpass, colorPass, postRender, computePass, guiPass ] =
+            mRenderFlow->emplace(DepthOnlyPass, SkyboxPass, ColorPass, PostRender, ComputePass, GuiPass);
 	skyboxpass.succeed(depthOnlyPass, computePass);
 	colorPass.succeed(skyboxpass);
-	postRender.succeed(colorPass);
+    guiPass.succeed(colorPass);
+    postRender.succeed(guiPass);
 }
 
 
@@ -256,14 +287,14 @@ void Renderer::BaseRenderer::CreateBuffers()
 		light.pos[2] = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
 
 		light.pos[0] *= size;
-		light.pos[1] *= 3.0f;
+		light.pos[1] *= 1.0;
 		light.pos[2] *= size;
 		light.pos[3] = 1.0f;
 
 		light.color[0] = float(rand()) / RAND_MAX;
 		light.color[1] = float(rand()) / RAND_MAX;
 		light.color[2] = float(rand()) / RAND_MAX;
-		light.radius_attenu[0] = float(rand()) * 20.0f / RAND_MAX;
+        light.radius_attenu[0] = 160.0f;
 		light.radius_attenu[1] = float(rand()) * 1.2f / RAND_MAX;
 		light.radius_attenu[2] = float(rand()) * 1.2f / RAND_MAX;
 		light.radius_attenu[3] = float(rand()) * 1.2f / RAND_MAX;
@@ -309,12 +340,12 @@ void Renderer::BaseRenderer::CreateSkybox()
 	LoadStaticMeshToGpu(*mSkybox->GetStaticMeshComponent());
 
 	mSkyboxTexture = std::make_shared<Resource::Texture>();
-	auto skybox_bottom = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/bottom.jpg");
-	auto skybox_top = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/top.jpg");
-	auto skybox_front = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/front.jpg");
-	auto skybox_back = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/back.jpg");
-	auto skybox_left = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/left.jpg");
-	auto skybox_right = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/right.jpg");
+    auto skybox_bottom = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/ny.png");
+    auto skybox_top = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/py.png");
+    auto skybox_front = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/pz.png");
+    auto skybox_back = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/nz.png");
+    auto skybox_left = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/nx.png");
+    auto skybox_right = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/px.png");
 	Ensures(skybox_bottom.has_value());
 	Ensures(skybox_top.has_value());
 	Ensures(skybox_front.has_value());
@@ -473,11 +504,20 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		D3D12_ROOT_PARAMETER diffuseColorTexture = {};
 		diffuseColorTexture.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 
+
+		D3D12_ROOT_PARAMETER componentData = {};
+        componentData.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
+        componentData.Constants.RegisterSpace = 0;
+        componentData.Constants.ShaderRegister = 4;
+		//RTS matrix
+        componentData.Constants.Num32BitValues = 16;
+        componentData.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+
 		D3D12_DESCRIPTOR_RANGE diffuseRange = {};
 		//Texture table range
 		diffuseRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		diffuseRange.NumDescriptors = 1;
-		diffuseRange.BaseShaderRegister = 4;
+		diffuseRange.BaseShaderRegister = 5;
 		diffuseRange.RegisterSpace = 0;
 		//auto descSize = g_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
 		//auto offsetInByte = mDefaultTexture->GetSRVGpu().ptr - g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap()->GetGPUDescriptorHandleForHeapStart().ptr;
@@ -489,6 +529,7 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		diffuseColorTexture.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 
+		
 
 		std::vector<D3D12_ROOT_PARAMETER> parameters =
 		{
@@ -496,7 +537,8 @@ void Renderer::BaseRenderer::CreateRootSignature()
 			clusterBuffer,//1
 			lightBuffer,//2
 			lightCullViewData,//3
-			diffuseColorTexture//4
+            componentData,//4
+			diffuseColorTexture//5
 		};
 
 		//Samplers
@@ -550,8 +592,11 @@ void Renderer::BaseRenderer::CreateRootSignature()
 void Renderer::BaseRenderer::RenderObject(const ECS::StaticMeshComponent& InAsset)
 {
 	//Render 
-	mGraphicsCmd->DrawIndexedInstanced((UINT)InAsset.mIndexCount, 1, InAsset.StartIndexLocation, InAsset.BaseVertexLocation, 0);
-
+	for (const auto& subMesh : InAsset.mSubMeshes)
+	{
+        mGraphicsCmd->DrawIndexedInstanced((UINT)subMesh.second.IndexCount, 1, InAsset.StartIndexLocation + subMesh.second.IndexOffset,
+                                           InAsset.BaseVertexLocation, 0);
+	}
 }
 
 void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter, UINT InSubResource)

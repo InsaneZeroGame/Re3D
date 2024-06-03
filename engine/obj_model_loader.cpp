@@ -37,12 +37,12 @@ static void CalcNormal(float N[3], float v0[3], float v1[3], float v2[3]) {
 	}
 }
 
-std::optional<ECS::StaticMesh> AssetLoader::ObjModelLoader::LoadAssetFromFile(std::string InFileName)
+std::vector<ECS::StaticMesh>& AssetLoader::ObjModelLoader::LoadAssetFromFile(std::string InFileName)
 {
 	auto fileName = mModulePath.string() + "\\" + InFileName;
 	if (!std::filesystem::exists(std::filesystem::path(fileName)))
 	{
-		return {};
+		return mStaticMeshes;
 	}
 	std::vector<tinyobj::shape_t> shapes;
 	std::vector<tinyobj::material_t> materials;
@@ -53,6 +53,7 @@ std::optional<ECS::StaticMesh> AssetLoader::ObjModelLoader::LoadAssetFromFile(st
 	// Loop over shapes
 	// shape = mesh
 	ECS::StaticMesh mesh;
+    //mesh.mSubMeshes.push_back({});
 
 		tinyobj::attrib_t attrib;
 		auto mtlDir = std::filesystem::path(fileName).parent_path();
@@ -175,7 +176,13 @@ std::optional<ECS::StaticMesh> AssetLoader::ObjModelLoader::LoadAssetFromFile(st
 				}
 			}
 		}
-	return mesh;
+        ECS::SubMesh lDummySubmesh = {};
+        lDummySubmesh.TriangleCount = mesh.mIndices.size() / 3;
+        lDummySubmesh.IndexCount = mesh.mIndices.size();
+        lDummySubmesh.IndexOffset = 0;
+        mesh.mSubmeshMap[0] = (lDummySubmesh);
+        mStaticMeshes.push_back(mesh);
+	return mStaticMeshes;
 }
 
 

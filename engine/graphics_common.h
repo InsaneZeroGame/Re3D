@@ -14,7 +14,7 @@ namespace Renderer
 		std::array<uint32_t, 8> light;
 	};
 
-	constexpr int MAX_ELE_COUNT = 1000000;
+	constexpr int MAX_ELE_COUNT = 5000000;
 	constexpr int VERTEX_SIZE_IN_BYTE = sizeof(Renderer::Vertex);
 	constexpr int MAX_LIGHT_PER_TYPE = 32;
 	constexpr int CLUSTER_X = 32;

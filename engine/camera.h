@@ -13,7 +13,8 @@ namespace Gameplay
 		const SimpleMath::Matrix GetView(bool UploadToGpu = true);
 		const SimpleMath::Matrix GetNormalMatrix(bool UploadToGpu = true);
 		const SimpleMath::Matrix GetPrjView(bool UploadToGpu = true);
-		virtual void KeyDown(int key, int scancode, int action, int mods);
+		//virtual void KeyDown(int key, int scancode, int action, int mods);
+        virtual void KeyDown(Keyboard::State InState);
 		SimpleMath::Matrix GetClipToView(bool UploadToGpu = true);
 	protected:
 		void Forward(float InSpeed);

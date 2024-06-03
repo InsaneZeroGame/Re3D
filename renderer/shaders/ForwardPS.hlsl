@@ -3,7 +3,7 @@
 StructuredBuffer<Light> lights : register(t1);
 RWStructuredBuffer<Cluster> clusters : register(u2);
 ConstantBuffer<LightCullViewData> View : register(b3);
-Texture2D<float4> defaultTexture : register(t4);
+Texture2D<float4> defaultTexture : register(t5);
 SamplerState defaultSampler : register(s0);
 static const int CLUSTER_X = 32;
 static const int CLUSTER_Y = 16;

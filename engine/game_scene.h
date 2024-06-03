@@ -9,11 +9,17 @@ namespace GAS
 
 		virtual ~GameScene();
 
-		entt::entity CreateEntityWithMesh(const std::string InMeshFilePath);
+		void CreateEntitiesWithMesh(const std::string InMeshFilePath);
 
 		entt::registry& GetRegistery();
 
+		std::atomic_bool& IsSceneReady();
+
 	protected:
 		entt::registry mRegistery;
+
+		std::mutex mLoadMutex;
+		
+		std::atomic_bool mLoaded = false;
 	};
 }

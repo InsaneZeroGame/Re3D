@@ -26,11 +26,6 @@
 // Use the C++ standard templated min/max
 #define NOMINMAX
 
-// DirectX apps don't need GDI
-#define NODRAWTEXT
-#define NOGDI
-#define NOBITMAP
-
 // Include <mcx.h> if you need this
 #define NOMCX
 
@@ -91,6 +86,8 @@
 #include "graphics_common.h"
 #include <entt/entt.hpp>
 #include <entt/entity/registry.hpp>
+#include <Keyboard.h>
+#include <Mouse.h>
 
 #pragma comment(lib,"dxgi.lib")
 #pragma comment(lib,"d3d12.lib")

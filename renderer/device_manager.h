@@ -10,7 +10,7 @@ namespace Renderer
 	inline Resource::ColorBuffer g_DisplayPlane[SWAP_CHAIN_BUFFER_COUNT];
 	inline ID3D12Device4* g_Device = nullptr;
 	inline class DescHeap* g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
-
+    inline DXGI_FORMAT g_DisplayFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
 
 	class DescHeap
 	{

@@ -37,7 +37,7 @@ CPMAddPackage(
 
 CPMAddPackage(
   NAME EnTT
-  GIT_TAG v3.13.1
+  GIT_TAG v3.13.2
   GITHUB_REPOSITORY skypjack/entt
   # EnTT's CMakeLists screws with configuration options
   DOWNLOAD_ONLY True

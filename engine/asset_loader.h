@@ -38,9 +38,10 @@ namespace AssetLoader
 
 		virtual ~ModelAssetLoader() {};
 
-		virtual std::optional<ECS::StaticMesh> LoadAssetFromFile(std::string InFileName) { return {}; };
+		virtual std::vector<ECS::StaticMesh>& LoadAssetFromFile(std::string InFileName) { return mStaticMeshes; };
 
-	private:
+	protected:
+        std::vector<ECS::StaticMesh> mStaticMeshes;
 
 	};
 
@@ -59,6 +60,7 @@ namespace AssetLoader
 
 	inline TextureAssetLoader* gStbTextureLoader;
 	inline class ObjModelLoader* gObjModelLoader;
+    inline class FbxLoader* gFbxModelLoader;
 
 	void InitAssetLoader();
 	void DestroyAssetLoader();

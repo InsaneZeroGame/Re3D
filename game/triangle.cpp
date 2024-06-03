@@ -8,23 +8,27 @@ constexpr int WINDOW_WIDTH = 1920;
 constexpr int WINDOW_HEIGHT = 1080;
 
 
-int main(HINSTANCE hInst, HINSTANCE hInstPrev, PSTR cmdline, int cmdshow)
-{
+int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance*/, _In_ LPWSTR /*lpCmdLine*/,
+                    _In_ int nCmdShow) {
 	//asset loader
 	AssetLoader::InitAssetLoader();
 	//Game Scene 
 	std::shared_ptr<GAS::GameScene> newScene = std::make_shared<GAS::GameScene>();
-	newScene->CreateEntityWithMesh("surface.obj");
-	newScene->CreateEntityWithMesh("cube.obj");
-	newScene->CreateEntityWithMesh("sphere.obj");
+	//newScene->CreateEntityWithMesh("Mesh_Plane.FBX");
+    //newScene->CreateEntitiesWithMesh("plane.fbx");
+    newScene->CreateEntitiesWithMesh("SM_Shaderball.FBX");
+	//newScene->CreateEntitiesWithMesh("NewSponza_Main_Yup_002.FBX");
+
+	//newScene->CreateEntityWithMesh("cube.obj");
+	//newScene->CreateEntityWithMesh("sphere.obj");
 
 	//1.Renderer
 	std::unique_ptr<Renderer::BaseRenderer> renderer = std::make_unique<Renderer::BaseRenderer>();
-	renderer->LoadGameScene(newScene);
 	//2.Window
-	Window::gMainWindow = new Window::GlfwWindow(WINDOW_WIDTH, WINDOW_HEIGHT);
+    Window::gMainWindow = new Window::Win32NavtiveWindow(WINDOW_WIDTH, WINDOW_HEIGHT, hInstance, nCmdShow);
 	//3.Bind renderer and window
 	renderer->SetTargetWindowAndCreateSwapChain((HWND)Window::gMainWindow->GetNativeWindow(), Window::gMainWindow->GetWidth(), Window::gMainWindow->GetHeight());
+    renderer->LoadGameScene(newScene);
 	Window::gMainWindow->SetRenderFunc(std::bind(&Renderer::BaseRenderer::Update,renderer.get(), std::placeholders::_1));
 	//4.Window Message Loop
 	Window::gMainWindow->WindowLoop();
