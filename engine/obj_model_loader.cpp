@@ -37,9 +37,9 @@ static void CalcNormal(float N[3], float v0[3], float v1[3], float v2[3]) {
 	}
 }
 
-std::vector<ECS::StaticMesh>& AssetLoader::ObjModelLoader::LoadAssetFromFile(std::string InFileName)
+std::vector<ECS::StaticMesh>& AssetLoader::ObjModelLoader::LoadAssetFromFile(std::string_view InFileName)
 {
-	auto fileName = mModulePath.string() + "\\" + InFileName;
+	auto fileName = mModulePath.string() + "\\" + InFileName.data();
 	if (!std::filesystem::exists(std::filesystem::path(fileName)))
 	{
 		return mStaticMeshes;

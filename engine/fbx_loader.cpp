@@ -1194,7 +1194,7 @@ void AssetLoader::FbxLoader::LoadTextureMaterial(FbxScene* InScene, const std::s
             //}
 
             int lTextureObject = 0;
-            std::optional<Texture*> newTexture =  gStbTextureLoader->LoadTextureFromFile(lFileName.Buffer());
+            std::optional<TextureData*> newTexture =  gStbTextureLoader->LoadTextureFromFile(lFileName.Buffer());
             if (newTexture.has_value())
             {
                 mTextureMap[lFileName.Buffer()] = newTexture.value();
@@ -1206,14 +1206,14 @@ void AssetLoader::FbxLoader::LoadTextureMaterial(FbxScene* InScene, const std::s
                 // Load texture from relative file name (relative to FBX file)
                 const FbxString lResolvedFileName =
                         FbxPathUtils::Bind(lAbsFolderName, lFileTexture->GetRelativeFileName());
-                std::optional<Texture*> newTexture = gStbTextureLoader->LoadTextureFromFile(lResolvedFileName.Buffer());
+                std::optional<TextureData*> newTexture = gStbTextureLoader->LoadTextureFromFile(lResolvedFileName.Buffer());
             }
 
             if (!newTexture.has_value()) {
                 // Load texture from file name only (relative to FBX file)
                 const FbxString lTextureFileName = FbxPathUtils::GetFileName(lFileName);
                 const FbxString lResolvedFileName = FbxPathUtils::Bind(lAbsFolderName, lTextureFileName);
-                std::optional<Texture*> newTexture = gStbTextureLoader->LoadTextureFromFile(lResolvedFileName.Buffer());
+                std::optional<TextureData*> newTexture = gStbTextureLoader->LoadTextureFromFile(lResolvedFileName.Buffer());
             }
 
             if (!newTexture.has_value()) {
@@ -1330,7 +1330,7 @@ AssetLoader::FbxLoader::~FbxLoader() {
     DestroySdkObjects(lSdkManager, lResult);
 }
 
-std::vector<ECS::StaticMesh>& AssetLoader::FbxLoader::LoadAssetFromFile(std::string InFileName) {
+std::vector<ECS::StaticMesh>& AssetLoader::FbxLoader::LoadAssetFromFile(std::string_view InFileName) {
     // The example can take a FBX file as an argument.
     std::lock_guard<std::mutex> lock(mMeshMutex);
     if (!mStaticMeshes.empty())
@@ -1338,7 +1338,7 @@ std::vector<ECS::StaticMesh>& AssetLoader::FbxLoader::LoadAssetFromFile(std::str
         std::vector<ECS::StaticMesh> emptyVector = {};
         mStaticMeshes.swap(emptyVector);
     }
-    FbxString lFilePath((mModulePath.string() +  InFileName).c_str());
+    FbxString lFilePath((mModulePath.string() +  InFileName.data()).c_str());
 
     if (lFilePath.IsEmpty()) {
         lResult = false;

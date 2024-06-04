@@ -15,11 +15,11 @@ public:
     //FbxLoader& operator=(const FbxLoader&) = delete;
     //FbxLoader& operator=(FbxLoader&&) = delete;
 
-    std::vector<ECS::StaticMesh>& LoadAssetFromFile(std::string InFileName) override;
+    std::vector<ECS::StaticMesh>& LoadAssetFromFile(std::string_view InFileName) override;
     //static FbxLoader& GetInstance();
 
 private:
-    std::unordered_map<std::string, Texture*> mTextureMap;
+    std::unordered_map<std::string, TextureData*> mTextureMap;
     class FbxManager* lSdkManager = NULL;
     class FbxScene* lScene = NULL;
     bool lResult;

@@ -181,7 +181,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
-			mGraphicsCmd->SetGraphicsRootDescriptorTable(5, mDefaultTexture->GetSRVGpu());
+			mGraphicsCmd->SetGraphicsRootDescriptorTable(5, mTextureMap["defaultTexture"]->GetSRVGpu());
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
 			using namespace ECS;
             if (mCurrentScene && mCurrentScene->IsSceneReady()) 
@@ -312,20 +312,34 @@ void Renderer::BaseRenderer::CreateBuffers()
 
 void Renderer::BaseRenderer::CreateTextures()
 {
-	mDefaultTexture = std::make_shared<Resource::Texture>();
-	auto defaultTexture = AssetLoader::gStbTextureLoader->LoadTextureFromFile("uvmap.png");
-	Ensures(defaultTexture.has_value());
-	AssetLoader::Texture* newTexture = defaultTexture.value();
-	auto RowPitchBytes = newTexture->mWidth * newTexture->mComponent;
-	mDefaultTexture->Create2D(RowPitchBytes, newTexture->mWidth, newTexture->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+	std::shared_ptr<Resource::Texture> newTexture =  LoadMaterial("uvmap.png");
+	if (newTexture)
+	{
+		mTextureMap["defaultTexture"] = newTexture;
+	}
+}
+
+std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMaterial(std::string_view InTextureName)
+{
+	auto newTextureData = AssetLoader::gStbTextureLoader->LoadTextureFromFile(InTextureName);
+	if (!newTextureData.has_value())
+	{
+		return nullptr;
+	}
+
+	std::shared_ptr<Resource::Texture> newTexture = std::make_shared<Resource::Texture>();
+	auto RowPitchBytes = newTextureData.value()->mWidth * newTextureData.value()->mComponent;
+	newTexture->Create2D(RowPitchBytes, newTextureData.value()->mWidth, newTextureData.value()->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
 	mBatchUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
 	D3D12_SUBRESOURCE_DATA sourceData = {};
-	sourceData.pData = newTexture->mdata;
+	sourceData.pData = newTextureData.value()->mdata;
 	sourceData.RowPitch = RowPitchBytes;
-	sourceData.SlicePitch = RowPitchBytes * newTexture->mHeight;
-	mBatchUploader->Upload(mDefaultTexture->GetResource(), 0, &sourceData, 1);
-	mBatchUploader->Transition(mDefaultTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	sourceData.SlicePitch = RowPitchBytes * newTextureData.value()->mHeight;
+	mBatchUploader->Upload(newTexture->GetResource(), 0, &sourceData, 1);
+	mBatchUploader->Transition(newTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
+	return newTexture;
+
 }
 
 void Renderer::BaseRenderer::DepthOnlyPass(const ECS::StaticMeshComponent& InAsset)
@@ -352,7 +366,7 @@ void Renderer::BaseRenderer::CreateSkybox()
 	Ensures(skybox_back.has_value());
 	Ensures(skybox_left.has_value());
 	Ensures(skybox_right.has_value());
-	std::vector<AssetLoader::Texture*> textures =
+	std::vector<AssetLoader::TextureData*> textures =
 	{
 		skybox_right.value(),
 		skybox_left.value(),
@@ -367,7 +381,7 @@ void Renderer::BaseRenderer::CreateSkybox()
 	mBatchUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
 	int i = 0;
 	std::array<D3D12_SUBRESOURCE_DATA, 6> subResourceData;
-	for (AssetLoader::Texture* newTexture : textures)
+	for (AssetLoader::TextureData* newTexture : textures)
 	{
 		D3D12_SUBRESOURCE_DATA& sourceData = subResourceData[i];
 		sourceData.pData = newTexture->mdata;
@@ -399,7 +413,7 @@ void Renderer::BaseRenderer::FirstFrame()
 
 	TransitState(mGraphicsCmd, mDepthBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-	TransitState(mGraphicsCmd, mDefaultTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	TransitState(mGraphicsCmd, mTextureMap["defaultTexture"]->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
 	{
@@ -639,3 +653,5 @@ void Renderer::BaseRenderer::LoadStaticMeshToGpu(ECS::StaticMeshComponent& InCom
 	mVertexBufferCpu->UploadData<Vertex>(vertices);
 	mIndexBufferCpu->UploadData<int>(indices);
 }
+
+

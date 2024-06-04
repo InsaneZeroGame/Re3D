@@ -3,15 +3,15 @@
 
 namespace AssetLoader
 {
-	struct Texture
+	struct TextureData
 	{
 		int mWidth;
 		int mHeight;
 		int mComponent;
 		uint8_t* mdata;
 
-		Texture():mdata(nullptr),mWidth(0),mHeight(0),mComponent(0) {};
-		~Texture() 
+		TextureData():mdata(nullptr),mWidth(0),mHeight(0),mComponent(0) {};
+		~TextureData() 
 		{
 			if (mdata)
 			{
@@ -38,7 +38,7 @@ namespace AssetLoader
 
 		virtual ~ModelAssetLoader() {};
 
-		virtual std::vector<ECS::StaticMesh>& LoadAssetFromFile(std::string InFileName) { return mStaticMeshes; };
+		virtual std::vector<ECS::StaticMesh>& LoadAssetFromFile(std::string_view InFileName) { return mStaticMeshes; };
 
 	protected:
         std::vector<ECS::StaticMesh> mStaticMeshes;
@@ -52,7 +52,7 @@ namespace AssetLoader
 
 		virtual ~TextureAssetLoader();
 
-		virtual std::optional<Texture*> LoadTextureFromFile(std::string InFileName) { return {}; };
+		virtual std::optional<TextureData*> LoadTextureFromFile(std::string_view InFileName) { return {}; };
 
 	private:
 

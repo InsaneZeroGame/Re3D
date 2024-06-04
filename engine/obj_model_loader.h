@@ -10,7 +10,7 @@ namespace AssetLoader
 
 		~ObjModelLoader();
 
-		std::vector<ECS::StaticMesh>& LoadAssetFromFile(std::string InFileName) override;
+		std::vector<ECS::StaticMesh>& LoadAssetFromFile(std::string_view InFileName) override;
 
 	private:
 	};

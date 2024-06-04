@@ -4,15 +4,15 @@
 
 namespace AssetLoader
 {
-	std::optional<AssetLoader::Texture*> StbTextureAssetLoader::LoadTextureFromFile(std::string InFileName)
+	std::optional<AssetLoader::TextureData*> StbTextureAssetLoader::LoadTextureFromFile(std::string_view InFileName)
 	{
-		auto fileName = mModulePath.string() + "\\" + InFileName;
+		auto fileName = mModulePath.string() + "\\" + InFileName.data();
 
 		if (!std::filesystem::exists(fileName))
 		{
 			return {};
 		}
-		Texture* newTexutre = new Texture;
+		TextureData* newTexutre = new TextureData;
 		const auto& filePath = std::filesystem::path(fileName);
 		const auto& fileExtension = filePath.extension();
 		stbi_uc* data = stbi_load(filePath.string().c_str(), &newTexutre->mWidth, &newTexutre->mHeight, &newTexutre->mComponent, 4);

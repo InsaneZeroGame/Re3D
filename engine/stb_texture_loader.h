@@ -7,7 +7,7 @@ namespace AssetLoader
 	public:
 		StbTextureAssetLoader() {};
 		~StbTextureAssetLoader() {};
-		std::optional<Texture*> LoadTextureFromFile(std::string InFileName) override;
+		std::optional<TextureData*> LoadTextureFromFile(std::string_view InFileName) override;
 	private:
 
 	};

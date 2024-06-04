@@ -72,6 +72,7 @@ namespace Renderer
 		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter,UINT InSubResource = 0);
 		void UpdataFrameData();
 		void LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent);
+		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName);
 	protected:
 		std::unique_ptr<class DeviceManager> mDeviceManager;
 		std::shared_ptr<class CmdManager> mCmdManager;
@@ -116,7 +117,7 @@ namespace Renderer
 		LightCullViewData mLightCullViewData;
 		std::unique_ptr<Resource::UploadBuffer> mLightCullViewDataGpu;
 		//void* mLightCullDataPtr;
-		std::shared_ptr<Resource::Texture> mDefaultTexture;
+		//std::shared_ptr<Resource::Texture> mDefaultTexture;
 		std::shared_ptr<Resource::Texture> mSkyboxTexture;
 		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
 		std::unique_ptr<Skybox> mSkybox;
@@ -126,6 +127,7 @@ namespace Renderer
         std::shared_ptr<class Gui> mGui;
         bool mHasSkybox = true;
         std::future<void> mLoadResourceFuture;
+		std::unordered_map<std::string_view, std::shared_ptr<Resource::Texture>> mTextureMap;
 	};
 
 }
