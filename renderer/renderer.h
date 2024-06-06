@@ -74,6 +74,7 @@ namespace Renderer
 		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter,UINT InSubResource = 0);
 		void UpdataFrameData();
 		void LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent);
+		void UploadDataToResource(ID3D12Resource* InDestResource,const void* data,uint64_t size,uint64_t InDestOffset);
 	protected:
 		std::unique_ptr<class DeviceManager> mDeviceManager;
 		std::shared_ptr<class CmdManager> mCmdManager;
@@ -81,12 +82,14 @@ namespace Renderer
 		int mCurrentBackbufferIndex;
 		uint64_t mFenceValue;
 		uint64_t mComputeFenceValue;
+		uint64_t mCopyFenceValue;
 		HANDLE mComputeFenceHandle;
 		ID3D12Fence* mFrameFence;
 		ID3D12Fence* mComputeFence;
 		HANDLE mFrameDoneEvent;
 		ID3D12GraphicsCommandList* mComputeCmd;
 		ID3D12GraphicsCommandList* mGraphicsCmd;
+		ID3D12GraphicsCommandList* mCopyCmd;
 		ID3D12CommandAllocator* mGraphicsCmdAllocator;
 		std::shared_ptr<Resource::VertexBuffer> mVertexBuffer;
 		std::shared_ptr<Resource::VertexBuffer> mIndexBuffer;
@@ -129,6 +132,8 @@ namespace Renderer
         bool mHasSkybox = true;
         std::future<void> mLoadResourceFuture;
 		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>> mTextureMap;
+		ID3D12Resource* mCopyQueueUploadResource = nullptr;
+		uint64_t mCopyQueueUploadResourceSize = 0;
 	};
 
 }

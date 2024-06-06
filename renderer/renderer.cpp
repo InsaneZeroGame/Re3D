@@ -4,6 +4,7 @@
 #include <camera.h>
 #include "components.h"
 #include "gui.h"
+#include "BufferHelpers.h"
 
 Renderer::BaseRenderer::BaseRenderer():
 	mDeviceManager(std::make_unique<DeviceManager>()),
@@ -16,7 +17,8 @@ Renderer::BaseRenderer::BaseRenderer():
 	mGraphicsCmd(nullptr),
 	mSkybox(nullptr),
 	mComputeFenceValue(0),
-	mCurrentScene(nullptr)
+	mCurrentScene(nullptr),
+	mCopyFenceValue(0)
 {
 	Ensures(AssetLoader::gStbTextureLoader);
 	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFrameFence)) == S_OK);
@@ -25,6 +27,7 @@ Renderer::BaseRenderer::BaseRenderer():
 	mComputeFenceHandle = CreateEvent(nullptr, false, false, nullptr);
 	mGraphicsCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COMPUTE);
+	mCopyCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COPY);
 	mBatchUploader = std::make_unique<ResourceUploadBatch>(g_Device);
 	CreateBuffers();
 	CreateTextures();
@@ -429,8 +432,6 @@ void Renderer::BaseRenderer::FirstFrame()
 
 	TransitState(mGraphicsCmd, mDepthBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-	//TransitState(mGraphicsCmd, mTextureMap["defaultTexture"]->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
 	for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
 	{
 		TransitState(mGraphicsCmd, mSkyboxTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, cubeFace);
@@ -670,4 +671,27 @@ void Renderer::BaseRenderer::LoadStaticMeshToGpu(ECS::StaticMeshComponent& InCom
 	mIndexBufferCpu->UploadData<int>(indices);
 }
 
+void Renderer::BaseRenderer::UploadDataToResource(ID3D12Resource* InDestResource,const void* data, uint64_t size, uint64_t InDestOffset)
+{
+	if (mCopyQueueUploadResourceSize < size)
+	{
+		if (mCopyQueueUploadResource)
+		{
+			mCopyQueueUploadResource->Release();
+		}
+		DirectX::CreateUploadBuffer(g_Device, data, size, 1, &mCopyQueueUploadResource);
+		mCopyQueueUploadResourceSize = size;
+	}
+	ID3D12CommandAllocator* copyCmdAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_COPY, mCopyFenceValue);
+	mCopyCmd->Reset(copyCmdAllocator, nullptr);
+
+	void* Memory;
+	auto range = CD3DX12_RANGE(0, size);
+	mCopyQueueUploadResource->Map(0, &range, &Memory);
+	memcpy(Memory, data, size);
+	mCopyQueueUploadResource->Unmap(0, &range);
+
+	mCopyCmd->CopyBufferRegion(InDestResource, InDestOffset, mCopyQueueUploadResource, 0, size);
+	mCopyCmd->ResourceBarrier(1)
+}
 
