@@ -10,9 +10,11 @@ namespace GAS
 }
 namespace Renderer 
 {
+    class BaseRenderer;
+
     class Gui {
     public:
-        Gui();
+        explicit Gui(std::weak_ptr<BaseRenderer> InRenderer);
         ~Gui();
 
         bool CreateGui(HWND InWindow);
@@ -20,6 +22,7 @@ namespace Renderer
         void EndGui(ID3D12GraphicsCommandList* InCmd);
         void Render();
         void SetCurrentScene(std::shared_ptr<GAS::GameScene> InGameScene);
+        void SetRenderer(std::weak_ptr<BaseRenderer> InRenderer);
     private:
         void SceneUpdate();
         void EntityPanel(entt::entity e);
@@ -31,8 +34,8 @@ namespace Renderer
         float t[3] = { 0.0f };
         float r[3] = { 0.0f };
         float s[3] = { 0.0f };
-        
         entt::entity mCurrentEntity;
-
+        std::weak_ptr<BaseRenderer> mRenderer;
+        int mMatIndex = -1;
     };
 }

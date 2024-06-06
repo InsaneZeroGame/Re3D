@@ -48,13 +48,14 @@ namespace Renderer
 		DirectX::SimpleMath::Vector4 InvDeviceZToWorldZTransform;
 	};
 
-	class BaseRenderer
+	class BaseRenderer : public std::enable_shared_from_this<BaseRenderer>
 	{
 	public:
 		BaseRenderer();
 		virtual ~BaseRenderer();
 		void SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight);
 		void Update(float delta);
+		std::unordered_map<std::string_view, std::shared_ptr<Resource::Texture>>& GetSceneTextureMap();
 		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene);
 	protected:
         void CreateGui();

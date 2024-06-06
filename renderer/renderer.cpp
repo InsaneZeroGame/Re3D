@@ -79,7 +79,7 @@ void Renderer::BaseRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGam
 
 void Renderer::BaseRenderer::CreateGui() 
 {
-    mGui = std::make_shared<Gui>();
+    mGui = std::make_shared<Gui>(weak_from_this());
     mGui->CreateGui(mWindow);
 }
 
@@ -342,6 +342,11 @@ std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMateria
 
 }
 
+std::unordered_map<std::string_view, std::shared_ptr<Renderer::Resource::Texture>>& Renderer::BaseRenderer::GetSceneTextureMap()
+{
+	return mTextureMap;
+}
+
 void Renderer::BaseRenderer::DepthOnlyPass(const ECS::StaticMeshComponent& InAsset)
 {
 	
@@ -530,7 +535,7 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		D3D12_DESCRIPTOR_RANGE diffuseRange = {};
 		//Texture table range
 		diffuseRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		diffuseRange.NumDescriptors = 1;
+		diffuseRange.NumDescriptors = 10;
 		diffuseRange.BaseShaderRegister = 5;
 		diffuseRange.RegisterSpace = 0;
 		//auto descSize = g_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);

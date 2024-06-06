@@ -1,8 +1,10 @@
 #include "gui.h"
 #include "game_scene.h"
 #include "components.h"
+#include "renderer.h"
 
-Renderer::Gui::Gui() 
+Renderer::Gui::Gui(std::weak_ptr<BaseRenderer> InRenderer):
+    mRenderer(InRenderer)
 {
   
 }
@@ -70,6 +72,11 @@ void Renderer::Gui::SetCurrentScene(std::shared_ptr<GAS::GameScene> InGameScene)
     mCurrentEntity = mEntities[0];
 }
 
+void Renderer::Gui::SetRenderer(std::weak_ptr<BaseRenderer> InRenderer)
+{
+    mRenderer = InRenderer;
+}
+
 void Renderer::Gui::SceneUpdate() 
 {
     
@@ -134,6 +141,24 @@ void Renderer::Gui::EntityPanel(entt::entity e)
         }
         ImGui::EndTabBar();
     }
+
+	if (ImGui::TreeNode("Material"))
+	{
+		auto& textureMap = mRenderer.lock()->GetSceneTextureMap();
+        if (textureMap.size() != 0)
+        {
+			int n = 0;
+			std::for_each(textureMap.begin(), textureMap.end(), [&n, this](std::pair<std::string_view, std::shared_ptr<Resource::Texture>> texture)
+				{
+					if (ImGui::Selectable(texture.first.data(), mMatIndex == n))
+					{
+						mMatIndex = n;
+					}
+					n++;
+				});
+        }
+		ImGui::TreePop();
+	}
 }
 
 void Renderer::Gui::Property(std::string name,float* value, float min, float max) 

@@ -23,7 +23,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
 	//newScene->CreateEntityWithMesh("sphere.obj");
 
 	//1.Renderer
-	std::unique_ptr<Renderer::BaseRenderer> renderer = std::make_unique<Renderer::BaseRenderer>();
+	std::shared_ptr<Renderer::BaseRenderer> renderer = std::make_shared<Renderer::BaseRenderer>();
 	//2.Window
     Window::gMainWindow = new Window::Win32NavtiveWindow(WINDOW_WIDTH, WINDOW_HEIGHT, hInstance, nCmdShow);
 	//3.Bind renderer and window
