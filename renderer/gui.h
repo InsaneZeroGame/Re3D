@@ -21,6 +21,9 @@ namespace Renderer
         void BeginGui();
         void EndGui(ID3D12GraphicsCommandList* InCmd);
         void Render();
+
+        void SceneMaterials();
+
         void SetCurrentScene(std::shared_ptr<GAS::GameScene> InGameScene);
         void SetRenderer(std::weak_ptr<BaseRenderer> InRenderer);
     private:
@@ -37,5 +40,7 @@ namespace Renderer
         entt::entity mCurrentEntity;
         std::weak_ptr<BaseRenderer> mRenderer;
         int mMatIndex = -1;
+        void AddMaterial(std::function<void(const std::filesystem::path&)>);
+        std::string_view mSelectedMatName;
     };
 }

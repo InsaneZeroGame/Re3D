@@ -9,14 +9,15 @@ const ROTATION_AXIS Z_AXIS = DirectX::SimpleMath::Vector3(0.0f, 0.0f, 1.0f);
 namespace ECS
 {
 	//inline entt::registry gRegistry;
-
+	using MaterialIndex = int;
+	using MaterialName = std::string;
 	struct SubMesh 
 	{
 		int IndexOffset = 0;
 		int TriangleCount = 0;
         int IndexCount = 0;
 	};
-    using MaterialIndex = int;
+   
 
 	//Mesh and transform info.
 	struct StaticMesh
@@ -25,6 +26,7 @@ namespace ECS
 		std::vector<int> mIndices;
         //std::vector<SubMesh> mSubmeshMap;
         std::unordered_map<MaterialIndex, SubMesh> mSubmeshMap;
+		//std::unordered_map<MaterialName, SubMesh> mSubmeshMap;
         bool mHasNormal;
         bool mHasUV;
         bool mAllByControlPoint;
@@ -51,6 +53,7 @@ namespace ECS
 		StaticMeshComponent(StaticMesh&& InMesh);
 		//StaticMeshComponent(const StaticMeshComponent&) = delete;
 		//StaticMeshComponent& operator=(const StaticMeshComponent&) = delete;
+		MaterialName MatName;
 	};
 
 	struct LightComponent : public Component

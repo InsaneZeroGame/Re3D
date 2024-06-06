@@ -55,8 +55,9 @@ namespace Renderer
 		virtual ~BaseRenderer();
 		void SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight);
 		void Update(float delta);
-		std::unordered_map<std::string_view, std::shared_ptr<Resource::Texture>>& GetSceneTextureMap();
+		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>>& GetSceneTextureMap();
 		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene);
+		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, std::string_view InMatName = {});
 	protected:
         void CreateGui();
 		void CreateRenderTask();
@@ -73,7 +74,6 @@ namespace Renderer
 		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter,UINT InSubResource = 0);
 		void UpdataFrameData();
 		void LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent);
-		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName);
 	protected:
 		std::unique_ptr<class DeviceManager> mDeviceManager;
 		std::shared_ptr<class CmdManager> mCmdManager;
@@ -128,7 +128,7 @@ namespace Renderer
         std::shared_ptr<class Gui> mGui;
         bool mHasSkybox = true;
         std::future<void> mLoadResourceFuture;
-		std::unordered_map<std::string_view, std::shared_ptr<Resource::Texture>> mTextureMap;
+		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>> mTextureMap;
 	};
 
 }

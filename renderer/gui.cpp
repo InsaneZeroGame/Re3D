@@ -2,6 +2,7 @@
 #include "game_scene.h"
 #include "components.h"
 #include "renderer.h"
+#include <commdlg.h>
 
 Renderer::Gui::Gui(std::weak_ptr<BaseRenderer> InRenderer):
     mRenderer(InRenderer)
@@ -56,6 +57,36 @@ void Renderer::Gui::Render() {
     {
         SceneUpdate();
         EntityPanel(mCurrentEntity);
+    }
+}
+
+void Renderer::Gui::SceneMaterials()
+{
+	if (ImGui::TreeNode("Scene Material"))
+	{
+		auto& textureMap = mRenderer.lock()->GetSceneTextureMap();
+		if (textureMap.size() != 0)
+		{
+			int n = 0;
+			std::for_each(textureMap.begin(), textureMap.end(), [&n, this](std::pair<std::string_view, std::shared_ptr<Resource::Texture>> texture)
+				{
+					if (ImGui::Selectable(texture.first.data(), mMatIndex == n))
+					{
+						mMatIndex = n;
+                        mSelectedMatName = texture.first;
+					}
+					n++;
+				});
+		}
+		ImGui::TreePop();
+	}
+    if (ImGui::Button("Add Material"))
+    {
+        AddMaterial([=](const std::filesystem::path& fileName)
+            {
+				mRenderer.lock()->LoadMaterial(fileName.string());
+            });
+		
     }
 }
 
@@ -115,6 +146,7 @@ void Renderer::Gui::SceneUpdate()
         }
         ImGui::EndListBox();
     }
+	SceneMaterials();
 }
 
 void Renderer::Gui::EntityPanel(entt::entity e) 
@@ -136,32 +168,45 @@ void Renderer::Gui::EntityPanel(entt::entity e)
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Material")) {
+			auto& meshComponent = registry.get<ECS::StaticMeshComponent>(e);
+            if (ImGui::Button("Apply Texture"))
+            {
+                meshComponent.MatName = mSelectedMatName;
+            }
             ImGui::Text("This is the Broccoli tab!\nblah blah blah blah blah");
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
     }
-
-	if (ImGui::TreeNode("Material"))
-	{
-		auto& textureMap = mRenderer.lock()->GetSceneTextureMap();
-        if (textureMap.size() != 0)
-        {
-			int n = 0;
-			std::for_each(textureMap.begin(), textureMap.end(), [&n, this](std::pair<std::string_view, std::shared_ptr<Resource::Texture>> texture)
-				{
-					if (ImGui::Selectable(texture.first.data(), mMatIndex == n))
-					{
-						mMatIndex = n;
-					}
-					n++;
-				});
-        }
-		ImGui::TreePop();
-	}
 }
 
 void Renderer::Gui::Property(std::string name,float* value, float min, float max) 
 {
     ImGui::DragFloat3(name.c_str(), value,1.0f, min, max);
+}
+
+void Renderer::Gui::AddMaterial(std::function<void(const std::filesystem::path&)> InCallBack)
+{
+	OPENFILENAME ofn;       // common dialog box structure
+    char szFile[MAX_PATH] = {};       // buffer for file name
+
+	// Initialize OPENFILENAME
+	ZeroMemory(&ofn, sizeof(OPENFILENAME));
+	ofn.lStructSize = sizeof(OPENFILENAME);
+	ofn.hwndOwner = NULL;
+	ofn.lpstrFilter = "All Files\0*.*\0Text Files\0*.TXT\0";
+	ofn.lpstrFile = szFile;
+	ofn.nMaxFile = sizeof(szFile);
+	ofn.Flags = OFN_EXPLORER | OFN_PATHMUSTEXIST;
+	ofn.nFilterIndex = 1;
+	ofn.lpstrFileTitle = NULL;
+	ofn.nMaxFileTitle = 0;
+	ofn.lpstrInitialDir = NULL;
+
+	if (GetOpenFileName(&ofn)) {
+        InCallBack(szFile);
+	}
+	else {
+        return InCallBack({});
+	}
 }

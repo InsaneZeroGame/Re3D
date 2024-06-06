@@ -6,11 +6,15 @@ namespace AssetLoader
 {
 	std::optional<AssetLoader::TextureData*> StbTextureAssetLoader::LoadTextureFromFile(std::string_view InFileName)
 	{
-		auto fileName = mModulePath.string() + "\\" + InFileName.data();
+		std::string fileName = InFileName.data();
 
 		if (!std::filesystem::exists(fileName))
 		{
-			return {};
+			fileName = mModulePath.string() + "\\" + InFileName.data();
+			if (!std::filesystem::exists(fileName))
+			{
+				return {};
+			}
 		}
 		TextureData* newTexutre = new TextureData;
 		const auto& filePath = std::filesystem::path(fileName);

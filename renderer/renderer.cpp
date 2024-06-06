@@ -181,7 +181,6 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
-			mGraphicsCmd->SetGraphicsRootDescriptorTable(5, mTextureMap["defaultTexture"]->GetSRVGpu());
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
 			using namespace ECS;
             if (mCurrentScene && mCurrentScene->IsSceneReady()) 
@@ -190,6 +189,14 @@ void Renderer::BaseRenderer::CreateRenderTask()
                 auto renderEntities = sceneRegistry.view<StaticMeshComponent, TransformComponent>();
                 renderEntities.each([=](auto entity, auto& renderComponent, auto& transformComponent) {
                     auto modelMatrix = transformComponent.GetModelMatrix();
+					if (mTextureMap.find(renderComponent.MatName) == mTextureMap.end())
+					{
+						mGraphicsCmd->SetGraphicsRootDescriptorTable(5, mTextureMap["defaultTexture"]->GetSRVGpu());
+					}
+					else
+					{
+						mGraphicsCmd->SetGraphicsRootDescriptorTable(5, mTextureMap[renderComponent.MatName]->GetSRVGpu());
+					}
                     mGraphicsCmd->SetGraphicsRoot32BitConstants(4, 16, &modelMatrix, 0);
                     RenderObject(renderComponent);
                 });
@@ -312,14 +319,10 @@ void Renderer::BaseRenderer::CreateBuffers()
 
 void Renderer::BaseRenderer::CreateTextures()
 {
-	std::shared_ptr<Resource::Texture> newTexture =  LoadMaterial("uvmap.png");
-	if (newTexture)
-	{
-		mTextureMap["defaultTexture"] = newTexture;
-	}
+	std::shared_ptr<Resource::Texture> newTexture =  LoadMaterial("uvmap.png", "defaultTexture");
 }
 
-std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMaterial(std::string_view InTextureName)
+std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMaterial(std::string_view InTextureName, std::string_view InMatName)
 {
 	auto newTextureData = AssetLoader::gStbTextureLoader->LoadTextureFromFile(InTextureName);
 	if (!newTextureData.has_value())
@@ -338,11 +341,19 @@ std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMateria
 	mBatchUploader->Upload(newTexture->GetResource(), 0, &sourceData, 1);
 	mBatchUploader->Transition(newTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
+	if (!InMatName.empty())
+	{
+		mTextureMap[std::string(InMatName)] = newTexture;
+	}
+	else
+	{
+		mTextureMap[std::filesystem::path(InTextureName).filename().string()] = newTexture;
+	}
 	return newTexture;
 
 }
 
-std::unordered_map<std::string_view, std::shared_ptr<Renderer::Resource::Texture>>& Renderer::BaseRenderer::GetSceneTextureMap()
+std::unordered_map<std::string, std::shared_ptr<Renderer::Resource::Texture>>& Renderer::BaseRenderer::GetSceneTextureMap()
 {
 	return mTextureMap;
 }
@@ -418,7 +429,7 @@ void Renderer::BaseRenderer::FirstFrame()
 
 	TransitState(mGraphicsCmd, mDepthBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
-	TransitState(mGraphicsCmd, mTextureMap["defaultTexture"]->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	//TransitState(mGraphicsCmd, mTextureMap["defaultTexture"]->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
 	{
