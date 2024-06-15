@@ -47,6 +47,21 @@ namespace Renderer
 		DirectX::SimpleMath::Vector4 LightGridZParams;
 		DirectX::SimpleMath::Vector4 InvDeviceZToWorldZTransform;
 	};
+	template<typename T>
+	struct VertexBufferRenderer
+	{
+		uint64_t GetOffset() { return mOffset; }
+		uint64_t GetOffsetBytes() { return mOffsetBytes; }
+
+		void UpdataData(std::span<T> InData) 
+		{
+			mOffset += InData.size();
+			mOffsetBytes += InData.size_bytes();
+		};
+	private:
+		uint64_t mOffset = 0;
+		uint64_t mOffsetBytes = 0;
+	};
 
 	class BaseRenderer : public std::enable_shared_from_this<BaseRenderer>
 	{
@@ -75,6 +90,9 @@ namespace Renderer
 		void UpdataFrameData();
 		void LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent);
 		void UploadDataToResource(ID3D12Resource* InDestResource,const void* data,uint64_t size,uint64_t InDestOffset);
+		template<typename T>
+		void UploadDataToResource(ID3D12Resource* InDestResource, std::span<T> InData, uint64_t InDestOffset);
+
 	protected:
 		std::unique_ptr<class DeviceManager> mDeviceManager;
 		std::shared_ptr<class CmdManager> mCmdManager;
@@ -84,8 +102,10 @@ namespace Renderer
 		uint64_t mComputeFenceValue;
 		uint64_t mCopyFenceValue;
 		HANDLE mComputeFenceHandle;
+		HANDLE mCopyFenceHandle;
 		ID3D12Fence* mFrameFence;
 		ID3D12Fence* mComputeFence;
+		ID3D12Fence* mCopyFence;
 		HANDLE mFrameDoneEvent;
 		ID3D12GraphicsCommandList* mComputeCmd;
 		ID3D12GraphicsCommandList* mGraphicsCmd;
@@ -93,10 +113,8 @@ namespace Renderer
 		ID3D12CommandAllocator* mGraphicsCmdAllocator;
 		std::shared_ptr<Resource::VertexBuffer> mVertexBuffer;
 		std::shared_ptr<Resource::VertexBuffer> mIndexBuffer;
-		std::shared_ptr<Resource::UploadBuffer> mVertexBufferCpu;
-		//temp 
-		std::shared_ptr<Resource::UploadBuffer> mIndexBufferCpu;
-
+		std::unique_ptr<VertexBufferRenderer<Vertex>> mVertexBufferCpu;
+		std::unique_ptr<VertexBufferRenderer<int>> mIndexBufferCpu;
 		ID3D12PipelineState* mColorPassPipelineState;
 		ID3D12PipelineState* mPipelineStateDepthOnly;
 		ID3D12PipelineState* mLightCullPass;
@@ -135,5 +153,7 @@ namespace Renderer
 		ID3D12Resource* mCopyQueueUploadResource = nullptr;
 		uint64_t mCopyQueueUploadResourceSize = 0;
 	};
+
+	
 
 }
