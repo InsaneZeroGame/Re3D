@@ -184,7 +184,7 @@ namespace Renderer
 			virtual ~UploadBuffer() { Destroy(); }
 
 			void Create(const std::wstring& name, size_t BufferSize);
-			
+
 			size_t GetBufferSize() const { return m_BufferSize; }
 			template<class T>
 			size_t UploadData(std::span<T> InData)

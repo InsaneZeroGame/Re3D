@@ -4,6 +4,7 @@
 #include <camera.h>
 #include "components.h"
 #include "gui.h"
+#include "BufferHelpers.h"
 
 Renderer::BaseRenderer::BaseRenderer():
 	mDeviceManager(std::make_unique<DeviceManager>()),
@@ -16,15 +17,19 @@ Renderer::BaseRenderer::BaseRenderer():
 	mGraphicsCmd(nullptr),
 	mSkybox(nullptr),
 	mComputeFenceValue(0),
-	mCurrentScene(nullptr)
+	mCurrentScene(nullptr),
+	mCopyFenceValue(0)
 {
 	Ensures(AssetLoader::gStbTextureLoader);
 	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFrameFence)) == S_OK);
 	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mComputeFence)) == S_OK);
+	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mCopyFence)) == S_OK);
 	mFrameDoneEvent = CreateEvent(nullptr, false, false, nullptr);
 	mComputeFenceHandle = CreateEvent(nullptr, false, false, nullptr);
+	mCopyFenceHandle = CreateEvent(nullptr, false, false, nullptr);
 	mGraphicsCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COMPUTE);
+	mCopyCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COPY);
 	mBatchUploader = std::make_unique<ResourceUploadBatch>(g_Device);
 	CreateBuffers();
 	CreateTextures();
@@ -249,13 +254,8 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mIndexBuffer->Create(L"IndexBuffer", MAX_ELE_COUNT, VERTEX_SIZE_IN_BYTE);
 
 	//2.Upload Buffer
-	mVertexBufferCpu = std::make_shared<Resource::UploadBuffer>();
-	constexpr int uploadBufferSize = MAX_ELE_COUNT * VERTEX_SIZE_IN_BYTE;
-	mVertexBufferCpu->Create(L"UploadBuffer", uploadBufferSize);
-	
-
-	mIndexBufferCpu = std::make_shared<Resource::UploadBuffer>();
-	mIndexBufferCpu->Create(L"UploadBuffer", uploadBufferSize);
+	mVertexBufferCpu = std::make_unique<VertexBufferRenderer<Vertex>>();
+	mIndexBufferCpu = std::make_unique<VertexBufferRenderer<int>>();
 	
 
 	mFrameDataGPU = std::make_shared<Resource::UploadBuffer>();
@@ -412,15 +412,15 @@ void Renderer::BaseRenderer::CreateSkybox()
 
 void Renderer::BaseRenderer::FirstFrame()
 {
-	TransitState(mGraphicsCmd, mVertexBufferCpu->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	TransitState(mGraphicsCmd, mVertexBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	mGraphicsCmd->CopyResource(mVertexBuffer->GetResource(), mVertexBufferCpu->GetResource());
-	TransitState(mGraphicsCmd, mVertexBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-	
-	TransitState(mGraphicsCmd, mIndexBufferCpu->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	mGraphicsCmd->CopyResource(mIndexBuffer->GetResource(), mIndexBufferCpu->GetResource());
-	TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
+	//TransitState(mGraphicsCmd, mVertexBufferCpu->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	//TransitState(mGraphicsCmd, mVertexBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	//mGraphicsCmd->CopyResource(mVertexBuffer->GetResource(), mVertexBufferCpu->GetResource());
+	//TransitState(mGraphicsCmd, mVertexBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	//
+	//TransitState(mGraphicsCmd, mIndexBufferCpu->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+	//TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+	//mGraphicsCmd->CopyResource(mIndexBuffer->GetResource(), mIndexBufferCpu->GetResource());
+	//TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
 
 	TransitState(mGraphicsCmd, mLightUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	TransitState(mGraphicsCmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
@@ -428,8 +428,6 @@ void Renderer::BaseRenderer::FirstFrame()
 	TransitState(mGraphicsCmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 
 	TransitState(mGraphicsCmd, mDepthBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-
-	//TransitState(mGraphicsCmd, mTextureMap["defaultTexture"]->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
 	{
@@ -664,10 +662,75 @@ void Renderer::BaseRenderer::LoadStaticMeshToGpu(ECS::StaticMeshComponent& InCom
 {
 	auto& vertices = InComponent.mVertices;
 	auto& indices = InComponent.mIndices;
-	InComponent.BaseVertexLocation = mVertexBufferCpu->GetOffset() / sizeof(Vertex);
-	InComponent.StartIndexLocation = mIndexBufferCpu->GetOffset() / sizeof(int);
-	mVertexBufferCpu->UploadData<Vertex>(vertices);
-	mIndexBufferCpu->UploadData<int>(indices);
+	InComponent.BaseVertexLocation = mVertexBufferCpu->GetOffset();
+	InComponent.StartIndexLocation = mIndexBufferCpu->GetOffset();
+	UploadDataToResource<Vertex>(mVertexBuffer->GetResource(), vertices, mVertexBufferCpu->GetOffsetBytes());
+	UploadDataToResource<int>(mIndexBuffer->GetResource(), indices, mIndexBufferCpu->GetOffsetBytes());
+	mVertexBufferCpu->UpdataData(vertices);
+	mIndexBufferCpu->UpdataData(indices);
 }
 
+void Renderer::BaseRenderer::UploadDataToResource(
+	ID3D12Resource* InDestResource,
+	const void* data,
+	uint64_t size,
+	uint64_t InDestOffset)
+{
+	if (mCopyQueueUploadResourceSize < size)
+	{
+		if (mCopyQueueUploadResource)
+		{
+			mCopyQueueUploadResource->Release();
+			mCopyQueueUploadResource = nullptr;
+		}
+		DirectX::CreateUploadBuffer(g_Device, data, size, 1, &mCopyQueueUploadResource);
+		mCopyQueueUploadResourceSize = size;
+	}
+	ID3D12CommandAllocator* copyCmdAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_COPY, mCopyFenceValue);
+	mCopyCmd->Reset(copyCmdAllocator, nullptr);
+	void* Memory;
+	auto range = CD3DX12_RANGE(0, size);
+	mCopyQueueUploadResource->Map(0, &range, &Memory);
+	memcpy(Memory, data, size);
+	mCopyQueueUploadResource->Unmap(0, &range);
+	mCopyCmd->CopyBufferRegion(InDestResource, InDestOffset, mCopyQueueUploadResource, 0, size);
+
+	ID3D12CommandList* cmds[] = {mCopyCmd};
+	mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY)->ExecuteCommandLists(1, cmds);
+	mCmdManager->Discard(D3D12_COMMAND_LIST_TYPE_COPY, copyCmdAllocator, mCopyFenceValue);
+	mCopyFenceValue++;
+}
+
+template<typename T>
+void Renderer::BaseRenderer::UploadDataToResource(ID3D12Resource* InDestResource, std::span<T> InData, uint64_t InDestOffset)
+{
+	void* data = InData.data();
+	uint64_t size = InData.size_bytes();
+	if (mCopyQueueUploadResourceSize < size)
+	{
+		if (mCopyQueueUploadResource)
+		{
+			mCopyQueueUploadResource->Release();
+			mCopyQueueUploadResource = nullptr;
+		}
+		DirectX::CreateUploadBuffer(g_Device, data, size, 1, &mCopyQueueUploadResource);
+		mCopyQueueUploadResourceSize = size;
+	}
+	ID3D12CommandAllocator* copyCmdAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_COPY, mCopyFenceValue);
+	mCopyCmd->Reset(copyCmdAllocator, nullptr);
+	void* Memory;
+	auto range = CD3DX12_RANGE(0, size);
+	mCopyQueueUploadResource->Map(0, &range, &Memory);
+	memcpy(Memory, data, size);
+	mCopyQueueUploadResource->Unmap(0, &range);
+	mCopyCmd->CopyBufferRegion(InDestResource, InDestOffset, mCopyQueueUploadResource, 0, size);
+	mCopyCmd->Close();
+	ID3D12CommandList* cmds[] = { mCopyCmd };
+	mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY)->ExecuteCommandLists(1, cmds);
+	mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY)->Signal(mCopyFence, mCopyFenceValue);
+	mCopyFence->SetEventOnCompletion(mCopyFenceValue, mCopyFenceHandle);
+	WaitForSingleObject(mCopyFenceHandle, INFINITE);
+	mCmdManager->Discard(D3D12_COMMAND_LIST_TYPE_COPY, copyCmdAllocator, mCopyFenceValue);
+	mCopyFenceValue++;
+}
 
