@@ -1837,6 +1837,7 @@ bool AssetLoader::FbxLoader::LoadStaticMesh(const FbxMesh* pMesh) {
         return false;
     ECS::StaticMesh newMesh;
     const int lPolygonCount = pMesh->GetPolygonCount();
+    newMesh.mName = pMesh->GetName();
     // Count the polygon count of each material
     FbxLayerElementArrayTemplate<int>* lMaterialIndice = NULL;
     FbxGeometryElement::EMappingMode lMaterialMappingMode = FbxGeometryElement::eNone;

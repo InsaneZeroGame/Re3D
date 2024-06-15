@@ -40,7 +40,7 @@ namespace Renderer
         entt::entity mCurrentEntity;
         std::weak_ptr<BaseRenderer> mRenderer;
         int mMatIndex = -1;
-        void AddMaterial(std::function<void(const std::filesystem::path&)>);
+        void AddFile(std::function<void(const std::filesystem::path&)>);
         std::string_view mSelectedMatName;
     };
 }

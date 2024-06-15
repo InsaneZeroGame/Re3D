@@ -82,7 +82,7 @@ void Renderer::Gui::SceneMaterials()
 	}
     if (ImGui::Button("Add Material"))
     {
-        AddMaterial([=](const std::filesystem::path& fileName)
+        AddFile([=](const std::filesystem::path& fileName)
             {
 				mRenderer.lock()->LoadMaterial(fileName.string());
             });
@@ -97,7 +97,12 @@ void Renderer::Gui::SetCurrentScene(std::shared_ptr<GAS::GameScene> InGameScene)
     int n = 0;
     for (auto entt: sceneRegistry.view<entt::entity>()) {
         mEntities.push_back(entt);
-        mEntitiesDisplayName.push_back(std::string("Entity") + std::to_string(n));
+        auto name = std::string("Entity") + std::to_string(n);
+        if (ECS::StaticMeshComponent* lStaticComponent =  sceneRegistry.try_get<ECS::StaticMeshComponent>(entt))
+        {
+            name +=  "-" + lStaticComponent->mName;
+        }
+		mEntitiesDisplayName.push_back(name);
         n++;
     }
     mCurrentEntity = mEntities[0];
@@ -110,6 +115,17 @@ void Renderer::Gui::SetRenderer(std::weak_ptr<BaseRenderer> InRenderer)
 
 void Renderer::Gui::SceneUpdate() 
 {
+    if (ImGui::Button("Add Entity"))
+    {
+        AddFile([this](const std::filesystem::path& InFilePath) 
+            {
+                auto extension = InFilePath.extension();
+                if (extension.string() == "fbx" || extension.string() == "FBX")
+                {
+                    //mRenderer.lock()->
+                }
+            });
+    }
     
     if (ImGui::BeginListBox("##Entities", ImVec2(-FLT_MIN, 5 * ImGui::GetTextLineHeightWithSpacing()))) {
         static int mCurrentIndex = 0;
@@ -169,10 +185,14 @@ void Renderer::Gui::EntityPanel(entt::entity e)
         }
         if (ImGui::BeginTabItem("Material")) {
 			auto& meshComponent = registry.get<ECS::StaticMeshComponent>(e);
-            if (ImGui::Button("Apply Texture"))
+            if (ImGui::Button("Apply Diffuse Texture"))
             {
                 meshComponent.MatName = mSelectedMatName;
             }
+			if (ImGui::Button("Apply Normal Texture"))
+			{
+				meshComponent.NormalMap = mSelectedMatName;
+			}
             ImGui::Text("This is the Broccoli tab!\nblah blah blah blah blah");
             ImGui::EndTabItem();
         }
@@ -185,7 +205,7 @@ void Renderer::Gui::Property(std::string name,float* value, float min, float max
     ImGui::DragFloat3(name.c_str(), value,1.0f, min, max);
 }
 
-void Renderer::Gui::AddMaterial(std::function<void(const std::filesystem::path&)> InCallBack)
+void Renderer::Gui::AddFile(std::function<void(const std::filesystem::path&)> InCallBack)
 {
 	OPENFILENAME ofn;       // common dialog box structure
     char szFile[MAX_PATH] = {};       // buffer for file name

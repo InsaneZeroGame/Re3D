@@ -18,7 +18,7 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
     //newScene->CreateEntitiesWithMesh("plane.fbx");
     newScene->CreateEntitiesWithMesh("SM_Shaderball.FBX");
 	//newScene->CreateEntitiesWithMesh("NewSponza_Main_Yup_002.FBX");
-
+	newScene->CreateEntitiesWithMesh("scene.fbx");
 	//newScene->CreateEntityWithMesh("cube.obj");
 	//newScene->CreateEntityWithMesh("sphere.obj");
 

@@ -72,7 +72,7 @@ namespace Renderer
 		void Update(float delta);
 		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>>& GetSceneTextureMap();
 		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene);
-		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, std::string_view InMatName = {});
+		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, std::string_view InMatName = {},const std::wstring& InDebugName = L"");
 	protected:
         void CreateGui();
 		void CreateRenderTask();

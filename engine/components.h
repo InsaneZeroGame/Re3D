@@ -33,6 +33,7 @@ namespace ECS
         DirectX::SimpleMath::Vector3 Rotation;
         DirectX::SimpleMath::Vector3 Scale;
         DirectX::SimpleMath::Vector3 Translation;
+		std::string mName;
 	};
 
 	struct Component 
@@ -54,6 +55,8 @@ namespace ECS
 		//StaticMeshComponent(const StaticMeshComponent&) = delete;
 		//StaticMeshComponent& operator=(const StaticMeshComponent&) = delete;
 		MaterialName MatName;
+		MaterialName NormalMap;
+		std::string mName;
 	};
 
 	struct LightComponent : public Component

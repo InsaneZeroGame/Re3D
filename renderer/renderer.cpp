@@ -202,6 +202,14 @@ void Renderer::BaseRenderer::CreateRenderTask()
 					{
 						mGraphicsCmd->SetGraphicsRootDescriptorTable(5, mTextureMap[renderComponent.MatName]->GetSRVGpu());
 					}
+					if (mTextureMap.find(renderComponent.NormalMap) == mTextureMap.end())
+					{
+						mGraphicsCmd->SetGraphicsRootDescriptorTable(6, mTextureMap["defaultNormal"]->GetSRVGpu());
+					}
+					else
+					{
+						mGraphicsCmd->SetGraphicsRootDescriptorTable(6, mTextureMap[renderComponent.NormalMap]->GetSRVGpu());
+					}
                     mGraphicsCmd->SetGraphicsRoot32BitConstants(4, 16, &modelMatrix, 0);
                     RenderObject(renderComponent);
                 });
@@ -319,10 +327,12 @@ void Renderer::BaseRenderer::CreateBuffers()
 
 void Renderer::BaseRenderer::CreateTextures()
 {
-	std::shared_ptr<Resource::Texture> newTexture =  LoadMaterial("uvmap.png", "defaultTexture");
+	std::shared_ptr<Resource::Texture> defaultTexture =  LoadMaterial("uvmap.png", "defaultTexture",L"Diffuse");
+	std::shared_ptr<Resource::Texture> defaultNormalTexture = LoadMaterial("T_Bump_N.PNG", "defaultNormal",L"Normal");
+
 }
 
-std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMaterial(std::string_view InTextureName, std::string_view InMatName)
+std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMaterial(std::string_view InTextureName, std::string_view InMatName,const std::wstring& InDebugName)
 {
 	auto newTextureData = AssetLoader::gStbTextureLoader->LoadTextureFromFile(InTextureName);
 	if (!newTextureData.has_value())
@@ -341,12 +351,13 @@ std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMateria
 	mBatchUploader->Upload(newTexture->GetResource(), 0, &sourceData, 1);
 	mBatchUploader->Transition(newTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
+	newTexture->GetResource()->SetName(InDebugName.c_str());
 	if (!InMatName.empty())
 	{
 		mTextureMap[std::string(InMatName)] = newTexture;
 	}
 	else
-	{
+	{                                                                                                                                                                                                                                           
 		mTextureMap[std::filesystem::path(InTextureName).filename().string()] = newTexture;
 	}
 	return newTexture;
@@ -412,16 +423,6 @@ void Renderer::BaseRenderer::CreateSkybox()
 
 void Renderer::BaseRenderer::FirstFrame()
 {
-	//TransitState(mGraphicsCmd, mVertexBufferCpu->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	//TransitState(mGraphicsCmd, mVertexBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	//mGraphicsCmd->CopyResource(mVertexBuffer->GetResource(), mVertexBufferCpu->GetResource());
-	//TransitState(mGraphicsCmd, mVertexBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-	//
-	//TransitState(mGraphicsCmd, mIndexBufferCpu->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	//TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	//mGraphicsCmd->CopyResource(mIndexBuffer->GetResource(), mIndexBufferCpu->GetResource());
-	//TransitState(mGraphicsCmd, mIndexBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_INDEX_BUFFER);
-
 	TransitState(mGraphicsCmd, mLightUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	TransitState(mGraphicsCmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 	mGraphicsCmd->CopyResource(mLightBuffer->GetResource(), mLightUploadBuffer->GetResource());
@@ -432,6 +433,11 @@ void Renderer::BaseRenderer::FirstFrame()
 	for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
 	{
 		TransitState(mGraphicsCmd, mSkyboxTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, cubeFace);
+	}
+
+	for (auto& texture : mTextureMap)
+	{
+		TransitState(mGraphicsCmd, texture.second->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	}
 
 	auto gridParas = Utils::GetLightGridZParams(mDefaultCamera->GetFar(), mDefaultCamera->GetNear());
@@ -529,9 +535,7 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		lightCullViewData.Descriptor.ShaderRegister = 3;
 		lightCullViewData.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-		D3D12_ROOT_PARAMETER diffuseColorTexture = {};
-		diffuseColorTexture.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
-
+		
 
 		D3D12_ROOT_PARAMETER componentData = {};
         componentData.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
@@ -541,15 +545,16 @@ void Renderer::BaseRenderer::CreateRootSignature()
         componentData.Constants.Num32BitValues = 16;
         componentData.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
+
+
+		D3D12_ROOT_PARAMETER diffuseColorTexture = {};
+		diffuseColorTexture.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		D3D12_DESCRIPTOR_RANGE diffuseRange = {};
 		//Texture table range
 		diffuseRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		diffuseRange.NumDescriptors = 10;
+		diffuseRange.NumDescriptors = 1;
 		diffuseRange.BaseShaderRegister = 5;
 		diffuseRange.RegisterSpace = 0;
-		//auto descSize = g_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-		//auto offsetInByte = mDefaultTexture->GetSRVGpu().ptr - g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap()->GetGPUDescriptorHandleForHeapStart().ptr;
-		//auto offset = offsetInByte / descSize;
 		diffuseRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 		std::vector<D3D12_DESCRIPTOR_RANGE> ranges = { diffuseRange };
 		diffuseColorTexture.DescriptorTable.NumDescriptorRanges = (UINT)ranges.size();
@@ -557,7 +562,33 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		diffuseColorTexture.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 
-		
+		D3D12_ROOT_PARAMETER normalMap = {};
+		D3D12_DESCRIPTOR_RANGE normalRange = {};
+		normalMap.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		normalRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		normalRange.NumDescriptors = 1;
+		normalRange.BaseShaderRegister = 6;
+		normalRange.RegisterSpace = 0;
+		normalRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		std::vector<D3D12_DESCRIPTOR_RANGE> normalranges = { normalRange };
+		normalMap.DescriptorTable.NumDescriptorRanges = (UINT)normalranges.size();
+		normalMap.DescriptorTable.pDescriptorRanges = normalranges.data();
+		normalMap.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+
+		D3D12_ROOT_PARAMETER roughnessMap = {};
+		D3D12_DESCRIPTOR_RANGE roughnessRange = {};
+		roughnessMap.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		roughnessRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		roughnessRange.NumDescriptors = 1;
+		roughnessRange.BaseShaderRegister = 7;
+		roughnessRange.RegisterSpace = 0;
+		roughnessRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		std::vector<D3D12_DESCRIPTOR_RANGE> roughnessranges = { roughnessRange };
+		roughnessMap.DescriptorTable.NumDescriptorRanges = (UINT)roughnessranges.size();
+		roughnessMap.DescriptorTable.pDescriptorRanges = roughnessranges.data();
+		roughnessMap.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
 
 		std::vector<D3D12_ROOT_PARAMETER> parameters =
 		{
@@ -566,7 +597,9 @@ void Renderer::BaseRenderer::CreateRootSignature()
 			lightBuffer,//2
 			lightCullViewData,//3
             componentData,//4
-			diffuseColorTexture//5
+			diffuseColorTexture,//5
+			normalMap,//6
+			roughnessMap//7
 		};
 
 		//Samplers
@@ -622,7 +655,7 @@ void Renderer::BaseRenderer::RenderObject(const ECS::StaticMeshComponent& InAsse
 	//Render 
 	for (const auto& subMesh : InAsset.mSubMeshes)
 	{
-        mGraphicsCmd->DrawIndexedInstanced((UINT)subMesh.second.IndexCount, 1, InAsset.StartIndexLocation + subMesh.second.IndexOffset,
+        mGraphicsCmd->DrawIndexedInstanced((UINT)subMesh.second.TriangleCount * 3, 1, InAsset.StartIndexLocation + subMesh.second.IndexOffset,
                                            InAsset.BaseVertexLocation, 0);
 	}
 }
