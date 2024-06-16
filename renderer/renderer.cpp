@@ -528,6 +528,7 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	lDesc.VS = Utils::ReadShader(L"ShadowMap.cso");
 	lDesc.RasterizerState.DepthBias = -100;
 	lDesc.RasterizerState.SlopeScaledDepthBias = -1.5f;
+	lDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
 	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mPipelineStateShadowMap));
 	mPipelineStateShadowMap->SetName(L"mPipelineStateShadowMap");
 
