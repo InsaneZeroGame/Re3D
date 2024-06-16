@@ -15,5 +15,6 @@ PSInput main(float4 pos : POSITION,float4 normal : NORMAL,float2 textureCoord:TE
     input.normal = normal.xyz;
     input.DirectionalLightDir = frameData.DirectionalLightDir.xyz;
     input.DirectionalLightColor = frameData.DirectionalLightColor.xyz;
+    input.shadowCoord = mul(modelSpacePos, frameData.ShadowViewPrjMatrix);
     return input;
 }

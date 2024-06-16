@@ -36,17 +36,22 @@ shaders/LightCull.hlsl
 shaders/shader_common.hlsli
 shaders/SkyboxVS.hlsl
 shaders/SkyboxPS.hlsl
+shaders/ShadowMap.hlsl
 )
 set_property(SOURCE shaders/SkyboxVS.hlsl PROPERTY VS_SHADER_TYPE Vertex)
 set_property(SOURCE shaders/SkyboxPS.hlsl PROPERTY VS_SHADER_TYPE Pixel)
 set_property(SOURCE shaders/ForwardVS.hlsl PROPERTY VS_SHADER_TYPE Vertex)
 set_property(SOURCE shaders/ForwardPS.hlsl PROPERTY VS_SHADER_TYPE Pixel)
 set_property(SOURCE shaders/LightCull.hlsl PROPERTY VS_SHADER_TYPE Compute)
+set_property(SOURCE shaders/ShadowMap.hlsl PROPERTY VS_SHADER_TYPE Vertex)
+
 set_property(SOURCE shaders/ForwardVS.hlsl PROPERTY VS_SHADER_MODEL 5.1)
 set_property(SOURCE shaders/ForwardPS.hlsl PROPERTY VS_SHADER_MODEL 5.1)
 set_property(SOURCE shaders/LightCull.hlsl PROPERTY VS_SHADER_MODEL 5.1)
 set_property(SOURCE shaders/SkyboxVS.hlsl PROPERTY VS_SHADER_MODEL 5.1)
 set_property(SOURCE shaders/SkyboxVS.hlsl PROPERTY VS_SHADER_MODEL 5.1)
+set_property(SOURCE shaders/ShadowMap.hlsl PROPERTY VS_SHADER_MODEL 5.1)
+
 if(DEBUG)
     set_property(SOURCE ${HLSL_SHADER_FILES} PROPERTY VS_SHADER_DISABLE_OPTIMIZATIONS true)
     set_property(SOURCE ${HLSL_SHADER_FILES} PROPERTY VS_SHADER_ENABLE_DEBUG true)

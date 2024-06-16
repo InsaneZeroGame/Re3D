@@ -35,6 +35,8 @@ namespace Renderer
 		DirectX::SimpleMath::Matrix View;
 		DirectX::SimpleMath::Matrix Prj;
 		DirectX::SimpleMath::Matrix NormalMatrix;
+		DirectX::SimpleMath::Matrix ShadowViewMatrix;
+		DirectX::SimpleMath::Matrix ShadowViewPrjMatrix;
 		DirectX::SimpleMath::Vector4 DirectionalLightDir;
 		DirectX::SimpleMath::Vector4 DirectionalLightColor;
 	};
@@ -117,13 +119,17 @@ namespace Renderer
 		std::unique_ptr<VertexBufferRenderer<int>> mIndexBufferCpu;
 		ID3D12PipelineState* mColorPassPipelineState;
 		ID3D12PipelineState* mPipelineStateDepthOnly;
+		ID3D12PipelineState* mPipelineStateShadowMap;
 		ID3D12PipelineState* mLightCullPass;
 		ID3D12RootSignature* mColorPassRootSignature;
 		ID3D12RootSignature* mLightCullPassRootSignature;
 		std::unique_ptr<Gameplay::PerspectCamera> mDefaultCamera;
+		std::unique_ptr<Gameplay::PerspectCamera> mShadowCamera;
+
 		FrameData mFrameDataCPU;
 		std::shared_ptr<Resource::UploadBuffer> mFrameDataGPU;
 		std::shared_ptr<Resource::DepthBuffer> mDepthBuffer;
+		std::shared_ptr<Resource::DepthBuffer> mShadowMap;
 		//void* mFrameDataPtr;
 		int mWidth;
 		int mHeight;

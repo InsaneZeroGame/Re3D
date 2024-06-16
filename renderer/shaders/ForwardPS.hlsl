@@ -6,8 +6,11 @@ ConstantBuffer<LightCullViewData> View : register(b3);
 Texture2D<float4> defaultTexture : register(t5);
 Texture2D<float4> normalTexture : register(t6);
 Texture2D<float4> roughnessTexture : register(t7);
+Texture2D<float> shadowMap : register(t8);
 
 SamplerState defaultSampler : register(s0);
+SamplerComparisonState shadowSampler : register(s1);
+
 static const int CLUSTER_X = 32;
 static const int CLUSTER_Y = 16;
 static const int CLUSTER_Z = 16;
@@ -174,7 +177,12 @@ float4 main(PSInput input) : SV_TARGET
     float4 diffuseColor = defaultTexture.Sample(defaultSampler, input.UVCoord);
     color *= diffuseColor;
     float4 colorAfterCorrection = pow(color, 1.0 / gamma);
-    return colorAfterCorrection;
+    float2 shadowCoord = input.shadowCoord.xy /input.shadowCoord.w;
+    //shadwo map
+    shadowCoord = shadowCoord * float2(0.5, -0.5) + 0.5;
+    float shadow = shadowMap.SampleCmpLevelZero(shadowSampler, shadowCoord, input.shadowCoord.z/input.shadowCoord.w);
+    
+    return colorAfterCorrection * shadow;
     //if (input.position.x / screen_size  < 0.5)
     //{
     // return diffuse;

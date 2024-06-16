@@ -52,11 +52,18 @@ void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, in
 	mHeight = InHeight;
 	mDeviceManager->SetTargetWindowAndCreateSwapChain(InWindow, InWidth, InHeight);
 	//Use Reverse Z
-	mDefaultCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f);
-	//auto camera = std::make_shared<Gameplay::PerspectCamera>(InWidth, InHeight, 0.1,125);
+	mDefaultCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f,true);
 	mDefaultCamera->LookAt({ 0.0,3.0,2.0 }, { 0.0f,1.0f,0.0f }, { 0.0f,1.0f,0.0f });
+
+	mShadowCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f);
+	mShadowCamera->LookAt({ 5,5,5 }, { 0.0f,0.0f,0.0f }, { 0.0f,1.0f,0.0f });
+
 	mDepthBuffer = std::make_shared<Resource::DepthBuffer>(0.0f, 0);
 	mDepthBuffer->Create(L"DepthBuffer", mWidth, mHeight, DXGI_FORMAT_D32_FLOAT);
+
+	mShadowMap = std::make_shared<Resource::DepthBuffer>(0.0f, 0);
+	mShadowMap->Create(L"ShadowMap", mWidth, mHeight, DXGI_FORMAT_D32_FLOAT);
+
 	mViewPort = { 0,0,(float)mWidth,(float)mHeight,0.0,1.0 };
 	mRect = { 0,0,mWidth,mHeight };
     CreateGui();
@@ -151,6 +158,21 @@ void Renderer::BaseRenderer::CreateRenderTask()
                     mGraphicsCmd->SetGraphicsRoot32BitConstants(4, 16, &modelMatrix, 0);
                     RenderObject(renderComponent);
                 });
+
+				//ShadowMap
+				TransitState(mGraphicsCmd, mShadowMap->GetResource(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+				mGraphicsCmd->SetPipelineState(mPipelineStateShadowMap);
+				mGraphicsCmd->OMSetRenderTargets(0, nullptr, true, &mShadowMap->GetDSV());
+				mGraphicsCmd->ClearDepthStencilView(mShadowMap->GetDSV(), D3D12_CLEAR_FLAG_DEPTH, 0.0f, 0, 1, &mRect);
+				//auto renderEntitiesCount = renderEntities.size();
+				renderEntities.each([=](auto entity, auto& renderComponent, auto& transformComponent) {
+					auto modelMatrix = transformComponent.GetModelMatrix();
+					mGraphicsCmd->SetGraphicsRoot32BitConstants(4, 16, &modelMatrix, 0);
+					RenderObject(renderComponent);
+					});
+				TransitState(mGraphicsCmd, mShadowMap->GetResource(),D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+				
 			}
 		};
 
@@ -187,6 +209,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
+			mGraphicsCmd->SetGraphicsRootDescriptorTable(8, mShadowMap->GetDepthSRVGPU());
 			using namespace ECS;
             if (mCurrentScene && mCurrentScene->IsSceneReady()) 
 			{
@@ -302,14 +325,14 @@ void Renderer::BaseRenderer::CreateBuffers()
 		light.pos[2] = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
 
 		light.pos[0] *= size;
-		light.pos[1] *= 1.0;
+		light.pos[1] = 0.2;
 		light.pos[2] *= size;
 		light.pos[3] = 1.0f;
 
 		light.color[0] = float(rand()) / RAND_MAX;
 		light.color[1] = float(rand()) / RAND_MAX;
 		light.color[2] = float(rand()) / RAND_MAX;
-        light.radius_attenu[0] = 160.0f;
+        light.radius_attenu[0] = 250.0f;
 		light.radius_attenu[1] = float(rand()) * 1.2f / RAND_MAX;
 		light.radius_attenu[2] = float(rand()) * 1.2f / RAND_MAX;
 		light.radius_attenu[3] = float(rand()) * 1.2f / RAND_MAX;
@@ -328,7 +351,7 @@ void Renderer::BaseRenderer::CreateBuffers()
 void Renderer::BaseRenderer::CreateTextures()
 {
 	std::shared_ptr<Resource::Texture> defaultTexture =  LoadMaterial("uvmap.png", "defaultTexture",L"Diffuse");
-	std::shared_ptr<Resource::Texture> defaultNormalTexture = LoadMaterial("T_Bump_N.PNG", "defaultNormal",L"Normal");
+	std::shared_ptr<Resource::Texture> defaultNormalTexture = LoadMaterial("T_Flat_Normal.PNG", "defaultNormal",L"Normal");
 
 }
 
@@ -423,6 +446,8 @@ void Renderer::BaseRenderer::CreateSkybox()
 
 void Renderer::BaseRenderer::FirstFrame()
 {
+	TransitState(mGraphicsCmd, mShadowMap->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
 	TransitState(mGraphicsCmd, mLightUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	TransitState(mGraphicsCmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 	mGraphicsCmd->CopyResource(mLightBuffer->GetResource(), mLightUploadBuffer->GetResource());
@@ -484,11 +509,13 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	lDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	lDesc.SampleDesc.Count = 1;
 	lDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
+	
 	lDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 	lDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mColorPassPipelineState));
 	mColorPassPipelineState->SetName(L"mColorPassPipelineState");
 	
+
 	//Depth Only pipeline state
 	lDesc.RTVFormats[0] = DXGI_FORMAT_UNKNOWN;
 	lDesc.NumRenderTargets = 0;
@@ -496,6 +523,13 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	lDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ALL;
 	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mPipelineStateDepthOnly));
 	mPipelineStateDepthOnly->SetName(L"mPipelineStateDepthOnly");
+
+
+	lDesc.VS = Utils::ReadShader(L"ShadowMap.cso");
+	lDesc.RasterizerState.DepthBias = -100;
+	lDesc.RasterizerState.SlopeScaledDepthBias = -1.5f;
+	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mPipelineStateShadowMap));
+	mPipelineStateShadowMap->SetName(L"mPipelineStateShadowMap");
 
 	//Compute:Light Cull Pass
 	D3D12_COMPUTE_PIPELINE_STATE_DESC lightCullPassDesc = {};
@@ -589,6 +623,19 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		roughnessMap.DescriptorTable.pDescriptorRanges = roughnessranges.data();
 		roughnessMap.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
+		D3D12_ROOT_PARAMETER shadowMap = {};
+		D3D12_DESCRIPTOR_RANGE shadowMapRange = {};
+		shadowMap.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		shadowMapRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		shadowMapRange.NumDescriptors = 1;
+		shadowMapRange.BaseShaderRegister = 8;
+		shadowMapRange.RegisterSpace = 0;
+		shadowMapRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		std::vector<D3D12_DESCRIPTOR_RANGE> shadowmapranges = { shadowMapRange };
+		shadowMap.DescriptorTable.NumDescriptorRanges = (UINT)shadowmapranges.size();
+		shadowMap.DescriptorTable.pDescriptorRanges = shadowmapranges.data();
+		shadowMap.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
 
 		std::vector<D3D12_ROOT_PARAMETER> parameters =
 		{
@@ -599,13 +646,21 @@ void Renderer::BaseRenderer::CreateRootSignature()
             componentData,//4
 			diffuseColorTexture,//5
 			normalMap,//6
-			roughnessMap//7
+			roughnessMap,//7
+			shadowMap//8
 		};
 
 		//Samplers
 		D3D12_STATIC_SAMPLER_DESC texture2DSampler = CD3DX12_STATIC_SAMPLER_DESC(0);
 		texture2DSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
-		std::vector<D3D12_STATIC_SAMPLER_DESC> samplers = { texture2DSampler };
+
+		D3D12_STATIC_SAMPLER_DESC shadowSampler = CD3DX12_STATIC_SAMPLER_DESC(0);
+		shadowSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		shadowSampler.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
+		shadowSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+		shadowSampler.ShaderRegister = 1;
+
+		std::vector<D3D12_STATIC_SAMPLER_DESC> samplers = { texture2DSampler,shadowSampler };
 		//rootSignatureDesc.Init((UINT)parameters.size(), parameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 		rootSignatureDesc.Init((UINT)parameters.size(), parameters.data(), (UINT)samplers.size(), samplers.data(), D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
 
@@ -677,6 +732,8 @@ void Renderer::BaseRenderer::UpdataFrameData()
 	mFrameDataCPU.PrjView = mDefaultCamera->GetPrjView();
 	mFrameDataCPU.View = mDefaultCamera->GetView();
 	mFrameDataCPU.Prj = mDefaultCamera->GetPrj();
+	mFrameDataCPU.ShadowViewMatrix = mShadowCamera->GetView();
+	mFrameDataCPU.ShadowViewPrjMatrix = mShadowCamera->GetPrjView();
 	mFrameDataCPU.NormalMatrix = mDefaultCamera->GetNormalMatrix();
 	mFrameDataCPU.DirectionalLightDir.Normalize();
 	mFrameDataGPU->UpdataData<FrameData>(mFrameDataCPU);

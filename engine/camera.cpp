@@ -3,7 +3,7 @@
 #include <GLFW/glfw3.h>
 
 
-Gameplay::BaseCamera::BaseCamera()
+Gameplay::BaseCamera::BaseCamera(bool moveAble):mMoveable(moveAble)
 {
 	Delegates::KeyPressDelegate.push_back(std::bind(&BaseCamera::KeyDown, this,
 		std::placeholders::_1
@@ -127,8 +127,8 @@ void Gameplay::BaseCamera::Yaw(float InSpeed)
 	LookAt(mEye, mCenter, mUp);
 }
 
-Gameplay::PerspectCamera::PerspectCamera(float InWidth, float InHeight, float InNear, float InFar):
-	BaseCamera(),
+Gameplay::PerspectCamera::PerspectCamera(float InWidth, float InHeight, float InNear, float InFar, bool mMoveable):
+	BaseCamera(mMoveable),
 	mWidth(InWidth),
 	mHeight(InHeight),
 	mNear(InNear),
@@ -147,8 +147,8 @@ Gameplay::PerspectCamera::PerspectCamera(float InWidth, float InHeight, float In
 	mClipToView = mViewToClip.Invert();
 }
 
-Gameplay::PerspectCamera::PerspectCamera(float InWidth, float InHeight, float InNear):
-	BaseCamera(),
+Gameplay::PerspectCamera::PerspectCamera(float InWidth, float InHeight, float InNear, bool mMoveable):
+	BaseCamera(mMoveable),
 	mWidth(InWidth),
 	mHeight(InHeight),
 	mNear(InNear),
@@ -171,7 +171,7 @@ Gameplay::PerspectCamera::PerspectCamera(float InWidth, float InHeight, float In
 	mClipToView = mViewToClip.Invert();
 }
 
-Gameplay::PerspectCamera::PerspectCamera()
+Gameplay::PerspectCamera::PerspectCamera(bool moveable):BaseCamera(moveable)
 {
 
 }

@@ -6,7 +6,7 @@ namespace Gameplay
 	class BaseCamera
 	{
 	public:
-		BaseCamera();
+		BaseCamera(bool mMoveable = false);
 		virtual ~BaseCamera();
 		virtual void LookAt(SimpleMath::Vector3 InEye, SimpleMath::Vector3 InCenter, SimpleMath::Vector3 InUp);
 		const SimpleMath::Matrix GetPrj(bool UploadToGpu = true);
@@ -26,14 +26,15 @@ namespace Gameplay
 		SimpleMath::Matrix mViewToClip;
 		SimpleMath::Matrix mClipToView;
 		SimpleMath::Matrix mView;
+		bool mMoveable = false;
 	};
 
 	class PerspectCamera final : public BaseCamera
 	{
 	public:
-		PerspectCamera();
-		PerspectCamera(float InWidth,float InHeight,float InNear,float InFar);
-		PerspectCamera(float InWidth, float InHeight, float InNear);
+		PerspectCamera(bool mMoveable = false);
+		PerspectCamera(float InWidth,float InHeight,float InNear,float InFar, bool mMoveable = false);
+		PerspectCamera(float InWidth, float InHeight, float InNear, bool mMoveable = false);
 		~PerspectCamera();
 		float GetNear();
 		float GetFar();

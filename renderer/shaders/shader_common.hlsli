@@ -8,6 +8,7 @@ struct PSInput
     float3 DirectionalLightColor : COLOR2;
     float4 viewsSpacePos : COLOR3;
     float2 UVCoord : TEXCOORD0;
+    float4 shadowCoord : POSITION0;
 };
 
 
@@ -42,6 +43,8 @@ struct FrameData
     float4x4 View;
     float4x4 Prj;
     float4x4 NormalMatrix;
+    float4x4 ShadowViewMatrix;
+    float4x4 ShadowViewPrjMatrix;
     float4 DirectionalLightDir;
     float4 DirectionalLightColor;
 };
