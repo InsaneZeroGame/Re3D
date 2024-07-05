@@ -75,6 +75,9 @@ namespace Renderer
 		};
 		void SetTargetWindowAndCreateSwapChain(HWND InWindow,int InWidth,int InHeight);
 		IDXGISwapChain1* GetSwapChain() { return s_SwapChain1; }
+		void BeginFrame();
+		void EndFrame();
+		const int& GetCurrentFrameIndex();
 	private:
 		void CreateSwapChain();
 		void CreateCmdManager();
@@ -86,6 +89,10 @@ namespace Renderer
 		int mWidth = 0;
 		int mHeight = 0;
 		HWND mWindow = nullptr;
+		ID3D12Fence* mFrameFence;
+		int mCurrentBackbufferIndex;
+		uint64_t mFrameFenceValue;
+		HANDLE mFrameDoneEvent;
 	};
 
 	

@@ -20,10 +20,15 @@ bool IsDirectXRaytracingSupported(ID3D12Device* testDevice)
 	return featureSupport.RaytracingTier != D3D12_RAYTRACING_TIER_NOT_SUPPORTED;
 }
 
-Renderer::DeviceManager::DeviceManager()
+Renderer::DeviceManager::DeviceManager():
+mCurrentBackbufferIndex(0),
+mFrameFenceValue(0),
+mFrameFence(nullptr)
 {
 	CreateD3DDevice();
 	CreateCmdManager();
+	mFrameDoneEvent = CreateEvent(nullptr, false, true, nullptr);
+	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFrameFence)) == S_OK);
 }
 
 void Renderer::DeviceManager::CreateD3DDevice()
@@ -269,6 +274,27 @@ void Renderer::DeviceManager::SetTargetWindowAndCreateSwapChain(HWND InWindow, i
 	mHeight = InHeight;
 	mWindow = InWindow;
 	CreateSwapChain();
+}
+
+void Renderer::DeviceManager::BeginFrame()
+{
+	//Wait for preview frame done
+	mCurrentBackbufferIndex = static_cast<IDXGISwapChain4*>(s_SwapChain1)->GetCurrentBackBufferIndex();
+	WaitForSingleObject(mFrameDoneEvent, INFINITE);
+}
+
+void Renderer::DeviceManager::EndFrame()
+{
+	mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->Signal(mFrameFence, mFrameFenceValue);
+	mFrameFence->SetEventOnCompletion(mFrameFenceValue, mFrameDoneEvent);
+	mFrameFenceValue++;
+	//Present
+	static_cast<IDXGISwapChain4*>(s_SwapChain1)->Present(0, 0);
+}
+
+const int& Renderer::DeviceManager::GetCurrentFrameIndex()
+{
+	return mCurrentBackbufferIndex;
 }
 
 void Renderer::DeviceManager::CreateSwapChain()

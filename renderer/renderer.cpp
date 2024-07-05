@@ -10,21 +10,17 @@ Renderer::BaseRenderer::BaseRenderer():
 	mDeviceManager(std::make_unique<DeviceManager>()),
 	mCmdManager(mDeviceManager->GetCmdManager()),
 	mIsFirstFrame(true),
-	mCurrentBackbufferIndex(0),
-	mFenceValue(0),
-	mFrameFence(nullptr),
 	mComputeFence(nullptr),
 	mGraphicsCmd(nullptr),
 	mSkybox(nullptr),
-	mComputeFenceValue(0),
+	mComputeFenceValue(1),
 	mCurrentScene(nullptr),
-	mCopyFenceValue(0)
+	mCopyFenceValue(1),
+	mGraphicsFenceValue(1)
 {
 	Ensures(AssetLoader::gStbTextureLoader);
-	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFrameFence)) == S_OK);
 	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mComputeFence)) == S_OK);
 	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mCopyFence)) == S_OK);
-	mFrameDoneEvent = CreateEvent(nullptr, false, false, nullptr);
 	mComputeFenceHandle = CreateEvent(nullptr, false, false, nullptr);
 	mCopyFenceHandle = CreateEvent(nullptr, false, false, nullptr);
 	mGraphicsCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT);
@@ -99,10 +95,10 @@ void Renderer::BaseRenderer::CreateRenderTask()
 {
 	mRenderFlow = std::make_unique<tf::Taskflow>();
 	mRenderExecution = std::make_unique<tf::Executor>();
-
 	auto SkyboxPass = [this]()
 		{
 			//Render Scene
+			auto lCurrentBackbufferIndex = mDeviceManager->GetCurrentFrameIndex();
 			if (!mHasSkybox)
 			{
                 return;
@@ -113,17 +109,16 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
 			mGraphicsCmd->SetGraphicsRootDescriptorTable(1, mSkyboxTexture->GetSRVGpu());
-			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, nullptr);
-			mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), mColorRGBA, 1, &mRect);
+			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), true, nullptr);
+			mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), mColorRGBA, 1, &mRect);
 			RenderObject(*mSkybox->GetStaticMeshComponent());
 		};
 
 	auto DepthOnlyPass = [this]()
 		{
-			IDXGISwapChain4* swapChain = (IDXGISwapChain4*)mDeviceManager->GetSwapChain();
-			//1.Reset CmdList
-			mCurrentBackbufferIndex = swapChain->GetCurrentBackBufferIndex();
-			mGraphicsCmdAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, mFenceValue);
+			mDeviceManager->BeginFrame();
+			auto lCurrentBackbufferIndex = mDeviceManager->GetCurrentFrameIndex();
+			mGraphicsCmdAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, mGraphicsFenceValue);
 			mGraphicsCmd->Reset(mGraphicsCmdAllocator, mPipelineStateDepthOnly);
 			if (mIsFirstFrame)
 			{
@@ -132,7 +127,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			}
 
 			//Setup RenderTarget
-			TransitState(mGraphicsCmd, g_DisplayPlane[mCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			TransitState(mGraphicsCmd, g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			mGraphicsCmd->OMSetRenderTargets(0, nullptr, true, &mDepthBuffer->GetDSV());
 			mGraphicsCmd->RSSetViewports(1, &mViewPort);
 			mGraphicsCmd->RSSetScissorRects(1, &mRect);
@@ -191,15 +186,15 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mComputeCmd->Close();
 			queue->ExecuteCommandLists(1, &lCmds);
 			queue->Signal(mComputeFence, mComputeFenceValue);
-			mDeviceManager->GetCmdManager()->Discard(D3D12_COMMAND_LIST_TYPE_COMPUTE, cmdAllcator,mComputeFenceValue);
+			mDeviceManager->GetCmdManager()->Discard(D3D12_COMMAND_LIST_TYPE_COMPUTE, cmdAllcator, mComputeFenceValue);
 			mComputeFence->SetEventOnCompletion(mComputeFenceValue, mComputeFenceHandle);
-			WaitForSingleObject(mComputeFenceHandle, INFINITE);
 			mComputeFenceValue++;
 		};
 
 	auto ColorPass = [this]()
 		{
 			//Render Scene
+			auto lCurrentBackbufferIndex = mDeviceManager->GetCurrentFrameIndex();
 			mGraphicsCmd->SetPipelineState(mColorPassPipelineState);
 			mGraphicsCmd->SetGraphicsRootSignature(mColorPassRootSignature);
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
@@ -208,9 +203,10 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
-			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[mCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
+			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
 			mGraphicsCmd->SetGraphicsRootDescriptorTable(8, mShadowMap->GetDepthSRVGPU());
 			using namespace ECS;
+			WaitForSingleObject(mComputeFenceHandle, INFINITE);
             if (mCurrentScene && mCurrentScene->IsSceneReady()) 
 			{
                 auto& sceneRegistry = mCurrentScene->GetRegistery();
@@ -248,21 +244,16 @@ void Renderer::BaseRenderer::CreateRenderTask()
 	auto PostRender = [this]()
 		{
 			//Flush CmdList
-			TransitState(mGraphicsCmd, g_DisplayPlane[mCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
+			auto lCurrentBackbufferIndex = mDeviceManager->GetCurrentFrameIndex();
+			TransitState(mGraphicsCmd, g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 			mGraphicsCmd->Close();
 			ID3D12CommandList* cmds[] = { mGraphicsCmd };
 			ID3D12CommandQueue* graphicsQueue = mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_DIRECT);
 			graphicsQueue->ExecuteCommandLists(1, cmds);
-			graphicsQueue->Signal(mFrameFence, mFenceValue);
-
 			//Wait For cmd finished to reclaim cmd
-			mFrameFence->SetEventOnCompletion(mFenceValue, mFrameDoneEvent);
-			WaitForSingleObject(mFrameDoneEvent, INFINITE);
-			mCmdManager->Discard(D3D12_COMMAND_LIST_TYPE_DIRECT, mGraphicsCmdAllocator, mFenceValue);
-			mFenceValue++;
-			//Present
-			IDXGISwapChain4* swapChain = (IDXGISwapChain4*)mDeviceManager->GetSwapChain();
-			swapChain->Present(0, 0);
+			mCmdManager->Discard(D3D12_COMMAND_LIST_TYPE_DIRECT, mGraphicsCmdAllocator, mGraphicsFenceValue);
+			mGraphicsFenceValue++;
+			mDeviceManager->EndFrame();
 		};
     auto [depthOnlyPass, skyboxpass, colorPass, postRender, computePass, guiPass ] =
             mRenderFlow->emplace(DepthOnlyPass, SkyboxPass, ColorPass, PostRender, ComputePass, GuiPass);

@@ -99,16 +99,13 @@ namespace Renderer
 		std::unique_ptr<class DeviceManager> mDeviceManager;
 		std::shared_ptr<class CmdManager> mCmdManager;
 		bool mIsFirstFrame;
-		int mCurrentBackbufferIndex;
-		uint64_t mFenceValue;
 		uint64_t mComputeFenceValue;
 		uint64_t mCopyFenceValue;
+		uint64_t mGraphicsFenceValue;
 		HANDLE mComputeFenceHandle;
 		HANDLE mCopyFenceHandle;
-		ID3D12Fence* mFrameFence;
 		ID3D12Fence* mComputeFence;
 		ID3D12Fence* mCopyFence;
-		HANDLE mFrameDoneEvent;
 		ID3D12GraphicsCommandList* mComputeCmd;
 		ID3D12GraphicsCommandList* mGraphicsCmd;
 		ID3D12GraphicsCommandList* mCopyCmd;
