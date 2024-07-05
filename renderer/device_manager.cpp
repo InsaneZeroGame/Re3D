@@ -22,7 +22,7 @@ bool IsDirectXRaytracingSupported(ID3D12Device* testDevice)
 
 Renderer::DeviceManager::DeviceManager():
 mCurrentBackbufferIndex(0),
-mFrameFenceValue(0),
+mFrameFenceValue(1),
 mFrameFence(nullptr)
 {
 	CreateD3DDevice();

@@ -173,6 +173,11 @@ void Renderer::BaseRenderer::CreateRenderTask()
 
 	auto ComputePass = [this]() 
 		{
+			
+		};
+
+	auto ColorPass = [this]()
+		{
 			ID3D12CommandAllocator* cmdAllcator = mDeviceManager->GetCmdManager()->RequestAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE, mComputeFenceValue);
 			mComputeCmd->Reset(cmdAllcator, mLightCullPass);
 			mComputeCmd->SetPipelineState(mLightCullPass);
@@ -186,14 +191,19 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mComputeCmd->Close();
 			queue->ExecuteCommandLists(1, &lCmds);
 			queue->Signal(mComputeFence, mComputeFenceValue);
+			D3D12_RESOURCE_BARRIER luav = {};
+			luav.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+			luav.UAV.pResource = mClusterBuffer->GetResource();
+			mComputeCmd->ResourceBarrier(1, &luav);
 			mDeviceManager->GetCmdManager()->Discard(D3D12_COMMAND_LIST_TYPE_COMPUTE, cmdAllcator, mComputeFenceValue);
 			mComputeFence->SetEventOnCompletion(mComputeFenceValue, mComputeFenceHandle);
 			mComputeFenceValue++;
-		};
 
-	auto ColorPass = [this]()
-		{
+
+
+
 			//Render Scene
+			WaitForSingleObject(mComputeFenceHandle, INFINITE);
 			auto lCurrentBackbufferIndex = mDeviceManager->GetCurrentFrameIndex();
 			mGraphicsCmd->SetPipelineState(mColorPassPipelineState);
 			mGraphicsCmd->SetGraphicsRootSignature(mColorPassRootSignature);
@@ -206,7 +216,6 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
 			mGraphicsCmd->SetGraphicsRootDescriptorTable(8, mShadowMap->GetDepthSRVGPU());
 			using namespace ECS;
-			WaitForSingleObject(mComputeFenceHandle, INFINITE);
             if (mCurrentScene && mCurrentScene->IsSceneReady()) 
 			{
                 auto& sceneRegistry = mCurrentScene->GetRegistery();
