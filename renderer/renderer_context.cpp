@@ -16,7 +16,6 @@ Renderer::RendererContext::RendererContext(std::shared_ptr<class CmdManager> InC
 	//2.Upload Buffer
 	mVertexBufferCpu = std::make_shared<VertexBufferRenderer<Vertex>>();
 	mIndexBufferCpu = std::make_shared<VertexBufferRenderer<int>>();
-	CreateShadowMap(SHADOW_MAP_WIDTH, SHADOW_MAP_HEIGHT);
 	mCopyFenceHandle = CreateEvent(nullptr, false, false, nullptr);
 	mCopyCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COPY);
 	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mCopyFence)) == S_OK);
@@ -32,6 +31,8 @@ void Renderer::RendererContext::CreateWindowDependentResource(int InWindowWidth,
 	mWindowWidth = InWindowWidth;
 	mDepthBuffer = std::make_shared<Resource::DepthBuffer>(0.0f, 0);
 	mDepthBuffer->Create(L"DepthBuffer", mWindowWidth, mWindowHeight, DXGI_FORMAT_D32_FLOAT);
+	CreateShadowMap(mWindowWidth, mWindowHeight);
+
 }
 
 void Renderer::RendererContext::UpdateDataToVertexBuffer(std::span<Vertex> InData)
