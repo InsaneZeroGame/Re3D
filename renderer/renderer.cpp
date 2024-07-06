@@ -4,7 +4,6 @@
 #include <camera.h>
 #include "components.h"
 #include "gui.h"
-#include "BufferHelpers.h"
 #include "renderer_context.h"
 
 Renderer::BaseRenderer::BaseRenderer():
@@ -16,19 +15,15 @@ Renderer::BaseRenderer::BaseRenderer():
 	mSkybox(nullptr),
 	mComputeFenceValue(1),
 	mCurrentScene(nullptr),
-	mCopyFenceValue(1),
 	mGraphicsFenceValue(1)
 {
 	Ensures(AssetLoader::gStbTextureLoader);
 	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mComputeFence)) == S_OK);
-	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mCopyFence)) == S_OK);
 	mComputeFenceHandle = CreateEvent(nullptr, false, false, nullptr);
-	mCopyFenceHandle = CreateEvent(nullptr, false, false, nullptr);
 	mGraphicsCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COMPUTE);
-	mCopyCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COPY);
 	mBatchUploader = std::make_unique<ResourceUploadBatch>(g_Device);
-	mContext = std::make_unique<RendererContext>();
+	mContext = std::make_unique<RendererContext>(mCmdManager);
 	CreateBuffers();
 	CreateTextures();
 	CreateRootSignature();
@@ -734,73 +729,9 @@ void Renderer::BaseRenderer::LoadStaticMeshToGpu(ECS::StaticMeshComponent& InCom
 	auto& indices = InComponent.mIndices;
 	InComponent.BaseVertexLocation = mContext->GetVertexBufferCpu()->GetOffset();
 	InComponent.StartIndexLocation = mContext->GetIndexBufferCpu()->GetOffset();
-	UploadDataToResource<Vertex>(mContext->GetVertexBuffer()->GetResource(), vertices, mContext->GetVertexBufferCpu()->GetOffsetBytes());
-	UploadDataToResource<int>(mContext->GetIndexBuffer()->GetResource(), indices, mContext->GetIndexBufferCpu()->GetOffsetBytes());
-	mContext->GetVertexBufferCpu()->UpdataData(vertices);
-	mContext->GetIndexBufferCpu()->UpdataData(indices);
+	mContext->UpdateDataToVertexBuffer(vertices);
+	mContext->UpdateDataToIndexBuffer(indices);
 }
 
-void Renderer::BaseRenderer::UploadDataToResource(
-	ID3D12Resource* InDestResource,
-	const void* data,
-	uint64_t size,
-	uint64_t InDestOffset)
-{
-	if (mCopyQueueUploadResourceSize < size)
-	{
-		if (mCopyQueueUploadResource)
-		{
-			mCopyQueueUploadResource->Release();
-			mCopyQueueUploadResource = nullptr;
-		}
-		DirectX::CreateUploadBuffer(g_Device, data, size, 1, &mCopyQueueUploadResource);
-		mCopyQueueUploadResourceSize = size;
-	}
-	ID3D12CommandAllocator* copyCmdAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_COPY, mCopyFenceValue);
-	mCopyCmd->Reset(copyCmdAllocator, nullptr);
-	void* Memory;
-	auto range = CD3DX12_RANGE(0, size);
-	mCopyQueueUploadResource->Map(0, &range, &Memory);
-	memcpy(Memory, data, size);
-	mCopyQueueUploadResource->Unmap(0, &range);
-	mCopyCmd->CopyBufferRegion(InDestResource, InDestOffset, mCopyQueueUploadResource, 0, size);
 
-	ID3D12CommandList* cmds[] = {mCopyCmd};
-	mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY)->ExecuteCommandLists(1, cmds);
-	mCmdManager->Discard(D3D12_COMMAND_LIST_TYPE_COPY, copyCmdAllocator, mCopyFenceValue);
-	mCopyFenceValue++;
-}
-
-template<typename T>
-void Renderer::BaseRenderer::UploadDataToResource(ID3D12Resource* InDestResource, std::span<T> InData, uint64_t InDestOffset)
-{
-	void* data = InData.data();
-	uint64_t size = InData.size_bytes();
-	if (mCopyQueueUploadResourceSize < size)
-	{
-		if (mCopyQueueUploadResource)
-		{
-			mCopyQueueUploadResource->Release();
-			mCopyQueueUploadResource = nullptr;
-		}
-		DirectX::CreateUploadBuffer(g_Device, data, size, 1, &mCopyQueueUploadResource);
-		mCopyQueueUploadResourceSize = size;
-	}
-	ID3D12CommandAllocator* copyCmdAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_COPY, mCopyFenceValue);
-	mCopyCmd->Reset(copyCmdAllocator, nullptr);
-	void* Memory;
-	auto range = CD3DX12_RANGE(0, size);
-	mCopyQueueUploadResource->Map(0, &range, &Memory);
-	memcpy(Memory, data, size);
-	mCopyQueueUploadResource->Unmap(0, &range);
-	mCopyCmd->CopyBufferRegion(InDestResource, InDestOffset, mCopyQueueUploadResource, 0, size);
-	mCopyCmd->Close();
-	ID3D12CommandList* cmds[] = { mCopyCmd };
-	mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY)->ExecuteCommandLists(1, cmds);
-	mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY)->Signal(mCopyFence, mCopyFenceValue);
-	mCopyFence->SetEventOnCompletion(mCopyFenceValue, mCopyFenceHandle);
-	WaitForSingleObject(mCopyFenceHandle, INFINITE);
-	mCmdManager->Discard(D3D12_COMMAND_LIST_TYPE_COPY, copyCmdAllocator, mCopyFenceValue);
-	mCopyFenceValue++;
-}
 

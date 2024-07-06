@@ -76,27 +76,19 @@ namespace Renderer
 		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter,UINT InSubResource = 0);
 		void UpdataFrameData();
 		void LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent);
-		void UploadDataToResource(ID3D12Resource* InDestResource,const void* data,uint64_t size,uint64_t InDestOffset);
-		template<typename T>
-		void UploadDataToResource(ID3D12Resource* InDestResource, std::span<T> InData, uint64_t InDestOffset);
-
+		
 	protected:
 		std::unique_ptr<class DeviceManager> mDeviceManager;
 		std::shared_ptr<class CmdManager> mCmdManager;
 		std::unique_ptr<class RendererContext> mContext;
 		bool mIsFirstFrame;
 		uint64_t mComputeFenceValue;
-		uint64_t mCopyFenceValue;
 		uint64_t mGraphicsFenceValue;
 		HANDLE mComputeFenceHandle;
-		HANDLE mCopyFenceHandle;
 		ID3D12Fence* mComputeFence;
-		ID3D12Fence* mCopyFence;
 		ID3D12GraphicsCommandList* mComputeCmd;
 		ID3D12GraphicsCommandList* mGraphicsCmd;
-		ID3D12GraphicsCommandList* mCopyCmd;
 		ID3D12CommandAllocator* mGraphicsCmdAllocator;
-		
 		ID3D12PipelineState* mColorPassPipelineState;
 		ID3D12PipelineState* mPipelineStateDepthOnly;
 		ID3D12PipelineState* mPipelineStateShadowMap;
@@ -105,11 +97,8 @@ namespace Renderer
 		ID3D12RootSignature* mLightCullPassRootSignature;
 		std::unique_ptr<Gameplay::PerspectCamera> mDefaultCamera;
 		std::unique_ptr<Gameplay::PerspectCamera> mShadowCamera;
-
 		FrameData mFrameDataCPU;
 		std::shared_ptr<Resource::UploadBuffer> mFrameDataGPU;
-		
-		//void* mFrameDataPtr;
 		int mWidth;
 		int mHeight;
 		std::unique_ptr<class tf::Taskflow> mRenderFlow;
@@ -123,8 +112,6 @@ namespace Renderer
 		std::vector<Cluster> mCLusters;
 		LightCullViewData mLightCullViewData;
 		std::unique_ptr<Resource::UploadBuffer> mLightCullViewDataGpu;
-		//void* mLightCullDataPtr;
-		//std::shared_ptr<Resource::Texture> mDefaultTexture;
 		std::shared_ptr<Resource::Texture> mSkyboxTexture;
 		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
 		std::unique_ptr<Skybox> mSkybox;
@@ -135,8 +122,6 @@ namespace Renderer
         bool mHasSkybox = true;
         std::future<void> mLoadResourceFuture;
 		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>> mTextureMap;
-		ID3D12Resource* mCopyQueueUploadResource = nullptr;
-		uint64_t mCopyQueueUploadResourceSize = 0;
 	};
 
 	
