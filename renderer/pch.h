@@ -88,6 +88,8 @@
 #include <entt/entity/registry.hpp>
 #include <Keyboard.h>
 #include <Mouse.h>
+#include "renderer_context.h"
+
 
 #pragma comment(lib,"dxgi.lib")
 #pragma comment(lib,"d3d12.lib")

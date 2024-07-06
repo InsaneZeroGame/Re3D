@@ -20,13 +20,11 @@ namespace DirectX
 
 namespace Renderer
 {
-	namespace Resource 
+	namespace Resource
 	{
-		class VertexBuffer;
-		class UploadBuffer;
-		class DepthBuffer;
-		class StructuredBuffer;
 		class Texture;
+		class UploadBuffer;
+		class StructuredBuffer;
 	}
 
 	struct FrameData
@@ -49,21 +47,8 @@ namespace Renderer
 		DirectX::SimpleMath::Vector4 LightGridZParams;
 		DirectX::SimpleMath::Vector4 InvDeviceZToWorldZTransform;
 	};
-	template<typename T>
-	struct VertexBufferRenderer
-	{
-		uint64_t GetOffset() { return mOffset; }
-		uint64_t GetOffsetBytes() { return mOffsetBytes; }
+	
 
-		void UpdataData(std::span<T> InData) 
-		{
-			mOffset += InData.size();
-			mOffsetBytes += InData.size_bytes();
-		};
-	private:
-		uint64_t mOffset = 0;
-		uint64_t mOffsetBytes = 0;
-	};
 
 	class BaseRenderer : public std::enable_shared_from_this<BaseRenderer>
 	{
@@ -98,6 +83,7 @@ namespace Renderer
 	protected:
 		std::unique_ptr<class DeviceManager> mDeviceManager;
 		std::shared_ptr<class CmdManager> mCmdManager;
+		std::unique_ptr<class RendererContext> mContext;
 		bool mIsFirstFrame;
 		uint64_t mComputeFenceValue;
 		uint64_t mCopyFenceValue;
@@ -110,10 +96,7 @@ namespace Renderer
 		ID3D12GraphicsCommandList* mGraphicsCmd;
 		ID3D12GraphicsCommandList* mCopyCmd;
 		ID3D12CommandAllocator* mGraphicsCmdAllocator;
-		std::shared_ptr<Resource::VertexBuffer> mVertexBuffer;
-		std::shared_ptr<Resource::VertexBuffer> mIndexBuffer;
-		std::unique_ptr<VertexBufferRenderer<Vertex>> mVertexBufferCpu;
-		std::unique_ptr<VertexBufferRenderer<int>> mIndexBufferCpu;
+		
 		ID3D12PipelineState* mColorPassPipelineState;
 		ID3D12PipelineState* mPipelineStateDepthOnly;
 		ID3D12PipelineState* mPipelineStateShadowMap;
@@ -125,8 +108,7 @@ namespace Renderer
 
 		FrameData mFrameDataCPU;
 		std::shared_ptr<Resource::UploadBuffer> mFrameDataGPU;
-		std::shared_ptr<Resource::DepthBuffer> mDepthBuffer;
-		std::shared_ptr<Resource::DepthBuffer> mShadowMap;
+		
 		//void* mFrameDataPtr;
 		int mWidth;
 		int mHeight;

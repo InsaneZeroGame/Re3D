@@ -5,6 +5,7 @@
 #include "components.h"
 #include "gui.h"
 #include "BufferHelpers.h"
+#include "renderer_context.h"
 
 Renderer::BaseRenderer::BaseRenderer():
 	mDeviceManager(std::make_unique<DeviceManager>()),
@@ -27,6 +28,7 @@ Renderer::BaseRenderer::BaseRenderer():
 	mComputeCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COMPUTE);
 	mCopyCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COPY);
 	mBatchUploader = std::make_unique<ResourceUploadBatch>(g_Device);
+	mContext = std::make_unique<RendererContext>();
 	CreateBuffers();
 	CreateTextures();
 	CreateRootSignature();
@@ -50,18 +52,11 @@ void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, in
 	//Use Reverse Z
 	mDefaultCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f,true);
 	mDefaultCamera->LookAt({ 0.0,3.0,2.0 }, { 0.0f,1.0f,0.0f }, { 0.0f,1.0f,0.0f });
-
 	mShadowCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f);
 	mShadowCamera->LookAt({ 5,5,5 }, { 0.0f,0.0f,0.0f }, { 0.0f,1.0f,0.0f });
-
-	mDepthBuffer = std::make_shared<Resource::DepthBuffer>(0.0f, 0);
-	mDepthBuffer->Create(L"DepthBuffer", mWidth, mHeight, DXGI_FORMAT_D32_FLOAT);
-
-	mShadowMap = std::make_shared<Resource::DepthBuffer>(0.0f, 0);
-	mShadowMap->Create(L"ShadowMap", mWidth, mHeight, DXGI_FORMAT_D32_FLOAT);
-
 	mViewPort = { 0,0,(float)mWidth,(float)mHeight,0.0,1.0 };
 	mRect = { 0,0,mWidth,mHeight };
+	mContext->CreateWindowDependentResource(InWidth, InHeight);
     CreateGui();
 }
 
@@ -128,18 +123,18 @@ void Renderer::BaseRenderer::CreateRenderTask()
 
 			//Setup RenderTarget
 			TransitState(mGraphicsCmd, g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			mGraphicsCmd->OMSetRenderTargets(0, nullptr, true, &mDepthBuffer->GetDSV());
+			mGraphicsCmd->OMSetRenderTargets(0, nullptr, true, &mContext->GetDepthBuffer()->GetDSV());
 			mGraphicsCmd->RSSetViewports(1, &mViewPort);
 			mGraphicsCmd->RSSetScissorRects(1, &mRect);
-			mGraphicsCmd->ClearDepthStencilView(mDepthBuffer->GetDSV(), D3D12_CLEAR_FLAG_DEPTH, 0.0f, 0, 1, &mRect);
+			mGraphicsCmd->ClearDepthStencilView(mContext->GetDepthBuffer()->GetDSV(), D3D12_CLEAR_FLAG_DEPTH, 0.0f, 0, 1, &mRect);
 
 			//Set Resources
 			mGraphicsCmd->SetGraphicsRootSignature(mColorPassRootSignature);
 			mGraphicsCmd->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
-			auto vbview = mVertexBuffer->VertexBufferView();
+			auto vbview = mContext->GetVertexBuffer()->VertexBufferView();
 			mGraphicsCmd->IASetVertexBuffers(0, 1, &vbview);
-			auto ibview = mIndexBuffer->IndexBufferView();
+			auto ibview = mContext->GetIndexBuffer()->IndexBufferView();
 			mGraphicsCmd->IASetIndexBuffer(&ibview);
 			mGraphicsCmd->SetPipelineState(mPipelineStateDepthOnly);
 			using namespace ECS;
@@ -155,17 +150,18 @@ void Renderer::BaseRenderer::CreateRenderTask()
                 });
 
 				//ShadowMap
-				TransitState(mGraphicsCmd, mShadowMap->GetResource(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+				auto shadowMap = mContext->GetShadowMap();
+				TransitState(mGraphicsCmd, shadowMap->GetResource(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 				mGraphicsCmd->SetPipelineState(mPipelineStateShadowMap);
-				mGraphicsCmd->OMSetRenderTargets(0, nullptr, true, &mShadowMap->GetDSV());
-				mGraphicsCmd->ClearDepthStencilView(mShadowMap->GetDSV(), D3D12_CLEAR_FLAG_DEPTH, 0.0f, 0, 1, &mRect);
+				mGraphicsCmd->OMSetRenderTargets(0, nullptr, true, &shadowMap->GetDSV());
+				mGraphicsCmd->ClearDepthStencilView(shadowMap->GetDSV(), D3D12_CLEAR_FLAG_DEPTH, 0.0f, 0, 1, &mRect);
 				//auto renderEntitiesCount = renderEntities.size();
 				renderEntities.each([=](auto entity, auto& renderComponent, auto& transformComponent) {
 					auto modelMatrix = transformComponent.GetModelMatrix();
 					mGraphicsCmd->SetGraphicsRoot32BitConstants(4, 16, &modelMatrix, 0);
 					RenderObject(renderComponent);
 					});
-				TransitState(mGraphicsCmd, mShadowMap->GetResource(),D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+				TransitState(mGraphicsCmd, shadowMap->GetResource(),D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 				
 			}
@@ -199,9 +195,6 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mComputeFence->SetEventOnCompletion(mComputeFenceValue, mComputeFenceHandle);
 			mComputeFenceValue++;
 
-
-
-
 			//Render Scene
 			WaitForSingleObject(mComputeFenceHandle, INFINITE);
 			auto lCurrentBackbufferIndex = mDeviceManager->GetCurrentFrameIndex();
@@ -213,8 +206,8 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
-			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), true, &mDepthBuffer->GetDSV_ReadOnly());
-			mGraphicsCmd->SetGraphicsRootDescriptorTable(8, mShadowMap->GetDepthSRVGPU());
+			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), true, &mContext->GetDepthBuffer()->GetDSV_ReadOnly());
+			mGraphicsCmd->SetGraphicsRootDescriptorTable(8, mContext->GetShadowMap()->GetDepthSRVGPU());
 			using namespace ECS;
             if (mCurrentScene && mCurrentScene->IsSceneReady()) 
 			{
@@ -276,18 +269,6 @@ void Renderer::BaseRenderer::CreateRenderTask()
 
 void Renderer::BaseRenderer::CreateBuffers()
 {
-	//auto& vertices = triangle;
-	//1.Vertex Buffer
-	mVertexBuffer = std::make_shared<Resource::VertexBuffer>();
-	mVertexBuffer->Create(L"VertexBuffer", MAX_ELE_COUNT, VERTEX_SIZE_IN_BYTE);
-
-	mIndexBuffer = std::make_shared<Resource::VertexBuffer>();
-	mIndexBuffer->Create(L"IndexBuffer", MAX_ELE_COUNT, VERTEX_SIZE_IN_BYTE);
-
-	//2.Upload Buffer
-	mVertexBufferCpu = std::make_unique<VertexBufferRenderer<Vertex>>();
-	mIndexBufferCpu = std::make_unique<VertexBufferRenderer<int>>();
-	
 
 	mFrameDataGPU = std::make_shared<Resource::UploadBuffer>();
 	mFrameDataGPU->Create(L"FrameData", sizeof(mFrameDataCPU));
@@ -446,14 +427,12 @@ void Renderer::BaseRenderer::CreateSkybox()
 
 void Renderer::BaseRenderer::FirstFrame()
 {
-	TransitState(mGraphicsCmd, mShadowMap->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-
+	TransitState(mGraphicsCmd, mContext->GetShadowMap()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	TransitState(mGraphicsCmd, mLightUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 	TransitState(mGraphicsCmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
 	mGraphicsCmd->CopyResource(mLightBuffer->GetResource(), mLightUploadBuffer->GetResource());
 	TransitState(mGraphicsCmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-
-	TransitState(mGraphicsCmd, mDepthBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+	TransitState(mGraphicsCmd, mContext->GetDepthBuffer()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 
 	for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
 	{
@@ -753,12 +732,12 @@ void Renderer::BaseRenderer::LoadStaticMeshToGpu(ECS::StaticMeshComponent& InCom
 {
 	auto& vertices = InComponent.mVertices;
 	auto& indices = InComponent.mIndices;
-	InComponent.BaseVertexLocation = mVertexBufferCpu->GetOffset();
-	InComponent.StartIndexLocation = mIndexBufferCpu->GetOffset();
-	UploadDataToResource<Vertex>(mVertexBuffer->GetResource(), vertices, mVertexBufferCpu->GetOffsetBytes());
-	UploadDataToResource<int>(mIndexBuffer->GetResource(), indices, mIndexBufferCpu->GetOffsetBytes());
-	mVertexBufferCpu->UpdataData(vertices);
-	mIndexBufferCpu->UpdataData(indices);
+	InComponent.BaseVertexLocation = mContext->GetVertexBufferCpu()->GetOffset();
+	InComponent.StartIndexLocation = mContext->GetIndexBufferCpu()->GetOffset();
+	UploadDataToResource<Vertex>(mContext->GetVertexBuffer()->GetResource(), vertices, mContext->GetVertexBufferCpu()->GetOffsetBytes());
+	UploadDataToResource<int>(mContext->GetIndexBuffer()->GetResource(), indices, mContext->GetIndexBufferCpu()->GetOffsetBytes());
+	mContext->GetVertexBufferCpu()->UpdataData(vertices);
+	mContext->GetIndexBufferCpu()->UpdataData(indices);
 }
 
 void Renderer::BaseRenderer::UploadDataToResource(

@@ -14,6 +14,7 @@ set(${TARGET}_Headers
             skybox.h
             render_utils.h
             gui.h
+            renderer_context.h
             )
 
 set(${TARGET}_Srcs 
@@ -23,6 +24,7 @@ set(${TARGET}_Srcs
             render_pass.cpp
             gpu_resource.cpp
             device_manager.cpp
+            renderer_context.cpp
             renderer.cpp)
 
 set(${TARGET}_Srcs
