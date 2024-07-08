@@ -14,13 +14,8 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
 	AssetLoader::InitAssetLoader();
 	//Game Scene 
 	std::shared_ptr<GAS::GameScene> newScene = std::make_shared<GAS::GameScene>();
-	//newScene->CreateEntityWithMesh("Mesh_Plane.FBX");
-    //newScene->CreateEntitiesWithMesh("plane.fbx");
-    newScene->CreateEntitiesWithMesh("SM_Shaderball.FBX");
-	//newScene->CreateEntitiesWithMesh("NewSponza_Main_Yup_002.FBX");
-	newScene->CreateEntitiesWithMesh("scene.fbx");
-	//newScene->CreateEntityWithMesh("cube.obj");
-	//newScene->CreateEntityWithMesh("sphere.obj");
+    //newScene->CreateEntitiesWithMesh("SM_Shaderball.FBX");
+	//newScene->CreateEntitiesWithMesh("scene.fbx");
 
 	//1.Renderer
 	std::shared_ptr<Renderer::BaseRenderer> renderer = std::make_shared<Renderer::BaseRenderer>();

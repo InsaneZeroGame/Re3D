@@ -19,3 +19,4 @@
 #include <Mouse.h>
 #include "fbxsdk/include/fbxsdk.h"
 #include "utility.h"
+#include <span>

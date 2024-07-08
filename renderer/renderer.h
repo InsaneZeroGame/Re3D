@@ -59,6 +59,7 @@ namespace Renderer
 		void Update(float delta);
 		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>>& GetSceneTextureMap();
 		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene);
+		void LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent);
 		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, std::string_view InMatName = {},const std::wstring& InDebugName = L"");
 	protected:
         void CreateGui();
@@ -75,7 +76,6 @@ namespace Renderer
 		virtual void RenderObject(const ECS::StaticMeshComponent& InAsset);
 		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter,UINT InSubResource = 0);
 		void UpdataFrameData();
-		void LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent);
 		
 	protected:
 		std::unique_ptr<class DeviceManager> mDeviceManager;

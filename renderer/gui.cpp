@@ -56,7 +56,10 @@ void Renderer::Gui::Render() {
     if (mCurrentScene)
     {
         SceneUpdate();
-        EntityPanel(mCurrentEntity);
+        if (!mEntities.empty())
+        {
+			EntityPanel(mCurrentEntity);
+        }
     }
 }
 
@@ -94,18 +97,16 @@ void Renderer::Gui::SetCurrentScene(std::shared_ptr<GAS::GameScene> InGameScene)
 {
     mCurrentScene = InGameScene;
     auto& sceneRegistry = mCurrentScene->GetRegistery();
-    int n = 0;
     for (auto entt: sceneRegistry.view<entt::entity>()) {
         mEntities.push_back(entt);
-        auto name = std::string("Entity") + std::to_string(n);
-        if (ECS::StaticMeshComponent* lStaticComponent =  sceneRegistry.try_get<ECS::StaticMeshComponent>(entt))
-        {
-            name +=  "-" + lStaticComponent->mName;
-        }
-		mEntitiesDisplayName.push_back(name);
-        n++;
     }
-    mCurrentEntity = mEntities[0];
+
+    if (!mEntities.empty())
+    {
+        GameSceneUpdate(InGameScene, mEntities);
+		mCurrentEntity = mEntities[0];
+    }
+	GAS::GameScene::sOnNewEntityAdded.push_back(std::bind(&Gui::GameSceneUpdate, this, std::placeholders::_1, std::placeholders::_2));
 }
 
 void Renderer::Gui::SetRenderer(std::weak_ptr<BaseRenderer> InRenderer)
@@ -120,9 +121,13 @@ void Renderer::Gui::SceneUpdate()
         AddFile([this](const std::filesystem::path& InFilePath) 
             {
                 auto extension = InFilePath.extension();
-                if (extension.string() == "fbx" || extension.string() == "FBX")
+                if (extension.string() == ".fbx" || extension.string() == ".FBX")
                 {
-                    //mRenderer.lock()->
+                    auto newEntities =  mCurrentScene->CreateEntitiesWithMesh(InFilePath.string());
+					for (const auto& newEntity : newEntities)
+					{
+						
+					}
                 }
             });
     }
@@ -163,6 +168,25 @@ void Renderer::Gui::SceneUpdate()
         ImGui::EndListBox();
     }
 	SceneMaterials();
+}
+
+void Renderer::Gui::GameSceneUpdate(std::shared_ptr<GAS::GameScene> InGameScene, std::span<entt::entity> InEntities)
+{
+	int n = 0;
+    auto& sceneRegistry = InGameScene->GetRegistery();
+    for (auto entity : InEntities)
+    {
+		auto name = std::string("Entity") + std::to_string(n);
+		if (ECS::StaticMeshComponent* lStaticComponent = sceneRegistry.try_get<ECS::StaticMeshComponent>(entity))
+		{
+			name += "-" + lStaticComponent->mName;
+			mRenderer.lock()->LoadStaticMeshToGpu(*lStaticComponent);
+		}
+		mEntitiesDisplayName.push_back(name);
+        mEntities.push_back(entity);
+		n++;
+    }
+    mCurrentEntity = mEntities[0];
 }
 
 void Renderer::Gui::EntityPanel(entt::entity e) 

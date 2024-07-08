@@ -1338,7 +1338,15 @@ std::vector<ECS::StaticMesh>& AssetLoader::FbxLoader::LoadAssetFromFile(std::str
         std::vector<ECS::StaticMesh> emptyVector = {};
         mStaticMeshes.swap(emptyVector);
     }
-    FbxString lFilePath((mModulePath.string() +  InFileName.data()).c_str());
+
+    std::string_view absFileName = InFileName;
+
+    if (!std::filesystem::exists(absFileName))
+    {
+        absFileName = mModulePath.string() + InFileName.data();
+    }
+
+    FbxString lFilePath(absFileName.data());
 
     if (lFilePath.IsEmpty()) {
         lResult = false;

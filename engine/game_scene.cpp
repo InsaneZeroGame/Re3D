@@ -16,7 +16,7 @@ GAS::GameScene::~GameScene()
 
 }
 
-void GAS::GameScene::CreateEntitiesWithMesh(const std::string InMeshFilePath) {
+std::vector<entt::entity> GAS::GameScene::CreateEntitiesWithMesh(const std::string InMeshFilePath) {
 	//Todo: Thread Safe
     std::vector<ECS::StaticMesh> models;
     AssetLoader::ModelAssetLoader* loader = nullptr;
@@ -30,14 +30,21 @@ void GAS::GameScene::CreateEntitiesWithMesh(const std::string InMeshFilePath) {
     }
     models = loader->LoadAssetFromFile(InMeshFilePath);
 	Ensures(!models.empty());
+    std::vector<entt::entity> res;
 	for (auto& mesh : models)
 	{
         using namespace ECS;
         auto entity = mRegistery.create();
+        res.push_back(entity);
         mRegistery.emplace_or_replace<StaticMeshComponent>(entity, std::move(mesh));
         mRegistery.emplace_or_replace<TransformComponent>(entity, std::move(mesh));
 	}
     mLoaded = true;
+    for (auto ldelegate : sOnNewEntityAdded)
+    {
+        ldelegate(shared_from_this(), res);
+    }
+    return res;
 }
 
 entt::registry& GAS::GameScene::GetRegistery()

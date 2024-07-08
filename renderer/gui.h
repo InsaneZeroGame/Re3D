@@ -28,6 +28,7 @@ namespace Renderer
         void SetRenderer(std::weak_ptr<BaseRenderer> InRenderer);
     private:
         void SceneUpdate();
+        void GameSceneUpdate(std::shared_ptr<GAS::GameScene> InGameScene, std::span<entt::entity> InEntities);
         void EntityPanel(entt::entity e);
         void Property(std::string name,float* value,float min,float max);
         std::shared_ptr < GAS::GameScene> mCurrentScene;
