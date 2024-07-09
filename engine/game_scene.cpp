@@ -17,7 +17,7 @@ GAS::GameScene::~GameScene()
 }
 
 std::vector<entt::entity> GAS::GameScene::CreateEntitiesWithMesh(const std::string InMeshFilePath) {
-	//Todo: Thread Safe
+	//Todo: Thread Safe 
     std::vector<ECS::StaticMesh> models;
     AssetLoader::ModelAssetLoader* loader = nullptr;
     auto extension = std::filesystem::path(InMeshFilePath).extension().string();
@@ -29,6 +29,7 @@ std::vector<entt::entity> GAS::GameScene::CreateEntitiesWithMesh(const std::stri
         loader = AssetLoader::gFbxModelLoader;
     }
     models = loader->LoadAssetFromFile(InMeshFilePath);
+	mTextureMap = loader->GetTextureMap();
 	Ensures(!models.empty());
     std::vector<entt::entity> res;
 	for (auto& mesh : models)
@@ -54,4 +55,19 @@ entt::registry& GAS::GameScene::GetRegistery()
 
 std::atomic_bool& GAS::GameScene::IsSceneReady() {
     return mLoaded;
+}
+
+const std::unordered_map<std::string, AssetLoader::TextureData*>& GAS::GameScene::GetTextureMap()
+{
+    return mTextureMap;
+}
+
+void GAS::GameScene::SceneScale(float InScale)
+{
+    mScale = InScale;
+    auto view = mRegistery.view<ECS::TransformComponent>();
+    view.each([&](auto entity,auto& transformComponent) 
+        {
+            transformComponent.Scale(DirectX::SimpleMath::Vector3(mScale));
+        });
 }

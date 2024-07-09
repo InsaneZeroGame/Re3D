@@ -131,7 +131,14 @@ void Renderer::Gui::SceneUpdate()
                 }
             });
     }
-    
+    if (mCurrentScene)
+    {
+		ImGui::DragFloat("Scene Scale", &mCurrentSceneScale);
+		mCurrentScene->SceneScale(mCurrentSceneScale);
+		s[0] = mCurrentSceneScale;
+		s[1] = mCurrentSceneScale;
+		s[2] = mCurrentSceneScale;
+    }
     if (ImGui::BeginListBox("##Entities", ImVec2(-FLT_MIN, 5 * ImGui::GetTextLineHeightWithSpacing()))) {
         static int mCurrentIndex = 0;
         for (int n = 0; n < mEntities.size(); n++) {
@@ -174,6 +181,7 @@ void Renderer::Gui::GameSceneUpdate(std::shared_ptr<GAS::GameScene> InGameScene,
 {
 	int n = 0;
     auto& sceneRegistry = InGameScene->GetRegistery();
+   
     for (auto entity : InEntities)
     {
 		auto name = std::string("Entity") + std::to_string(n);
@@ -181,6 +189,10 @@ void Renderer::Gui::GameSceneUpdate(std::shared_ptr<GAS::GameScene> InGameScene,
 		{
 			name += "-" + lStaticComponent->mName;
 			mRenderer.lock()->LoadStaticMeshToGpu(*lStaticComponent);
+		}
+		for (auto [textureName, textureData] : mCurrentScene->GetTextureMap())
+		{
+            mRenderer.lock()->LoadMaterial(textureName, textureData);
 		}
 		mEntitiesDisplayName.push_back(name);
         mEntities.push_back(entity);

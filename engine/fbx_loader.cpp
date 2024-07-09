@@ -1,4 +1,6 @@
 #include "fbx_loader.h"
+#include <execution>
+#include <algorithm>
 #ifdef IOS_REF
 #undef IOS_REF
 #define IOS_REF (*(pManager->GetIOSettings()))
@@ -34,8 +36,8 @@ void DisplayControlsPoints(FbxMesh* pMesh);
 void DisplayMaterialMapping(FbxMesh* pMesh);
 void DisplayTextureMapping(FbxMesh* pMesh);
 void DisplayTextureNames(FbxProperty& pProperty, FbxString& pConnectionString);
-void DisplayMaterialConnections(FbxMesh* pMesh);
-void DisplayMaterialTextureConnections(FbxSurfaceMaterial* pMaterial, char* header, int pMatId, int l);
+void DisplayMaterialConnections(const FbxMesh* pMesh,ECS::StaticMesh& InMesh);
+void DisplayMaterialTextureConnections(FbxSurfaceMaterial* pMaterial, ECS::StaticMesh& InMesh, char* header, int pMatId, int l);
 static const FbxImplementation* LookForImplementation(FbxSurfaceMaterial* pMaterial) {
     const FbxImplementation* lImplementation = nullptr;
     if (!lImplementation)
@@ -1121,7 +1123,6 @@ void AssetLoader::FbxLoader::DisplayMesh(FbxNode* pNode, const FbxAMatrix& globa
     //DisplayMaterialMapping(lMesh);
     //DisplayMaterial(lMesh);
     //DisplayTexture(lMesh);
-    //DisplayMaterialConnections(lMesh);
     //DisplayLink(lMesh);
     //DisplayShape(lMesh);
     //DisplayCache(lMesh);
@@ -1180,53 +1181,59 @@ FbxAMatrix AssetLoader::FbxLoader::GetGlobalPosition(FbxNode* pNode, const FbxTi
 void AssetLoader::FbxLoader::LoadTextureMaterial(FbxScene* InScene, const std::string_view InFileName) {
     // Load the textures into GPU, only for file texture now
     const int lTextureCount = InScene->GetTextureCount();
-    for (int lTextureIndex = 0; lTextureIndex < lTextureCount; ++lTextureIndex) {
-        FbxTexture* lTexture = InScene->GetTexture(lTextureIndex);
-        FbxFileTexture* lFileTexture = FbxCast<FbxFileTexture>(lTexture);
-        if (lFileTexture && !lFileTexture->GetUserDataPtr()) {
-            // Try to load the texture from absolute path
-            const FbxString lFileName = lFileTexture->GetFileName();
-
-            // Only TGA textures are supported now.
-            //if (lFileName.Right(3).Upper() != "TGA") {
-            //    FBXSDK_printf("Only TGA textures are supported now: %s\n", lFileName.Buffer());
-            //    continue;
-            //}
-
-            int lTextureObject = 0;
-            std::optional<TextureData*> newTexture =  gStbTextureLoader->LoadTextureFromFile(lFileName.Buffer());
-            if (newTexture.has_value())
-            {
-                mTextureMap[lFileName.Buffer()] = newTexture.value();
-            }
-
-            const FbxString lAbsFbxFileName = FbxPathUtils::Resolve(InFileName.data());
-            const FbxString lAbsFolderName = FbxPathUtils::GetFolderName(lAbsFbxFileName);
-            if (!newTexture.has_value()) {
-                // Load texture from relative file name (relative to FBX file)
-                const FbxString lResolvedFileName =
-                        FbxPathUtils::Bind(lAbsFolderName, lFileTexture->GetRelativeFileName());
-                std::optional<TextureData*> newTexture = gStbTextureLoader->LoadTextureFromFile(lResolvedFileName.Buffer());
-            }
-
-            if (!newTexture.has_value()) {
-                // Load texture from file name only (relative to FBX file)
-                const FbxString lTextureFileName = FbxPathUtils::GetFileName(lFileName);
-                const FbxString lResolvedFileName = FbxPathUtils::Bind(lAbsFolderName, lTextureFileName);
-                std::optional<TextureData*> newTexture = gStbTextureLoader->LoadTextureFromFile(lResolvedFileName.Buffer());
-            }
-
-            if (!newTexture.has_value()) {
-                FBXSDK_printf("Failed to load texture file: %s\n", lFileName.Buffer());
-                continue;
-            }
-
-            //if (lStatus) {
-            //    GLuint* lTextureName = new GLuint(lTextureObject);
-            //    lFileTexture->SetUserDataPtr(lTextureName);
-            //}
-        }
+    std::vector<int> dummyVec(lTextureCount, 0);
+    for (auto i = 0 ; i < dummyVec.size();++i)
+    {
+        dummyVec[i] = i;
     }
+    std::for_each(std::execution::par, dummyVec.begin(), dummyVec.end(), [&](int& lTextureIndex)
+        { 
+			FbxTexture* lTexture = InScene->GetTexture(lTextureIndex);
+			FbxFileTexture* lFileTexture = FbxCast<FbxFileTexture>(lTexture);
+			if (lFileTexture && !lFileTexture->GetUserDataPtr()) {
+				// Try to load the texture from absolute path
+				const FbxString lFileName = lFileTexture->GetFileName();
+
+				// Only TGA textures are supported now.
+				//if (lFileName.Right(3).Upper() != "TGA") {
+				//    FBXSDK_printf("Only TGA textures are supported now: %s\n", lFileName.Buffer());
+				//    continue;
+				//}
+
+				int lTextureObject = 0;
+				std::optional<TextureData*> newTexture = gStbTextureLoader->LoadTextureFromFile(lFileName.Buffer());
+				if (newTexture.has_value())
+				{
+                    std::lock_guard<std::mutex> lock(mTextureMapMutext);
+					mTextureMap[lTexture->GetName()] = newTexture.value();
+				}
+
+				const FbxString lAbsFbxFileName = FbxPathUtils::Resolve(InFileName.data());
+				const FbxString lAbsFolderName = FbxPathUtils::GetFolderName(lAbsFbxFileName);
+				if (!newTexture.has_value()) {
+					// Load texture from relative file name (relative to FBX file)
+					const FbxString lResolvedFileName =
+						FbxPathUtils::Bind(lAbsFolderName, lFileTexture->GetRelativeFileName());
+					std::optional<TextureData*> newTexture = gStbTextureLoader->LoadTextureFromFile(lResolvedFileName.Buffer());
+				}
+
+				if (!newTexture.has_value()) {
+					// Load texture from file name only (relative to FBX file)
+					const FbxString lTextureFileName = FbxPathUtils::GetFileName(lFileName);
+					const FbxString lResolvedFileName = FbxPathUtils::Bind(lAbsFolderName, lTextureFileName);
+					std::optional<TextureData*> newTexture = gStbTextureLoader->LoadTextureFromFile(lResolvedFileName.Buffer());
+				}
+
+				if (!newTexture.has_value()) {
+					FBXSDK_printf("Failed to load texture file: %s\n", lFileName.Buffer());
+				}
+
+				//if (lStatus) {
+				//    GLuint* lTextureName = new GLuint(lTextureObject);
+				//    lFileTexture->SetUserDataPtr(lTextureName);
+				//}
+			}
+        });
 }
 
 FbxAMatrix GetGeometry(FbxNode* pNode) {
@@ -2035,6 +2042,7 @@ bool AssetLoader::FbxLoader::LoadStaticMesh(const FbxMesh* pMesh) {
         }
         newMesh.mSubmeshMap[lMaterialIndex].TriangleCount += 1;
     }
+	DisplayMaterialConnections(pMesh,newMesh);
     mStaticMeshes.push_back(newMesh);
     return true;
 }
@@ -2045,46 +2053,46 @@ void DisplayTextureNames(FbxProperty& pProperty, FbxString& pConnectionString) {
         for (int j = 0; j < lLayeredTextureCount; ++j) {
             FbxLayeredTexture* lLayeredTexture = pProperty.GetSrcObject<FbxLayeredTexture>(j);
             int lNbTextures = lLayeredTexture->GetSrcObjectCount<FbxTexture>();
-            pConnectionString += " Texture ";
+            //pConnectionString += " Texture ";
 
             for (int k = 0; k < lNbTextures; ++k) {
                 //lConnectionString += k;
-                pConnectionString += "\"";
+                //pConnectionString += "\"";
                 pConnectionString += (char*)lLayeredTexture->GetName();
-                pConnectionString += "\"";
-                pConnectionString += " ";
+                //pConnectionString += "\"";
+                //pConnectionString += " ";
             }
-            pConnectionString += "of ";
-            pConnectionString += pProperty.GetName();
-            pConnectionString += " on layer ";
-            pConnectionString += j;
+            //pConnectionString += "of ";
+            //pConnectionString += pProperty.GetName();
+            //pConnectionString += " on layer ";
+            //pConnectionString += j;
         }
-        pConnectionString += " |";
+        //pConnectionString += " |";
     } else {
         //no layered texture simply get on the property
         int lNbTextures = pProperty.GetSrcObjectCount<FbxTexture>();
 
         if (lNbTextures > 0) {
-            pConnectionString += " Texture ";
-            pConnectionString += " ";
+            //pConnectionString += " Texture ";
+            //pConnectionString += " ";
 
             for (int j = 0; j < lNbTextures; ++j) {
                 FbxTexture* lTexture = pProperty.GetSrcObject<FbxTexture>(j);
                 if (lTexture) {
-                    pConnectionString += "\"";
+                    //pConnectionString += "\"";
                     pConnectionString += (char*)lTexture->GetName();
-                    pConnectionString += "\"";
-                    pConnectionString += " ";
+                    //pConnectionString += "\"";
+                    //pConnectionString += " ";
                 }
             }
-            pConnectionString += "of ";
-            pConnectionString += pProperty.GetName();
-            pConnectionString += " |";
+            //pConnectionString += "of ";
+            //pConnectionString += pProperty.GetName();
+            //pConnectionString += " |";
         }
     }
 }
 
-void DisplayMaterialTextureConnections(FbxSurfaceMaterial* pMaterial, char* header, int pMatId, int l) {
+void DisplayMaterialTextureConnections(FbxSurfaceMaterial* pMaterial, ECS::StaticMesh& InMesh, char* header, int pMatId, int l) {
     if (!pMaterial)
         return;
 
@@ -2093,79 +2101,81 @@ void DisplayMaterialTextureConnections(FbxSurfaceMaterial* pMaterial, char* head
 
     FbxProperty lProperty;
     //Diffuse Textures
+    FbxString diffuseColorName;
     lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sDiffuse);
-    DisplayTextureNames(lProperty, lConnectionString);
+    DisplayTextureNames(lProperty, diffuseColorName);
+    InMesh.mMatTextureName[pMatId] = diffuseColorName;
 
     //DiffuseFactor Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sDiffuseFactor);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-    //Emissive Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sEmissive);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-    //EmissiveFactor Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sEmissiveFactor);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-
-    //Ambient Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sAmbient);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-    //AmbientFactor Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sAmbientFactor);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-    //Specular Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sSpecular);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-    //SpecularFactor Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sSpecularFactor);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-    //Shininess Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sShininess);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-    //Bump Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sBump);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-    //Normal Map Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sNormalMap);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-    //Transparent Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sTransparentColor);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-    //TransparencyFactor Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sTransparencyFactor);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-    //Reflection Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sReflection);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-    //ReflectionFactor Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sReflectionFactor);
-    DisplayTextureNames(lProperty, lConnectionString);
-
-    //Update header with material info
-    bool lStringOverflow = (lConnectionString.GetLen() + 10
-                            >= MAT_HEADER_LENGTH);  // allow for string length and some padding for "%d"
-    if (lStringOverflow) {
-        // Truncate string!
-        lConnectionString = lConnectionString.Left(MAT_HEADER_LENGTH - 10);
-        lConnectionString = lConnectionString + "...";
-    }
-    FBXSDK_sprintf(header, MAT_HEADER_LENGTH, lConnectionString.Buffer(), pMatId, l);
-    DisplayString(header);
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sDiffuseFactor);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    ////Emissive Textures
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sEmissive);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    ////EmissiveFactor Textures
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sEmissiveFactor);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    //
+    ////Ambient Textures
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sAmbient);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    ////AmbientFactor Textures
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sAmbientFactor);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    ////Specular Textures
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sSpecular);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    ////SpecularFactor Textures
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sSpecularFactor);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    ////Shininess Textures
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sShininess);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    ////Bump Textures
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sBump);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    ////Normal Map Textures
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sNormalMap);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    ////Transparent Textures
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sTransparentColor);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    ////TransparencyFactor Textures
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sTransparencyFactor);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    ////Reflection Textures
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sReflection);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    ////ReflectionFactor Textures
+    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sReflectionFactor);
+    //DisplayTextureNames(lProperty, lConnectionString);
+    //
+    ////Update header with material info
+    //bool lStringOverflow = (lConnectionString.GetLen() + 10
+    //                        >= MAT_HEADER_LENGTH);  // allow for string length and some padding for "%d"
+    //if (lStringOverflow) {
+    //    // Truncate string!
+    //    lConnectionString = lConnectionString.Left(MAT_HEADER_LENGTH - 10);
+    //    lConnectionString = lConnectionString + "...";
+    //}
+    //FBXSDK_sprintf(header, MAT_HEADER_LENGTH, lConnectionString.Buffer(), pMatId, l);
+    //DisplayString(header);
 }
 
-void DisplayMaterialConnections(FbxMesh* pMesh) {
+void DisplayMaterialConnections(const FbxMesh* pMesh,ECS::StaticMesh& InMesh) {
     int i, l, lPolygonCount = pMesh->GetPolygonCount();
 
     char header[MAT_HEADER_LENGTH];
@@ -2176,7 +2186,7 @@ void DisplayMaterialConnections(FbxMesh* pMesh) {
     bool lIsAllSame = true;
     for (l = 0; l < pMesh->GetElementMaterialCount(); l++) {
 
-        FbxGeometryElementMaterial* lMaterialElement = pMesh->GetElementMaterial(l);
+        const FbxGeometryElementMaterial* lMaterialElement = pMesh->GetElementMaterial(l);
         if (lMaterialElement->GetMappingMode() == FbxGeometryElement::eByPolygon) {
             lIsAllSame = false;
             break;
@@ -2187,14 +2197,14 @@ void DisplayMaterialConnections(FbxMesh* pMesh) {
     if (lIsAllSame) {
         for (l = 0; l < pMesh->GetElementMaterialCount(); l++) {
 
-            FbxGeometryElementMaterial* lMaterialElement = pMesh->GetElementMaterial(l);
+            const FbxGeometryElementMaterial* lMaterialElement = pMesh->GetElementMaterial(l);
             if (lMaterialElement->GetMappingMode() == FbxGeometryElement::eAllSame) {
                 FbxSurfaceMaterial* lMaterial =
                         pMesh->GetNode()->GetMaterial(lMaterialElement->GetIndexArray().GetAt(0));
                 int lMatId = lMaterialElement->GetIndexArray().GetAt(0);
                 if (lMatId >= 0) {
                     DisplayInt("        All polygons share the same material in mesh ", l);
-                    DisplayMaterialTextureConnections(lMaterial, header, lMatId, l);
+                    DisplayMaterialTextureConnections(lMaterial,InMesh, header, lMatId, l);
                 }
             }
         }
@@ -2207,18 +2217,18 @@ void DisplayMaterialConnections(FbxMesh* pMesh) {
     //For eByPolygon mapping type, just out the material and texture mapping info once
     else {
         for (i = 0; i < lPolygonCount; i++) {
-            DisplayInt("        Polygon ", i);
+            //DisplayInt("        Polygon ", i);
 
             for (l = 0; l < pMesh->GetElementMaterialCount(); l++) {
 
-                FbxGeometryElementMaterial* lMaterialElement = pMesh->GetElementMaterial(l);
+                const FbxGeometryElementMaterial* lMaterialElement = pMesh->GetElementMaterial(l);
                 FbxSurfaceMaterial* lMaterial = NULL;
                 int lMatId = -1;
                 lMaterial = pMesh->GetNode()->GetMaterial(lMaterialElement->GetIndexArray().GetAt(i));
                 lMatId = lMaterialElement->GetIndexArray().GetAt(i);
 
                 if (lMatId >= 0) {
-                    DisplayMaterialTextureConnections(lMaterial, header, lMatId, l);
+                    DisplayMaterialTextureConnections(lMaterial,InMesh, header, lMatId, l);
                 }
             }
         }

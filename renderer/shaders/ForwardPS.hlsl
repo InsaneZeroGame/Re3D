@@ -181,7 +181,7 @@ float4 main(PSInput input) : SV_TARGET
     //shadwo map
     shadowCoord = shadowCoord * float2(0.5, -0.5) + 0.5;
     float shadow = shadowMap.SampleCmpLevelZero(shadowSampler, shadowCoord, input.shadowCoord.z/input.shadowCoord.w);
-    
+    shadow = 1.0f;
     return colorAfterCorrection * (0.15 + 0.85 * shadow);
     //if (input.position.x / screen_size  < 0.5)
     //{

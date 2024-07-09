@@ -43,5 +43,6 @@ namespace Renderer
         int mMatIndex = -1;
         void AddFile(std::function<void(const std::filesystem::path&)>);
         std::string_view mSelectedMatName;
+        float mCurrentSceneScale = 1.0f;
     };
 }

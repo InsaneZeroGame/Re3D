@@ -40,9 +40,11 @@ namespace AssetLoader
 
 		virtual std::vector<ECS::StaticMesh>& LoadAssetFromFile(std::string_view InFileName) { return mStaticMeshes; };
 
+		const std::unordered_map<std::string, TextureData*>& GetTextureMap() { return mTextureMap; };
+
 	protected:
         std::vector<ECS::StaticMesh> mStaticMeshes;
-
+		std::unordered_map<std::string, TextureData*> mTextureMap;
 	};
 
 	class TextureAssetLoader: public BaseAssetLoader

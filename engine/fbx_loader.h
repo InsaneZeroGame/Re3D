@@ -4,6 +4,10 @@
 
 namespace AssetLoader 
 {
+
+
+
+
 class FbxLoader final : public ModelAssetLoader {
 public:
     ~FbxLoader();
@@ -19,7 +23,6 @@ public:
     //static FbxLoader& GetInstance();
 
 private:
-    std::unordered_map<std::string, TextureData*> mTextureMap;
     class FbxManager* lSdkManager = NULL;
     class FbxScene* lScene = NULL;
     bool lResult;
@@ -32,6 +35,7 @@ private:
     //inline static FbxLoader* sLoader = nullptr;
     //ECS::StaticMesh mCurrentMesh;
     std::mutex mMeshMutex;
+	std::mutex mTextureMapMutext;
     bool LoadStaticMesh(const FbxMesh* pMesh);
     void GetNodeGeometricTransform(FbxNode* pNode);
     FbxAMatrix GetGlobalPosition(FbxNode* pNode, const FbxTime& pTime, FbxPose* pPose,

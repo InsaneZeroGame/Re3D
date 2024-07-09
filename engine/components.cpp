@@ -18,7 +18,8 @@ mVertexCount(InMesh.mVertices.size()),
 StartIndexLocation(0),
 BaseVertexLocation(0),
 mSubMeshes(InMesh.mSubmeshMap),
-mName(InMesh.mName)
+mName(InMesh.mName),
+mMatTextureName(InMesh.mMatTextureName)
 {
 	
 }
@@ -32,12 +33,14 @@ mName(InMesh.mName)
 
 const DirectX::SimpleMath::Matrix& ECS::TransformComponent::GetModelMatrix(bool UploadToGpu /*= true*/) 
 {
-    mMat = 
-        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(X_AXIS, mRotation.x) *
-        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(Y_AXIS, mRotation.y) * 
-        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(Z_AXIS, mRotation.z) *
+    mMat =
         DirectX::SimpleMath::Matrix::CreateTranslation(mTranslation) *
+        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(X_AXIS, mRotation.x) *
+        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(Y_AXIS, mRotation.y) *
+        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(Z_AXIS, mRotation.z) *
         DirectX::SimpleMath::Matrix::CreateScale(mScale);
+    mMat = DirectX::SimpleMath::Matrix::Identity;
+
     return UploadToGpu ? mMat.Transpose() : mMat;
 }
 

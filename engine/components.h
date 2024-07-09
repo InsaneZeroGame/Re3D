@@ -26,6 +26,7 @@ namespace ECS
 		std::vector<int> mIndices;
         //std::vector<SubMesh> mSubmeshMap;
         std::unordered_map<MaterialIndex, SubMesh> mSubmeshMap;
+		std::unordered_map<MaterialIndex, std::string> mMatTextureName;
 		//std::unordered_map<MaterialName, SubMesh> mSubmeshMap;
         bool mHasNormal;
         bool mHasUV;
@@ -50,10 +51,8 @@ namespace ECS
 		UINT StartIndexLocation;
 		INT BaseVertexLocation;
         std::unordered_map<MaterialIndex, SubMesh> mSubMeshes;
-		//StaticMeshComponent(std::vector<Renderer::Vertex>&& Vertices, std::vector<int>&& Indices);
+		std::unordered_map<MaterialIndex, std::string> mMatTextureName;
 		StaticMeshComponent(StaticMesh&& InMesh);
-		//StaticMeshComponent(const StaticMeshComponent&) = delete;
-		//StaticMeshComponent& operator=(const StaticMeshComponent&) = delete;
 		MaterialName MatName;
 		MaterialName NormalMap;
 		std::string mName;

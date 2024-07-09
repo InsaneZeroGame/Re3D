@@ -61,6 +61,8 @@ namespace Renderer
 		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene);
 		void LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent);
 		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, std::string_view InMatName = {},const std::wstring& InDebugName = L"");
+		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, AssetLoader::TextureData* textureData, const std::wstring& InDebugName = L"");
+
 	protected:
         void CreateGui();
 		void CreateRenderTask();

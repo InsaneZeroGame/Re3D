@@ -48,7 +48,7 @@ void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, in
 	mDefaultCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f,true);
 	mDefaultCamera->LookAt({ 0.0,3.0,2.0 }, { 0.0f,1.0f,0.0f }, { 0.0f,1.0f,0.0f });
 	mShadowCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f);
-	mShadowCamera->LookAt({ 5,5,5 }, { 0.0f,0.0f,0.0f }, { 0.0f,1.0f,0.0f });
+	mShadowCamera->LookAt({ 5,5,5 }, { 0.0f,0.0f,0.0f }, { 0.0f,-1.0f,0.0f });
 	mViewPort = { 0,0,(float)mWidth,(float)mHeight,0.0,1.0 };
 	mRect = { 0,0,mWidth,mHeight };
 	mContext->CreateWindowDependentResource(InWidth, InHeight);
@@ -71,6 +71,10 @@ void Renderer::BaseRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGam
 			allStaticMeshComponents.each([this](auto entity, ECS::StaticMeshComponent& renderComponent) {
 				LoadStaticMeshToGpu(renderComponent);
 			});
+			for (auto [textureName, textureData] : mCurrentScene->GetTextureMap())
+			{
+				LoadMaterial(textureName, textureData);
+			}
 		});
     mGui->SetCurrentScene(InGameScene);
 }
@@ -182,10 +186,10 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mComputeCmd->Close();
 			queue->ExecuteCommandLists(1, &lCmds);
 			queue->Signal(mComputeFence, mComputeFenceValue);
-			D3D12_RESOURCE_BARRIER luav = {};
-			luav.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-			luav.UAV.pResource = mClusterBuffer->GetResource();
-			mComputeCmd->ResourceBarrier(1, &luav);
+			//D3D12_RESOURCE_BARRIER luav = {};
+			//luav.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
+			//luav.UAV.pResource = mClusterBuffer->GetResource();
+			//mComputeCmd->ResourceBarrier(1, &luav);
 			mDeviceManager->GetCmdManager()->Discard(D3D12_COMMAND_LIST_TYPE_COMPUTE, cmdAllcator, mComputeFenceValue);
 			mComputeFence->SetEventOnCompletion(mComputeFenceValue, mComputeFenceHandle);
 			mComputeFenceValue++;
@@ -210,14 +214,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
                 auto renderEntities = sceneRegistry.view<StaticMeshComponent, TransformComponent>();
                 renderEntities.each([=](auto entity, auto& renderComponent, auto& transformComponent) {
                     auto modelMatrix = transformComponent.GetModelMatrix();
-					if (mTextureMap.find(renderComponent.MatName) == mTextureMap.end())
-					{
-						mGraphicsCmd->SetGraphicsRootDescriptorTable(5, mTextureMap["defaultTexture"]->GetSRVGpu());
-					}
-					else
-					{
-						mGraphicsCmd->SetGraphicsRootDescriptorTable(5, mTextureMap[renderComponent.MatName]->GetSRVGpu());
-					}
+					
 					if (mTextureMap.find(renderComponent.NormalMap) == mTextureMap.end())
 					{
 						mGraphicsCmd->SetGraphicsRootDescriptorTable(6, mTextureMap["defaultNormal"]->GetSRVGpu());
@@ -227,8 +224,24 @@ void Renderer::BaseRenderer::CreateRenderTask()
 						mGraphicsCmd->SetGraphicsRootDescriptorTable(6, mTextureMap[renderComponent.NormalMap]->GetSRVGpu());
 					}
                     mGraphicsCmd->SetGraphicsRoot32BitConstants(4, 16, &modelMatrix, 0);
-                    RenderObject(renderComponent);
-                });
+					//Render 
+					for (const auto& [matid,subMesh] : renderComponent.mSubMeshes)
+					{
+						auto subMeshTextureName = renderComponent.mMatTextureName[matid];
+
+						if (mTextureMap.find(subMeshTextureName) == mTextureMap.end())
+						{
+							mGraphicsCmd->SetGraphicsRootDescriptorTable(5, mTextureMap["defaultTexture"]->GetSRVGpu());
+						}
+						else
+						{
+							mGraphicsCmd->SetGraphicsRootDescriptorTable(5, mTextureMap[subMeshTextureName]->GetSRVGpu());
+						}
+
+						mGraphicsCmd->DrawIndexedInstanced((UINT)subMesh.TriangleCount * 3, 1, renderComponent.StartIndexLocation + subMesh.IndexOffset,
+							renderComponent.BaseVertexLocation, 0);
+					}
+				});
 			}
 		};
 
@@ -361,6 +374,35 @@ std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMateria
 	}
 	return newTexture;
 
+}
+
+std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMaterial(std::string_view InTextureName, AssetLoader::TextureData* textureData, const std::wstring& InDebugName /*= L""*/)
+{
+	if (mTextureMap.find(InTextureName.data()) != mTextureMap.end())
+	{
+		return mTextureMap[InTextureName.data()];
+	}
+	std::shared_ptr<Resource::Texture> newTexture = std::make_shared<Resource::Texture>();
+	auto RowPitchBytes = textureData->mWidth * textureData->mComponent;
+	newTexture->Create2D(RowPitchBytes, textureData->mWidth, textureData->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+	mBatchUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
+	D3D12_SUBRESOURCE_DATA sourceData = {};
+	sourceData.pData = textureData->mdata;
+	sourceData.RowPitch = RowPitchBytes;
+	sourceData.SlicePitch = RowPitchBytes * textureData->mHeight;
+	mBatchUploader->Upload(newTexture->GetResource(), 0, &sourceData, 1);
+	mBatchUploader->Transition(newTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
+	newTexture->GetResource()->SetName(InDebugName.c_str());
+	if (!InTextureName.empty())
+	{
+		mTextureMap[std::string(InTextureName)] = newTexture;
+	}
+	else
+	{
+		mTextureMap[std::filesystem::path(InTextureName).filename().string()] = newTexture;
+	}
+	return newTexture;
 }
 
 std::unordered_map<std::string, std::shared_ptr<Renderer::Resource::Texture>>& Renderer::BaseRenderer::GetSceneTextureMap()

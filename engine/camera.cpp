@@ -46,18 +46,18 @@ const DirectX::SimpleMath::Matrix Gameplay::BaseCamera::GetPrjView(bool UploadTo
 void Gameplay::BaseCamera::KeyDown(Keyboard::State InState) 
 {
 	if (InState.IsKeyDown(Keyboard::W)){
-        Forward(0.1f);
+        Forward(mSpeed);
     } else if (InState.IsKeyDown(Keyboard::S)) {
-        Forward(-0.1f);
+        Forward(-mSpeed);
 	} else if (InState.IsKeyDown(Keyboard::A)) {
-        Right(0.1f);
+        Right(mSpeed);
     } else if (InState.IsKeyDown(Keyboard::D)) {
-        Right(-0.1f);
+        Right(-mSpeed);
     } else if (InState.IsKeyDown(Keyboard::Q)) {
-        Yaw(-0.1f);
+        Yaw(-mSpeed);
     } else if (InState.IsKeyDown(Keyboard::E))
     {
-        Yaw(0.1f);
+        Yaw(mSpeed);
     }
 }
 
