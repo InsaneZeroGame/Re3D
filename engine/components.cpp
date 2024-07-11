@@ -25,10 +25,11 @@ mMatTextureName(InMesh.mMatTextureName)
 }
 
  ECS::TransformComponent::TransformComponent(StaticMesh&& InMesh) : 
-	 mRotation(InMesh.Rotation), mScale(InMesh.Scale), mTranslation(InMesh.Translation)
+	mScale(InMesh.Scale), mTranslation(InMesh.Translation)
  {
     Translate(mTranslation);
     Scale(mScale);
+    Rotate(InMesh.Rotation);
  }
 
 const DirectX::SimpleMath::Matrix& ECS::TransformComponent::GetModelMatrix(bool UploadToGpu /*= true*/) 
@@ -39,7 +40,6 @@ const DirectX::SimpleMath::Matrix& ECS::TransformComponent::GetModelMatrix(bool 
         DirectX::SimpleMath::Matrix::CreateFromAxisAngle(Y_AXIS, mRotation.y) *
         DirectX::SimpleMath::Matrix::CreateFromAxisAngle(Z_AXIS, mRotation.z) *
         DirectX::SimpleMath::Matrix::CreateScale(mScale);
-    mMat = DirectX::SimpleMath::Matrix::Identity;
 
     return UploadToGpu ? mMat.Transpose() : mMat;
 }
@@ -54,7 +54,7 @@ void ECS::TransformComponent::Scale(const DirectX::SimpleMath::Vector3& InScale)
 }
 
 void ECS::TransformComponent::Rotate(const DirectX::SimpleMath::Vector3& InAngles) {
-    mRotation = DirectX::SimpleMath::Vector3(InAngles.x, InAngles.y, InAngles.z);
+    mRotation = DirectX::SimpleMath::Vector3(InAngles.x, InAngles.y, InAngles.z) * DirectX::XM_PI / 180.0f;
 }
 
 DirectX::SimpleMath::Vector3& ECS::TransformComponent::GetTranslate() 
