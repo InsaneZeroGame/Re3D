@@ -1186,7 +1186,7 @@ void AssetLoader::FbxLoader::LoadTextureMaterial(FbxScene* InScene, const std::s
     {
         dummyVec[i] = i;
     }
-    std::for_each(std::execution::par, dummyVec.begin(), dummyVec.end(), [&](int& lTextureIndex)
+    std::for_each(std::execution::seq, dummyVec.begin(), dummyVec.end(), [&](int& lTextureIndex)
         { 
 			FbxTexture* lTexture = InScene->GetTexture(lTextureIndex);
 			FbxFileTexture* lFileTexture = FbxCast<FbxFileTexture>(lTexture);
@@ -1300,9 +1300,9 @@ void AssetLoader::FbxLoader::DisplayContent(FbxNode* pNode, FbxTime& pTime, FbxA
     //DisplayPivotsAndLimits(pNode);
     //DisplayTransformPropagation(pNode);
 
-    for (i = 0; i < pNode->GetChildCount(); i++) {
-        DisplayContent(pNode->GetChild(i), pTime, pAnimLayer, lGlobalPosition,nullptr);
-    }
+	for (i = 0; i < pNode->GetChildCount(); i++) {
+		DisplayContent(pNode->GetChild(i), pTime, pAnimLayer, lGlobalPosition, nullptr);
+	}
 }
 
 void AssetLoader::FbxLoader::DisplayContent(FbxScene* pScene) {
@@ -1368,7 +1368,7 @@ std::vector<ECS::StaticMesh>& AssetLoader::FbxLoader::LoadAssetFromFile(std::str
         Ensures(lGeomConverter.Triangulate(lScene, /*replace*/ true));
         // Convert Axis System to what is used in this example, if needed
         //FbxAxisSystem SceneAxisSystem = lScene->GetGlobalSettings().GetAxisSystem();
-        //FbxAxisSystem OurAxisSystem(FbxAxisSystem::eYAxis, FbxAxisSystem::eParityOdd, FbxAxisSystem::eLeftHanded);
+        //FbxAxisSystem OurAxisSystem(FbxAxisSystem::eYAxis, FbxAxisSystem::eParityEven, FbxAxisSystem::eLeftHanded);
         //if (SceneAxisSystem != OurAxisSystem) {
         //    OurAxisSystem.ConvertScene(lScene);
         //}
@@ -1383,7 +1383,7 @@ std::vector<ECS::StaticMesh>& AssetLoader::FbxLoader::LoadAssetFromFile(std::str
         };
 
         // Convert the scene to meters using the defined options.
-        FbxSystemUnit::mm.ConvertScene(lScene, lConversionOptions);
+        //FbxSystemUnit::mm.ConvertScene(lScene, lConversionOptions);
     }
 
     if (lResult == false) {
@@ -2192,6 +2192,7 @@ void DisplayMaterialConnections(const FbxMesh* pMesh,ECS::StaticMesh& InMesh) {
             break;
         }
     }
+	DisplayInt("        Material Count ", pMesh->GetElementMaterialCount());
 
     //For eAllSame mapping type, just out the material and texture mapping info once
     if (lIsAllSame) {
