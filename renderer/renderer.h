@@ -92,6 +92,7 @@ namespace Renderer
 		ID3D12GraphicsCommandList* mGraphicsCmd;
 		ID3D12CommandAllocator* mGraphicsCmdAllocator;
 		ID3D12PipelineState* mColorPassPipelineState;
+		ID3D12PipelineState* mColorPassPipelineState8XMSAA;
 		ID3D12PipelineState* mPipelineStateDepthOnly;
 		ID3D12PipelineState* mPipelineStateShadowMap;
 		ID3D12PipelineState* mLightCullPass;

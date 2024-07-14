@@ -51,8 +51,6 @@ void Renderer::Gui::EndGui(ID3D12GraphicsCommandList* InCmd) {
 
 void Renderer::Gui::Render() {
     ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "Hello Re3D");
-    // Custom size: use all width, 5 items tall
-    //ImGui::Text("Full-width:");
     if (mCurrentScene)
     {
         SceneUpdate();
@@ -194,7 +192,6 @@ void Renderer::Gui::GameSceneUpdate(std::shared_ptr<GAS::GameScene> InGameScene,
         mEntities.push_back(entity);
 		n++;
     }
-    //mCurrentEntity = mEntities[0];
 }
 
 void Renderer::Gui::EntityPanel(entt::entity e) 

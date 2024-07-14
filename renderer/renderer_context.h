@@ -10,6 +10,7 @@ namespace Renderer
 		class UploadBuffer;
 		class DepthBuffer;
 		class StructuredBuffer;
+		class ColorBuffer;
 	}
 
 	template<typename T>
@@ -43,7 +44,7 @@ namespace Renderer
 		void CreateWindowDependentResource(int InWindowWidth, int InWindowHeight);
 		void UpdateDataToVertexBuffer(std::span<Vertex> InData);
 		void UpdateDataToIndexBuffer(std::span<int> InData);
-
+		std::shared_ptr<Resource::ColorBuffer> GetColorBuffer();
 	private:
 		template<typename T>
 		void UploadDataToResource(ID3D12Resource* InDestResource, std::span<T> InData, std::shared_ptr<VertexBufferRenderer<T>> InCpuResource);
@@ -56,7 +57,9 @@ namespace Renderer
 		std::shared_ptr<VertexBufferRenderer<int>> mIndexBufferCpu;
 		std::shared_ptr<Resource::DepthBuffer> mDepthBuffer;
 		std::shared_ptr<Resource::DepthBuffer> mShadowMap;
+		std::shared_ptr<Resource::ColorBuffer> mColorBuffer;
 		void CreateShadowMap(int InShadowMapWidth,int InShadowMapHeight);
+		void CreateColorBuffer(int InShadowMapWidth, int InShadowMapHeight);
 		int mWindowHeight;
 		int mWindowWidth;
 		uint64_t mCopyFenceValue;
@@ -66,5 +69,9 @@ namespace Renderer
 		ID3D12Resource* mCopyQueueUploadResource = nullptr;
 		uint64_t mCopyQueueUploadResourceSize = 0;
 		std::shared_ptr<class CmdManager> mCmdManager;
+		enum 
+		{
+			MSAA_8X = 8,
+		};
 	};
 }

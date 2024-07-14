@@ -100,7 +100,7 @@ namespace Renderer
 		{
 		public:
 			ColorBuffer(Color ClearColor = Color(0.0f, 0.0f, 0.0f, 0.0f))
-				: m_ClearColor(ClearColor), m_NumMipMaps(0), m_FragmentCount(1), m_SampleCount(1)
+				: m_ClearColor(ClearColor), m_NumMipMaps(0), m_SampleCount(1)
 			{
 				m_RTVHandle.ptr = D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN;
 				m_SRVHandle.ptr = D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN;
@@ -130,11 +130,9 @@ namespace Renderer
 
 			void SetClearColor(Color ClearColor) { m_ClearColor = ClearColor; }
 
-			void SetMsaaMode(uint32_t NumColorSamples, uint32_t NumCoverageSamples)
+			void SetMsaaMode(uint32_t NumColorSamples)
 			{
-				assert(NumCoverageSamples >= NumColorSamples);
-				m_FragmentCount = NumColorSamples;
-				m_SampleCount = NumCoverageSamples;
+				m_SampleCount = NumColorSamples;
 			}
 
 			Color GetClearColor(void) const { return m_ClearColor; }
@@ -150,7 +148,7 @@ namespace Renderer
 			{
 				D3D12_RESOURCE_FLAGS Flags = D3D12_RESOURCE_FLAG_NONE;
 
-				if (Flags == D3D12_RESOURCE_FLAG_NONE && m_FragmentCount == 1)
+				if (Flags == D3D12_RESOURCE_FLAG_NONE && m_SampleCount == 1)
 					Flags |= D3D12_RESOURCE_FLAG_ALLOW_UNORDERED_ACCESS;
 
 				return D3D12_RESOURCE_FLAG_ALLOW_RENDER_TARGET | Flags;
@@ -174,8 +172,8 @@ namespace Renderer
 			D3D12_CPU_DESCRIPTOR_HANDLE m_RTVHandle;
 			D3D12_CPU_DESCRIPTOR_HANDLE m_UAVHandle[12];
 			uint32_t m_NumMipMaps; // number of texture sublevels
-			uint32_t m_FragmentCount;
 			uint32_t m_SampleCount;
+			//uint32_t m_SampleCount;
 		};
 
 		class UploadBuffer : public GpuResource
@@ -349,7 +347,7 @@ namespace Renderer
 			DXGI_FORMAT m_DataFormat;
 		};
 
-		class DepthBuffer : public PixelBuffer
+		class DepthBuffer : public ColorBuffer
 		{
 		public:
 			DepthBuffer(float ClearDepth = 0.0f, uint8_t ClearStencil = 0)

@@ -53,7 +53,9 @@ void Renderer::Skybox::CreatePipelineState()
 	lDesc.NumRenderTargets = 1;
 	lDesc.RTVFormats[0] = DXGI_FORMAT_R10G10B10A2_UNORM;
 	//lDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-	lDesc.SampleDesc.Count = 1;
+	lDesc.SampleDesc.Count = 8;
+	lDesc.SampleDesc.Quality = 0;
+	lDesc.RasterizerState.MultisampleEnable = true;
 	lDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
 	lDesc.DepthStencilState.DepthWriteMask = D3D12_DEPTH_WRITE_MASK_ZERO;
 	lDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;

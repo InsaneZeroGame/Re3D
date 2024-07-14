@@ -421,7 +421,7 @@ namespace Renderer
 				SRVDesc.Texture2DArray.FirstArraySlice = 0;
 				SRVDesc.Texture2DArray.ArraySize = (UINT)ArraySize;
 			}
-			else if (m_FragmentCount > 1)
+			else if (m_SampleCount > 1)
 			{
 				RTVDesc.ViewDimension = D3D12_RTV_DIMENSION_TEXTURE2DMS;
 				SRVDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DMS;
@@ -455,7 +455,7 @@ namespace Renderer
 			// Create the shader resource view
 			Device->CreateShaderResourceView(Resource, &SRVDesc, m_SRVHandle);
 
-			if (m_FragmentCount > 1)
+			if (m_SampleCount > 1)
 				return;
 
 			// Create the UAVs for each mip level (RWTexture2D)
@@ -491,7 +491,7 @@ namespace Renderer
 			D3D12_RESOURCE_FLAGS Flags = CombineResourceFlags();
 			D3D12_RESOURCE_DESC ResourceDesc = DescribeTex2D(Width, Height, 1, NumMips, Format, Flags);
 
-			ResourceDesc.SampleDesc.Count = m_FragmentCount;
+			ResourceDesc.SampleDesc.Count = m_SampleCount;
 			ResourceDesc.SampleDesc.Quality = 0;
 
 			D3D12_CLEAR_VALUE ClearValue = {};
@@ -872,7 +872,7 @@ namespace Renderer
 
 		void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Height, DXGI_FORMAT Format, D3D12_GPU_VIRTUAL_ADDRESS VidMemPtr)
 		{
-			Create(Name, Width, Height, 1, Format, VidMemPtr);
+			Create(Name, Width, Height, m_SampleCount, Format, VidMemPtr);
 		}
 
 		void DepthBuffer::Create(const std::wstring& Name, uint32_t Width, uint32_t Height, uint32_t Samples, DXGI_FORMAT Format, D3D12_GPU_VIRTUAL_ADDRESS VidMemPtr)
