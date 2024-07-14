@@ -27,7 +27,7 @@ namespace Gameplay
 		SimpleMath::Matrix mClipToView;
 		SimpleMath::Matrix mView;
 		bool mMoveable = false;
-		float mSpeed = 50.0f;
+		float mSpeed = 0.1f;
 	};
 
 	class PerspectCamera final : public BaseCamera

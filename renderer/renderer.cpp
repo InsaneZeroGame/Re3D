@@ -46,9 +46,9 @@ void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, in
 	mDeviceManager->SetTargetWindowAndCreateSwapChain(InWindow, InWidth, InHeight);
 	//Use Reverse Z
 	mDefaultCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f,true);
-	mDefaultCamera->LookAt({ 0.0,3.0,2.0 }, { 0.0f,1.0f,0.0f }, { 0.0f,1.0f,0.0f });
+	mDefaultCamera->LookAt({ 0.0,3.0,2.0 }, { 0.0f,0.0f,0.0f }, { 0.0f,1.0f,0.0f });
 	mShadowCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f);
-	mShadowCamera->LookAt({ 5,5,5 }, { 0.0f,0.0f,0.0f }, { 0.0f,-1.0f,0.0f });
+	mShadowCamera->LookAt({ 3,3,0 }, { 0.0f,0.0f,0.0f }, { 0.0f,1.0f,0.0f });
 	mViewPort = { 0,0,(float)mWidth,(float)mHeight,0.0,1.0 };
 	mRect = { 0,0,mWidth,mHeight };
 	mContext->CreateWindowDependentResource(InWidth, InHeight);

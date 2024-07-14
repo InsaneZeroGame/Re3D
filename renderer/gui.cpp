@@ -92,7 +92,7 @@ void Renderer::Gui::SceneMaterials()
 		
     }
 }
-
+ 
 void Renderer::Gui::SetCurrentScene(std::shared_ptr<GAS::GameScene> InGameScene) 
 {
     mCurrentScene = InGameScene;
@@ -104,7 +104,7 @@ void Renderer::Gui::SetCurrentScene(std::shared_ptr<GAS::GameScene> InGameScene)
     if (!mEntities.empty())
     {
         GameSceneUpdate(InGameScene, mEntities);
-		mCurrentEntity = mEntities[0];
+		//mCurrentEntity = mEntities[0];
     }
 	GAS::GameScene::sOnNewEntityAdded.push_back(std::bind(&Gui::GameSceneUpdate, this, std::placeholders::_1, std::placeholders::_2));
 }
@@ -124,23 +124,19 @@ void Renderer::Gui::SceneUpdate()
                 if (extension.string() == ".fbx" || extension.string() == ".FBX")
                 {
                     auto newEntities =  mCurrentScene->CreateEntitiesWithMesh(InFilePath.string());
-					for (const auto& newEntity : newEntities)
-					{
-						
-					}
                 }
             });
     }
     if (mCurrentScene)
     {
 		ImGui::DragFloat("Scene Scale", &mCurrentSceneScale);
-		mCurrentScene->SceneScale(mCurrentSceneScale);
-		s[0] = mCurrentSceneScale;
-		s[1] = mCurrentSceneScale;
-		s[2] = mCurrentSceneScale;
+		//mCurrentScene->SceneScale(mCurrentSceneScale);
+		//s[0] = mCurrentSceneScale;
+		//s[1] = mCurrentSceneScale;
+		//s[2] = mCurrentSceneScale;
     }
     if (ImGui::BeginListBox("##Entities", ImVec2(-FLT_MIN, 5 * ImGui::GetTextLineHeightWithSpacing()))) {
-        static int mCurrentIndex = 0;
+        static int mCurrentIndex = -1;
         for (int n = 0; n < mEntities.size(); n++) {
             const bool is_selected = (mCurrentIndex == n);
             if (ImGui::Selectable(mEntitiesDisplayName[n].c_str(), is_selected)) 
@@ -152,15 +148,15 @@ void Renderer::Gui::SceneUpdate()
                 auto& translate = registry.get<ECS::TransformComponent>(mCurrentEntity).GetTranslate();
                 auto& scale = registry.get<ECS::TransformComponent>(mCurrentEntity).GetScale();
                 auto& rotation = registry.get<ECS::TransformComponent>(mCurrentEntity).GetRotation();
-
+                
                 t[0] = translate.x;
                 t[1] = translate.y;
                 t[2] = translate.z;
-
+                
                 r[0] = rotation.x;
                 r[1] = rotation.y;
                 r[2] = rotation.z;
-
+                
                 s[0] = scale.x;
                 s[1] = scale.y;
                 s[2] = scale.z;
@@ -198,12 +194,16 @@ void Renderer::Gui::GameSceneUpdate(std::shared_ptr<GAS::GameScene> InGameScene,
         mEntities.push_back(entity);
 		n++;
     }
-    mCurrentEntity = mEntities[0];
+    //mCurrentEntity = mEntities[0];
 }
 
 void Renderer::Gui::EntityPanel(entt::entity e) 
 {
     auto& registry = mCurrentScene->GetRegistery();
+    if (!registry.valid(e))
+    {
+        return;
+    }
     using namespace DirectX::SimpleMath;
     //Transform 
     ImGuiTabBarFlags tab_bar_flags = ImGuiTabBarFlags_None;
@@ -213,10 +213,10 @@ void Renderer::Gui::EntityPanel(entt::entity e)
             Property("Translation", t, -100.0f, 100.0f);
             Property("Rotation", r, -360.0, 360.0f);
             Property("Scale", s, -100.0f, 100.0f);
-            auto& transformComponent = registry.get<ECS::TransformComponent>(e);
-            transformComponent.Translate(DirectX::SimpleMath::Vector3(t[0],t[1],t[2]));
-            transformComponent.Rotate(Vector3(r[0], r[1], r[2]));
-            transformComponent.Scale(DirectX::SimpleMath::Vector3(s[0], s[1], s[2]));
+			auto& transformComponent = registry.get<ECS::TransformComponent>(e);
+			transformComponent.Translate(DirectX::SimpleMath::Vector3(t[0], t[1], t[2]));
+			transformComponent.Rotate(Vector3(r[0], r[1], r[2]));
+			transformComponent.Scale(DirectX::SimpleMath::Vector3(s[0], s[1], s[2]));
             ImGui::EndTabItem();
         }
         if (ImGui::BeginTabItem("Material")) {
@@ -229,7 +229,6 @@ void Renderer::Gui::EntityPanel(entt::entity e)
 			{
 				meshComponent.NormalMap = mSelectedMatName;
 			}
-            ImGui::Text("This is the Broccoli tab!\nblah blah blah blah blah");
             ImGui::EndTabItem();
         }
         ImGui::EndTabBar();
