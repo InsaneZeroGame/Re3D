@@ -4,7 +4,12 @@ using ROTATION_AXIS = DirectX::SimpleMath::Vector3;
 const ROTATION_AXIS X_AXIS = DirectX::SimpleMath::Vector3(1.0f,0.0f,0.0f);
 const ROTATION_AXIS Y_AXIS = DirectX::SimpleMath::Vector3(0.0f, 1.0f, 0.0f);
 const ROTATION_AXIS Z_AXIS = DirectX::SimpleMath::Vector3(0.0f, 0.0f, 1.0f);
-
+constexpr int ROOT_PARA_FRAME_DATA_CBV = 0;
+constexpr int ROOT_PARA_CLUSTER_BUFFER = 1;
+constexpr int ROOT_PARA_OBJECT_VS = 2;
+constexpr int ROOT_PARA_DIFFUSE_COLOR_TEXTURE = 3;
+constexpr int ROOT_PARA_SHADOW_MAP = 4;
+constexpr int ROOT_PARA_OBJECT_PS = 5;
 
 namespace ECS
 {
@@ -28,6 +33,7 @@ namespace ECS
         std::unordered_map<MaterialIndex, SubMesh> mSubmeshMap;
 		std::unordered_map<MaterialIndex, std::string> mMatTextureName;
 		//std::unordered_map<MaterialName, SubMesh> mSubmeshMap;
+		DirectX::XMFLOAT4 mDiffuseColor;
         bool mHasNormal;
         bool mHasUV;
         bool mAllByControlPoint;
@@ -60,6 +66,7 @@ namespace ECS
         std::unordered_map<MaterialIndex, SubMesh> mSubMeshes;
 		std::unordered_map<MaterialIndex, std::string> mMatTextureName;
 		StaticMeshComponent(StaticMesh&& InMesh);
+		DirectX::XMFLOAT4 mBaseColor;
 		MaterialName MatName;
 		MaterialName NormalMap;
 		std::string mName;

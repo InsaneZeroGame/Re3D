@@ -36,7 +36,7 @@ private:
     //ECS::StaticMesh mCurrentMesh;
     std::mutex mMeshMutex;
 	std::mutex mTextureMapMutext;
-    bool LoadStaticMesh(const FbxMesh* pMesh);
+    bool LoadStaticMesh(FbxMesh* pMesh);
     void GetNodeGeometricTransform(FbxNode* pNode);
     FbxAMatrix GetGlobalPosition(FbxNode* pNode, const FbxTime& pTime, FbxPose* pPose,
                                  FbxAMatrix* pParentGlobalPosition);

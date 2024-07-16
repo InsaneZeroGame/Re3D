@@ -19,7 +19,8 @@ StartIndexLocation(0),
 BaseVertexLocation(0),
 mSubMeshes(InMesh.mSubmeshMap),
 mName(InMesh.mName),
-mMatTextureName(InMesh.mMatTextureName)
+mMatTextureName(InMesh.mMatTextureName),
+mBaseColor(InMesh.mDiffuseColor)
 {
 	
 }
@@ -34,6 +35,7 @@ mMatTextureName(InMesh.mMatTextureName)
 
 const DirectX::SimpleMath::Matrix& ECS::TransformComponent::GetModelMatrix(bool UploadToGpu /*= true*/) 
 {
+    //Todo::Move calc to update data.
     mMat =
         DirectX::SimpleMath::Matrix::CreateTranslation(mTranslation) *
         DirectX::SimpleMath::Matrix::CreateFromAxisAngle(X_AXIS, mRotation.x) *

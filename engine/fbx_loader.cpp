@@ -331,7 +331,7 @@ static void DisplaySkeleton(FbxNode* pNode) {
 
     DisplayColor("    Color: ", lSkeleton->GetLimbNodeColor());
 }
-static void DisplayMaterial(FbxGeometry* pGeometry) {
+static void DisplayMaterial(FbxGeometry* pGeometry, ECS::StaticMesh& InMesh) {
     int lMaterialCount = 0;
     FbxNode* lNode = NULL;
     if (pGeometry) {
@@ -378,8 +378,7 @@ static void DisplayMaterial(FbxGeometry* pGeometry) {
 
                     FbxString lTest = lEntry.GetSource();
                     DisplayString("            Entry: ", lTest.Buffer());
-
-
+                    
                     if (strcmp(FbxPropertyEntryView::sEntryType, lEntrySrcType) == 0) {
                         lFbxProp = lMaterial->FindPropertyHierarchical(lEntry.GetSource());
                         if (!lFbxProp.IsValid()) {
@@ -428,13 +427,17 @@ static void DisplayMaterial(FbxGeometry* pGeometry) {
                                 Display2DVector("                2D vector: ", lVect);
                             } else if (FbxDouble3DT == lFbxType || FbxColor3DT == lFbxType) {
                                 FbxDouble3 lDouble3 = lFbxProp.Get<FbxDouble3>();
-
-
                                 FbxVector4 lVect;
                                 lVect[0] = lDouble3[0];
                                 lVect[1] = lDouble3[1];
                                 lVect[2] = lDouble3[2];
                                 Display3DVector("                3D vector: ", lVect);
+								if (lTest.Lower().Find("basecolor") >= 0)
+								{
+                                    InMesh.mDiffuseColor.x = lVect[0];
+									InMesh.mDiffuseColor.y = lVect[1];
+									InMesh.mDiffuseColor.z = lVect[2];
+								}
                             }
 
                             else if (FbxDouble4DT == lFbxType || FbxColor4DT == lFbxType) {
@@ -1121,7 +1124,6 @@ void AssetLoader::FbxLoader::DisplayMesh(FbxNode* pNode, const FbxAMatrix& globa
     //DisplayControlsPoints(lMesh);
     //DisplayPolygons(lMesh);
     //DisplayMaterialMapping(lMesh);
-    //DisplayMaterial(lMesh);
     //DisplayTexture(lMesh);
     //DisplayLink(lMesh);
     //DisplayShape(lMesh);
@@ -1846,7 +1848,7 @@ void AssetLoader::FbxLoader::DisplayPolygons(FbxMesh* pMesh) {
     DisplayString("");
 }
 
-bool AssetLoader::FbxLoader::LoadStaticMesh(const FbxMesh* pMesh) {
+bool AssetLoader::FbxLoader::LoadStaticMesh(FbxMesh* pMesh) {
 
     if (!pMesh->GetNode())
         return false;
@@ -2043,6 +2045,7 @@ bool AssetLoader::FbxLoader::LoadStaticMesh(const FbxMesh* pMesh) {
         newMesh.mSubmeshMap[lMaterialIndex].TriangleCount += 1;
     }
 	DisplayMaterialConnections(pMesh,newMesh);
+	DisplayMaterial(pMesh,newMesh);
     mStaticMeshes.push_back(newMesh);
     return true;
 }
