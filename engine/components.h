@@ -37,6 +37,13 @@ namespace ECS
 		std::string mName;
 	};
 
+	struct LigthData
+	{
+		DirectX::XMFLOAT4 color;
+		DirectX::XMFLOAT4 pos;
+		DirectX::XMFLOAT4 radius_attenu;
+	};
+
 	struct Component 
 	{
         std::string mName;
@@ -60,9 +67,12 @@ namespace ECS
 
 	struct LightComponent : public Component
 	{
-		std::array<float, 4> color;
-		std::array<float, 4> pos;
-		std::array<float, 4> radius_attenu;
+		//std::array<float, 4> color;
+		//std::array<float, 4> pos;
+		//std::array<float, 4> radius_attenu;
+		DirectX::XMFLOAT4 color;
+		DirectX::XMFLOAT4 pos;
+		DirectX::XMFLOAT4 radius_attenu;
 	};
 
 	struct TransformComponent : public Component

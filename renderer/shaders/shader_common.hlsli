@@ -16,9 +16,7 @@ struct Light
 {
     float4 color;
     float4 pos;
-    float radius;
-    float attenu;
-    float2 padding;
+    float4 radius_attenu;
 };
 
 struct Cluster

@@ -144,7 +144,7 @@ float4 main(PSInput input) : SV_TARGET
     0, 0, input.normalViewSpace.xyz, input.viewsSpacePos, 
     DirLightViewSpace, input.DirectionalLightColor) * DirLightIntense;
     
-    float3 pointLight;
+    float3 pointLight = float3(0.0,0.0,0.0);
     uint GirdIndex = ComputeLightGridCellIndex(uint2(input.position.xy), input.position.w);
     uint3 GridCoord = ComputeLightGridCellCoordinate(uint2(input.position.xy), input.position.w, 0);
     for (int i = 0; i < 256; ++i)
@@ -154,7 +154,7 @@ float4 main(PSInput input) : SV_TARGET
             float4 lightViewSpace = mul(lights[i].pos, View.ViewMatrix);
             float4 lightDir = lightViewSpace - input.viewsSpacePos;
             float d = length(lightDir);
-            if (d < lights[i].radius)
+            if (d < lights[i].radius_attenu[0])
             {
                 pointLight += ApplyPointLight(
                 input.color.xyz,
@@ -163,7 +163,7 @@ float4 main(PSInput input) : SV_TARGET
                 input.viewsSpacePos.xyz,
                 input.viewsSpacePos.xyz,
                 lightViewSpace.xyz,
-                lights[i].radius,
+                lights[i].radius_attenu[0],
                 lights[i].color.xyz);
                 //pointLight += lights[i].color.xyz;
             }

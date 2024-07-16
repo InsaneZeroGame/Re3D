@@ -118,7 +118,7 @@ namespace Renderer
 		std::shared_ptr<Resource::Texture> mSkyboxTexture;
 		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
 		std::unique_ptr<Skybox> mSkybox;
-		std::array<ECS::LightComponent, 256> mLights;
+		std::array<ECS::LigthData, 256> mLights;
 		std::shared_ptr<GAS::GameScene> mCurrentScene;
         HWND mWindow;
         std::shared_ptr<class Gui> mGui;

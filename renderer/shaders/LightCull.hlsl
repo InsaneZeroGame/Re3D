@@ -141,7 +141,7 @@ void main(
    
     uint LocalLightIndex = GroupThreadId.x + GroupThreadId.y * 32;
     float3 ViewSpaceLightPosition = mul(lights[LocalLightIndex].pos,View.ViewMatrix).xyz;
-    float LightRadius = lights[LocalLightIndex].radius;
+    float LightRadius = lights[LocalLightIndex].radius_attenu[0];
     float BoxDistanceSq = ComputeSquaredDistanceFromBoxToPoint(ViewTileCenter, ViewTileExtent, ViewSpaceLightPosition);
     if (BoxDistanceSq < LightRadius * LightRadius)
     {

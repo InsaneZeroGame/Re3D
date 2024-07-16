@@ -300,10 +300,10 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mFrameDataCPU.DirectionalLightDir = SimpleMath::Vector4(1.0, 1.0, 2.0,1.0f);
 
 	mLightBuffer = std::make_unique<Resource::StructuredBuffer>();
-	mLightBuffer->Create(L"LightBuffer", (UINT32)mLights.size(), sizeof(ECS::LightComponent), nullptr);
+	mLightBuffer->Create(L"LightBuffer", (UINT32)mLights.size(), sizeof(ECS::LigthData), nullptr);
 
 	mLightUploadBuffer = std::make_shared<Resource::UploadBuffer>();
-	mLightUploadBuffer->Create(L"LightUploadBuffer", sizeof(ECS::LightComponent) * mLights.size());
+	mLightUploadBuffer->Create(L"LightUploadBuffer", sizeof(ECS::LigthData) * mLights.size());
 
 	mLights[0].pos = { 0.0, 0.0, -5.0, 1.0f };
 	mLights[0].radius_attenu = { 200.0, 0.0, 0.0, 1.0f };
@@ -320,30 +320,30 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mLights[2].pos = { 5.0, 0.0, 0.0, 1.0f };
 	mLights[2].radius_attenu = { 10.0, 0.0, 0.0, 1.0f };
 	mLights[2].color = { 1.0f,1.0f,1.0f,1.0f };
-	float size = 30.0f;
+	float size = 50.0f;
 
 	for (auto& light : mLights)
 	{
-		light.pos[0] = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
-		light.pos[1] = float(rand()) / RAND_MAX;
-		light.pos[2] = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+		light.pos.x = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+		light.pos.y = float(rand()) / RAND_MAX;
+		light.pos.z = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
 
-		light.pos[0] *= size;
-		light.pos[1] = 0.2;
-		light.pos[2] *= size;
-		light.pos[3] = 1.0f;
+		light.pos.x *= size;
+		light.pos.y = 0.5;
+		light.pos.z *= size;
+		light.pos.w = 1.0f;
 
-		light.color[0] = float(rand()) / RAND_MAX;
-		light.color[1] = float(rand()) / RAND_MAX;
-		light.color[2] = float(rand()) / RAND_MAX;
-        light.radius_attenu[0] = 250.0f;
-		light.radius_attenu[1] = float(rand()) * 1.2f / RAND_MAX;
-		light.radius_attenu[2] = float(rand()) * 1.2f / RAND_MAX;
-		light.radius_attenu[3] = float(rand()) * 1.2f / RAND_MAX;
+		light.color.x = float(rand()) / RAND_MAX;
+		light.color.y = float(rand()) / RAND_MAX;
+		light.color.z = float(rand()) / RAND_MAX;
+        light.radius_attenu.x = 25.0f;
+		light.radius_attenu.y = float(rand()) * 1.2f / RAND_MAX;
+		light.radius_attenu.z = float(rand()) * 1.2f / RAND_MAX;
+		light.radius_attenu.w = float(rand()) * 1.2f / RAND_MAX;
 	}
 
 	//
-	mLightUploadBuffer->UploadData<ECS::LightComponent>(mLights);
+	mLightUploadBuffer->UploadData<ECS::LigthData>(mLights);
 
 	mClusterBuffer = std::make_unique<Resource::StructuredBuffer>();
 	mCLusters.resize(CLUSTER_X * CLUSTER_Y * CLUSTER_Z);
