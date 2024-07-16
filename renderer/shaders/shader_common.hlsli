@@ -25,15 +25,6 @@ struct Cluster
     uint lightMask[8];
 };
 
-struct LightCullViewData
-{
-    float4 ViewSizeAndInvSize;
-    float4x4 ClipToView;
-    float4x4 ViewMatrix;
-    float4 LightGridZParams;
-    float4 InvDeviceZToWorldZTransform;
-    
-};
 
 struct FrameData 
 {
@@ -45,6 +36,12 @@ struct FrameData
     float4x4 ShadowViewPrjMatrix;
     float4 DirectionalLightDir;
     float4 DirectionalLightColor;
+    float4 ViewSizeAndInvSize;
+    float4x4 ClipToView;
+    float4x4 ViewMatrix;
+    float4 LightGridZParams;
+    float4 InvDeviceZToWorldZTransform;
+    
 };
 
 struct ObjectData

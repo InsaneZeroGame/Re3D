@@ -1,6 +1,6 @@
 #include "shader_common.hlsli"
 
-ConstantBuffer<LightCullViewData> View : register(b0);
+ConstantBuffer<FrameData> View : register(b0);
 StructuredBuffer<Light> lights : register(t1);
 RWStructuredBuffer<Cluster> clusters: register(u2);
 

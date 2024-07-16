@@ -1,8 +1,8 @@
 #include "shader_common.hlsli"
 
+ConstantBuffer<FrameData> frameData : register(b0);
 StructuredBuffer<Light> lights : register(t1);
 RWStructuredBuffer<Cluster> clusters : register(u2);
-ConstantBuffer<LightCullViewData> View : register(b3);
 Texture2D<float4> defaultTexture : register(t5);
 Texture2D<float4> normalTexture : register(t6);
 Texture2D<float4> roughnessTexture : register(t7);
@@ -99,9 +99,9 @@ float3 ApplyPointLight(
 
 uint3 ComputeLightGridCellCoordinate(uint2 PixelPos, float SceneDepth, uint EyeIndex)
 {
-    uint ZSlice = (uint) (max(0, log2(SceneDepth * View.LightGridZParams.x + View.LightGridZParams.y) * View.LightGridZParams.z));
+    uint ZSlice = (uint) (max(0, log2(SceneDepth * frameData.LightGridZParams.x + frameData.LightGridZParams.y) * frameData.LightGridZParams.z));
     ZSlice = min(ZSlice, (uint) (CLUSTER_Z - 1));
-    return uint3(PixelPos.x / (View.ViewSizeAndInvSize.x / CLUSTER_X), PixelPos.y / (View.ViewSizeAndInvSize.y / CLUSTER_Y), ZSlice);
+    return uint3(PixelPos.x / (frameData.ViewSizeAndInvSize.x / CLUSTER_X), PixelPos.y / (frameData.ViewSizeAndInvSize.y / CLUSTER_Y), ZSlice);
 }
 
 uint ComputeLightGridCellIndex(uint3 GridCoordinate, uint EyeIndex)
@@ -122,7 +122,7 @@ uint ComputeLightGridCellIndex(uint2 PixelPos, float SceneDepth)
 float ConvertFromDeviceZ(float DeviceZ)
 {
 	// Supports ortho and perspective, see CreateInvDeviceZToWorldZTransform()
-    return DeviceZ * View.InvDeviceZToWorldZTransform.x + View.InvDeviceZToWorldZTransform.y + 1.0f / (DeviceZ * View.InvDeviceZToWorldZTransform.z - View.InvDeviceZToWorldZTransform.w);
+    return DeviceZ * frameData.InvDeviceZToWorldZTransform.x + frameData.InvDeviceZToWorldZTransform.y + 1.0f / (DeviceZ * frameData.InvDeviceZToWorldZTransform.z - frameData.InvDeviceZToWorldZTransform.w);
 }
 
 
@@ -136,7 +136,7 @@ float4 main(PSInput input) : SV_TARGET
      float4 colorAfterCorrection = pow(input.color, 1.0 / gamma);
     return (diffuse + ambient) * colorAfterCorrection;
 #else
-    float4 DirLightViewSpace = mul(float4(input.DirectionalLightDir.xyz, 0.0), View.ViewMatrix);
+    float4 DirLightViewSpace = mul(float4(input.DirectionalLightDir.xyz, 0.0), frameData.ViewMatrix);
     float DirLightIntense = 0.2f;
     float3 directionalLight = ApplyLightCommon(
     input.color.xyz,
@@ -151,7 +151,7 @@ float4 main(PSInput input) : SV_TARGET
     {
         if ((clusters[GirdIndex].lightMask[i / 32] >> (i % 32)) & 0x1  == 1)
         {
-            float4 lightViewSpace = mul(lights[i].pos, View.ViewMatrix);
+            float4 lightViewSpace = mul(lights[i].pos, frameData.ViewMatrix);
             float4 lightDir = lightViewSpace - input.viewsSpacePos;
             float d = length(lightDir);
             if (d < lights[i].radius_attenu[0])

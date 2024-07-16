@@ -37,18 +37,12 @@ namespace Renderer
 		DirectX::SimpleMath::Matrix ShadowViewPrjMatrix;
 		DirectX::SimpleMath::Vector4 DirectionalLightDir;
 		DirectX::SimpleMath::Vector4 DirectionalLightColor;
-	};
-
-	struct LightCullViewData
-	{
 		DirectX::SimpleMath::Vector4 ViewSizeAndInvSize;
 		DirectX::SimpleMath::Matrix  ClipToView;
 		DirectX::SimpleMath::Matrix  ViewMatrix;
 		DirectX::SimpleMath::Vector4 LightGridZParams;
 		DirectX::SimpleMath::Vector4 InvDeviceZToWorldZTransform;
 	};
-	
-
 
 	class BaseRenderer : public std::enable_shared_from_this<BaseRenderer>
 	{
@@ -113,8 +107,6 @@ namespace Renderer
 		std::shared_ptr<Resource::UploadBuffer> mLightUploadBuffer;
 		std::unique_ptr<Resource::StructuredBuffer> mClusterBuffer;
 		std::vector<Cluster> mCLusters;
-		LightCullViewData mLightCullViewData;
-		std::unique_ptr<Resource::UploadBuffer> mLightCullViewDataGpu;
 		std::shared_ptr<Resource::Texture> mSkyboxTexture;
 		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
 		std::unique_ptr<Skybox> mSkybox;

@@ -131,7 +131,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			//Set Resources
 			mGraphicsCmd->SetGraphicsRootSignature(mColorPassRootSignature);
 			mGraphicsCmd->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
+			mGraphicsCmd->SetGraphicsRootConstantBufferView(ROOT_PARA_FRAME_DATA_CBV, mFrameDataGPU->GetGpuVirtualAddress());
 			auto vbview = mContext->GetVertexBuffer()->VertexBufferView();
 			mGraphicsCmd->IASetVertexBuffers(0, 1, &vbview);
 			auto ibview = mContext->GetIndexBuffer()->IndexBufferView();
@@ -145,7 +145,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
                 //auto renderEntitiesCount = renderEntities.size();
                 renderEntities.each([=](auto entity, auto& renderComponent, auto& transformComponent) {
                     auto modelMatrix = transformComponent.GetModelMatrix();
-                    mGraphicsCmd->SetGraphicsRoot32BitConstants(4, 16, &modelMatrix, 0);
+                    mGraphicsCmd->SetGraphicsRoot32BitConstants(ROOT_PARA_COMPONENT_DATA, 16, &modelMatrix, 0);
                     RenderObject(renderComponent);
                 });
 
@@ -158,7 +158,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 				//auto renderEntitiesCount = renderEntities.size();
 				renderEntities.each([=](auto entity, auto& renderComponent, auto& transformComponent) {
 					auto modelMatrix = transformComponent.GetModelMatrix();
-					mGraphicsCmd->SetGraphicsRoot32BitConstants(4, 16, &modelMatrix, 0);
+					mGraphicsCmd->SetGraphicsRoot32BitConstants(ROOT_PARA_COMPONENT_DATA, 16, &modelMatrix, 0);
 					RenderObject(renderComponent);
 					});
 				TransitState(mGraphicsCmd, shadowMap->GetResource(),D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -178,9 +178,9 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mComputeCmd->Reset(cmdAllcator, mLightCullPass);
 			mComputeCmd->SetPipelineState(mLightCullPass);
 			mComputeCmd->SetComputeRootSignature(mLightCullPassRootSignature);
+			mComputeCmd->SetComputeRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
 			mComputeCmd->SetComputeRootShaderResourceView(1, mLightBuffer->GetGpuVirtualAddress());
 			mComputeCmd->SetComputeRootUnorderedAccessView(2, mClusterBuffer->GetGpuVirtualAddress());
-			mComputeCmd->SetComputeRootConstantBufferView(0, mLightCullViewDataGpu->GetGpuVirtualAddress());
 			mComputeCmd->Dispatch(CLUSTER_X, CLUSTER_Y, CLUSTER_Z);
 			ID3D12CommandQueue* queue = mDeviceManager->GetCmdManager()->GetQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);
 			ID3D12CommandList* lCmds = { mComputeCmd };
@@ -203,17 +203,17 @@ void Renderer::BaseRenderer::CreateRenderTask()
 #endif
 			mGraphicsCmd->SetPipelineState(mColorPassPipelineState8XMSAA);
 			mGraphicsCmd->SetGraphicsRootSignature(mColorPassRootSignature);
-			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
-			mGraphicsCmd->SetGraphicsRootUnorderedAccessView(1, mClusterBuffer->GetGpuVirtualAddress());
-			mGraphicsCmd->SetGraphicsRootShaderResourceView(2, mLightBuffer->GetGpuVirtualAddress());
-			mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
+			mGraphicsCmd->SetGraphicsRootConstantBufferView(ROOT_PARA_FRAME_DATA_CBV, mFrameDataGPU->GetGpuVirtualAddress());
+			mGraphicsCmd->SetGraphicsRootUnorderedAccessView(ROOT_PARA_CLUSTER_BUFFER, mClusterBuffer->GetGpuVirtualAddress());
+			mGraphicsCmd->SetGraphicsRootShaderResourceView(ROOT_PARA_LIGHT_BUFFER, mLightBuffer->GetGpuVirtualAddress());
+			//mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
 #if 0
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), true, &mContext->GetDepthBuffer()->GetDSV_ReadOnly());
 #endif
 			mGraphicsCmd->OMSetRenderTargets(1, &mContext->GetColorBuffer()->GetRTV(), true, &mContext->GetDepthBuffer()->GetDSV_ReadOnly());
-			mGraphicsCmd->SetGraphicsRootDescriptorTable(8, mContext->GetShadowMap()->GetDepthSRVGPU());
+			mGraphicsCmd->SetGraphicsRootDescriptorTable(ROOT_PARA_SHADOW_MAP, mContext->GetShadowMap()->GetDepthSRVGPU());
 			using namespace ECS;
             if (mCurrentScene && mCurrentScene->IsSceneReady()) 
 			{
@@ -222,15 +222,15 @@ void Renderer::BaseRenderer::CreateRenderTask()
                 renderEntities.each([=](auto entity, auto& renderComponent, auto& transformComponent) {
                     auto modelMatrix = transformComponent.GetModelMatrix();
 					
-					if (mTextureMap.find(renderComponent.NormalMap) == mTextureMap.end())
-					{
-						mGraphicsCmd->SetGraphicsRootDescriptorTable(6, mTextureMap["defaultNormal"]->GetSRVGpu());
-					}
-					else
-					{
-						mGraphicsCmd->SetGraphicsRootDescriptorTable(6, mTextureMap[renderComponent.NormalMap]->GetSRVGpu());
-					}
-                    mGraphicsCmd->SetGraphicsRoot32BitConstants(4, 16, &modelMatrix, 0);
+					//if (mTextureMap.find(renderComponent.NormalMap) == mTextureMap.end())
+					//{
+					//	mGraphicsCmd->SetGraphicsRootDescriptorTable(6, mTextureMap["defaultNormal"]->GetSRVGpu());
+					//}
+					//else
+					//{
+					//	mGraphicsCmd->SetGraphicsRootDescriptorTable(6, mTextureMap[renderComponent.NormalMap]->GetSRVGpu());
+					//}
+                    mGraphicsCmd->SetGraphicsRoot32BitConstants(ROOT_PARA_COMPONENT_DATA, 16, &modelMatrix, 0);
 					//Render 
 					for (const auto& [matid,subMesh] : renderComponent.mSubMeshes)
 					{
@@ -238,11 +238,11 @@ void Renderer::BaseRenderer::CreateRenderTask()
 
 						if (mTextureMap.find(subMeshTextureName) == mTextureMap.end())
 						{
-							mGraphicsCmd->SetGraphicsRootDescriptorTable(5, mTextureMap["defaultTexture"]->GetSRVGpu());
+							mGraphicsCmd->SetGraphicsRootDescriptorTable(ROOT_PARA_DIFFUSE_COLOR_TEXTURE, mTextureMap["defaultTexture"]->GetSRVGpu());
 						}
 						else
 						{
-							mGraphicsCmd->SetGraphicsRootDescriptorTable(5, mTextureMap[subMeshTextureName]->GetSRVGpu());
+							mGraphicsCmd->SetGraphicsRootDescriptorTable(ROOT_PARA_DIFFUSE_COLOR_TEXTURE, mTextureMap[subMeshTextureName]->GetSRVGpu());
 						}
 
 						mGraphicsCmd->DrawIndexedInstanced((UINT)subMesh.TriangleCount * 3, 1, renderComponent.StartIndexLocation + subMesh.IndexOffset,
@@ -348,8 +348,6 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mClusterBuffer = std::make_unique<Resource::StructuredBuffer>();
 	mCLusters.resize(CLUSTER_X * CLUSTER_Y * CLUSTER_Z);
 	mClusterBuffer->Create(L"ClusterBuffer", (UINT32)mCLusters.size(), sizeof(Cluster), nullptr);
-	mLightCullViewDataGpu = std::make_unique<Resource::UploadBuffer>();
-	mLightCullViewDataGpu->Create(L"LightCullViewData", sizeof(LightCullViewData));
 }
 
 void Renderer::BaseRenderer::CreateTextures()
@@ -498,11 +496,10 @@ void Renderer::BaseRenderer::FirstFrame()
 	}
 
 	auto gridParas = Utils::GetLightGridZParams(mDefaultCamera->GetFar(), mDefaultCamera->GetNear());
-	mLightCullViewData.LightGridZParams = SimpleMath::Vector4(gridParas.x,gridParas.y, gridParas.z,0.0f);
-	mLightCullViewData.ClipToView = mDefaultCamera->GetClipToView();
-	mLightCullViewData.ViewMatrix = mDefaultCamera->GetView();
-	mLightCullViewData.InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
-	mLightCullViewDataGpu->UpdataData<LightCullViewData>(mLightCullViewData);
+	mFrameDataCPU.LightGridZParams = SimpleMath::Vector4(gridParas.x,gridParas.y, gridParas.z,0.0f);
+	mFrameDataCPU.ClipToView = mDefaultCamera->GetClipToView();
+	mFrameDataCPU.ViewMatrix = mDefaultCamera->GetView();
+	mFrameDataCPU.InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
 }
 
 void Renderer::BaseRenderer::PreRender()
@@ -590,7 +587,7 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		frameDataCBV.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
 		frameDataCBV.Descriptor.RegisterSpace = 0;
 		frameDataCBV.Descriptor.ShaderRegister = 0;
-		frameDataCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
+		frameDataCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		D3D12_ROOT_PARAMETER clusterBuffer = {};
 		clusterBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
@@ -604,11 +601,11 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		lightBuffer.Descriptor.ShaderRegister = 1;
 		lightBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-		D3D12_ROOT_PARAMETER lightCullViewData = {};
-		lightCullViewData.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		lightCullViewData.Descriptor.RegisterSpace = 0;
-		lightCullViewData.Descriptor.ShaderRegister = 3;
-		lightCullViewData.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
+		//D3D12_ROOT_PARAMETER lightCullViewData = {};
+		//lightCullViewData.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
+		//lightCullViewData.Descriptor.RegisterSpace = 0;
+		//lightCullViewData.Descriptor.ShaderRegister = 3;
+		//lightCullViewData.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		
 
@@ -631,38 +628,25 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		diffuseRange.BaseShaderRegister = 5;
 		diffuseRange.RegisterSpace = 0;
 		diffuseRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-		std::vector<D3D12_DESCRIPTOR_RANGE> ranges = { diffuseRange };
-		diffuseColorTexture.DescriptorTable.NumDescriptorRanges = (UINT)ranges.size();
-		diffuseColorTexture.DescriptorTable.pDescriptorRanges = ranges.data();
-		diffuseColorTexture.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-
-		D3D12_ROOT_PARAMETER normalMap = {};
 		D3D12_DESCRIPTOR_RANGE normalRange = {};
-		normalMap.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		normalRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		normalRange.NumDescriptors = 1;
 		normalRange.BaseShaderRegister = 6;
 		normalRange.RegisterSpace = 0;
 		normalRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-		std::vector<D3D12_DESCRIPTOR_RANGE> normalranges = { normalRange };
-		normalMap.DescriptorTable.NumDescriptorRanges = (UINT)normalranges.size();
-		normalMap.DescriptorTable.pDescriptorRanges = normalranges.data();
-		normalMap.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-
-		D3D12_ROOT_PARAMETER roughnessMap = {};
 		D3D12_DESCRIPTOR_RANGE roughnessRange = {};
-		roughnessMap.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 		roughnessRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		roughnessRange.NumDescriptors = 1;
 		roughnessRange.BaseShaderRegister = 7;
 		roughnessRange.RegisterSpace = 0;
 		roughnessRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-		std::vector<D3D12_DESCRIPTOR_RANGE> roughnessranges = { roughnessRange };
-		roughnessMap.DescriptorTable.NumDescriptorRanges = (UINT)roughnessranges.size();
-		roughnessMap.DescriptorTable.pDescriptorRanges = roughnessranges.data();
-		roughnessMap.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+		std::vector<D3D12_DESCRIPTOR_RANGE> ranges = { diffuseRange,normalRange,roughnessRange };
+		diffuseColorTexture.DescriptorTable.NumDescriptorRanges = (UINT)ranges.size();
+		diffuseColorTexture.DescriptorTable.pDescriptorRanges = ranges.data();
+		diffuseColorTexture.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 		D3D12_ROOT_PARAMETER shadowMap = {};
 		D3D12_DESCRIPTOR_RANGE shadowMapRange = {};
@@ -683,12 +667,9 @@ void Renderer::BaseRenderer::CreateRootSignature()
 			frameDataCBV,//0
 			clusterBuffer,//1
 			lightBuffer,//2
-			lightCullViewData,//3
-            componentData,//4
-			diffuseColorTexture,//5
-			normalMap,//6
-			roughnessMap,//7
-			shadowMap//8
+            componentData,//3
+			diffuseColorTexture,//4
+			shadowMap//5
 		};
 
 		//Samplers
@@ -777,16 +758,15 @@ void Renderer::BaseRenderer::UpdataFrameData()
 	mFrameDataCPU.ShadowViewPrjMatrix = mShadowCamera->GetPrjView();
 	mFrameDataCPU.NormalMatrix = mDefaultCamera->GetNormalMatrix();
 	mFrameDataCPU.DirectionalLightDir.Normalize();
-	mFrameDataGPU->UpdataData<FrameData>(mFrameDataCPU);
 	auto gridParas = Utils::GetLightGridZParams(mDefaultCamera->GetNear(), mDefaultCamera->GetFar());
-	mLightCullViewData.LightGridZParams.x = gridParas.x;
-	mLightCullViewData.LightGridZParams.y = gridParas.y;
-	mLightCullViewData.LightGridZParams.z = gridParas.z;
-	mLightCullViewData.ViewSizeAndInvSize = SimpleMath::Vector4((float)mWidth, (float)mHeight, 1.0f / (float)mWidth, 1.0f / (float)mHeight);
-	mLightCullViewData.ClipToView = mDefaultCamera->GetClipToView();
-	mLightCullViewData.ViewMatrix = mDefaultCamera->GetView();
-	mLightCullViewData.InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
-	mLightCullViewDataGpu->UpdataData<LightCullViewData>(mLightCullViewData);
+	mFrameDataCPU.LightGridZParams.x = gridParas.x;
+	mFrameDataCPU.LightGridZParams.y = gridParas.y;
+	mFrameDataCPU.LightGridZParams.z = gridParas.z;
+	mFrameDataCPU.ViewSizeAndInvSize = SimpleMath::Vector4((float)mWidth, (float)mHeight, 1.0f / (float)mWidth, 1.0f / (float)mHeight);
+	mFrameDataCPU.ClipToView = mDefaultCamera->GetClipToView();
+	mFrameDataCPU.ViewMatrix = mDefaultCamera->GetView();
+	mFrameDataCPU.InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
+	mFrameDataGPU->UpdataData<FrameData>(mFrameDataCPU);
 }
 
 void Renderer::BaseRenderer::LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent)
