@@ -32,7 +32,7 @@ namespace ECS
         std::unordered_map<MaterialIndex, SubMesh> mSubmeshMap;
 		std::unordered_map<MaterialIndex, std::string> mMatTextureName;
 		//std::unordered_map<MaterialName, SubMesh> mSubmeshMap;
-		DirectX::XMFLOAT4 mDiffuseColor;
+		DirectX::XMFLOAT3 mDiffuseColor;
         bool mHasNormal;
         bool mHasUV;
         bool mAllByControlPoint;
@@ -65,7 +65,7 @@ namespace ECS
         std::unordered_map<MaterialIndex, SubMesh> mSubMeshes;
 		std::unordered_map<MaterialIndex, std::string> mMatTextureName;
 		StaticMeshComponent(StaticMesh&& InMesh);
-		DirectX::XMFLOAT4 mBaseColor;
+		DirectX::XMFLOAT3 mBaseColor;
 		MaterialName MatName;
 		MaterialName NormalMap;
 		std::string mName;

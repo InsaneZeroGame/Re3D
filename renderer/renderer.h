@@ -44,6 +44,13 @@ namespace Renderer
 		DirectX::SimpleMath::Vector4 InvDeviceZToWorldZTransform;
 	};
 
+	struct OjbectData
+	{
+		DirectX::SimpleMath::Matrix ModelMatrix;
+		DirectX::XMFLOAT3 DiffuseColor;
+	};
+
+	
 	class BaseRenderer : public std::enable_shared_from_this<BaseRenderer>
 	{
 	public:

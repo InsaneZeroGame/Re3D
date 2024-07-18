@@ -47,6 +47,7 @@ struct FrameData
 struct ObjectData
 {
     float4x4 ModelMatrix;
+    float3 DiffuseColor;
 };
 
 struct SkyBoxPsInput

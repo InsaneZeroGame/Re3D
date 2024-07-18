@@ -226,7 +226,11 @@ void Renderer::BaseRenderer::CreateRenderTask()
 					//{
 					//	mGraphicsCmd->SetGraphicsRootDescriptorTable(6, mTextureMap[renderComponent.NormalMap]->GetSRVGpu());
 					//}
-                    mGraphicsCmd->SetGraphicsRoot32BitConstants(ROOT_PARA_COMPONENT_DATA, 16, &modelMatrix, 0);
+					OjbectData objData = {};
+					objData.ModelMatrix = modelMatrix;
+					objData.DiffuseColor = renderComponent.mBaseColor;
+					constexpr int objSize = sizeof(OjbectData) / 4;
+                    mGraphicsCmd->SetGraphicsRoot32BitConstants(ROOT_PARA_COMPONENT_DATA, objSize, &objData, 0);
 					//Render 
 					for (const auto& [matid,subMesh] : renderComponent.mSubMeshes)
 					{
@@ -624,7 +628,8 @@ void Renderer::BaseRenderer::CreateRootSignature()
         componentData.Constants.RegisterSpace = 0;
         componentData.Constants.ShaderRegister = 4;
 		//RTS matrix
-        componentData.Constants.Num32BitValues = 16;
+		constexpr int objDataSize = sizeof(OjbectData) / 4;
+        componentData.Constants.Num32BitValues = objDataSize;
         componentData.ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX;
 
 
