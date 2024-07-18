@@ -5,11 +5,10 @@ const ROTATION_AXIS X_AXIS = DirectX::SimpleMath::Vector3(1.0f,0.0f,0.0f);
 const ROTATION_AXIS Y_AXIS = DirectX::SimpleMath::Vector3(0.0f, 1.0f, 0.0f);
 const ROTATION_AXIS Z_AXIS = DirectX::SimpleMath::Vector3(0.0f, 0.0f, 1.0f);
 constexpr int ROOT_PARA_FRAME_DATA_CBV = 0;
-constexpr int ROOT_PARA_CLUSTER_BUFFER = 1;
-constexpr int ROOT_PARA_LIGHT_BUFFER = 2;
-constexpr int ROOT_PARA_COMPONENT_DATA = 3;
-constexpr int ROOT_PARA_DIFFUSE_COLOR_TEXTURE = 4;
-constexpr int ROOT_PARA_SHADOW_MAP = 5;
+constexpr int ROOT_PARA_FRAME_SOURCE_TABLE = 1;//lights,clusters
+constexpr int ROOT_PARA_COMPONENT_DATA = 2;
+constexpr int ROOT_PARA_DIFFUSE_COLOR_TEXTURE = 3;
+constexpr int ROOT_PARA_SHADOW_MAP = 4;
 
 namespace ECS
 {

@@ -24,8 +24,8 @@ Renderer::BaseRenderer::BaseRenderer():
 	mComputeCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COMPUTE);
 	mBatchUploader = std::make_unique<ResourceUploadBatch>(g_Device);
 	mContext = std::make_unique<RendererContext>(mCmdManager);
-	CreateBuffers();
 	CreateTextures();
+	CreateBuffers();
 	CreateRootSignature();
 	CreatePipelineState();
 	CreateRenderTask();
@@ -187,10 +187,6 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mComputeCmd->Close();
 			queue->ExecuteCommandLists(1, &lCmds);
 			queue->Signal(mComputeFence, mComputeFenceValue);
-			//D3D12_RESOURCE_BARRIER luav = {};
-			//luav.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-			//luav.UAV.pResource = mClusterBuffer->GetResource();
-			//mComputeCmd->ResourceBarrier(1, &luav);
 			mDeviceManager->GetCmdManager()->Discard(D3D12_COMMAND_LIST_TYPE_COMPUTE, cmdAllcator, mComputeFenceValue);
 			mComputeFence->SetEventOnCompletion(mComputeFenceValue, mComputeFenceHandle);
 			mComputeFenceValue++;
@@ -203,12 +199,11 @@ void Renderer::BaseRenderer::CreateRenderTask()
 #endif
 			mGraphicsCmd->SetPipelineState(mColorPassPipelineState8XMSAA);
 			mGraphicsCmd->SetGraphicsRootSignature(mColorPassRootSignature);
-			mGraphicsCmd->SetGraphicsRootConstantBufferView(ROOT_PARA_FRAME_DATA_CBV, mFrameDataGPU->GetGpuVirtualAddress());
-			mGraphicsCmd->SetGraphicsRootUnorderedAccessView(ROOT_PARA_CLUSTER_BUFFER, mClusterBuffer->GetGpuVirtualAddress());
-			mGraphicsCmd->SetGraphicsRootShaderResourceView(ROOT_PARA_LIGHT_BUFFER, mLightBuffer->GetGpuVirtualAddress());
-			//mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
+			mGraphicsCmd->SetGraphicsRootConstantBufferView(ROOT_PARA_FRAME_DATA_CBV, mFrameDataGPU->GetGpuVirtualAddress());
+			mGraphicsCmd->SetGraphicsRootDescriptorTable(ROOT_PARA_FRAME_SOURCE_TABLE, mLightBuffer->GetSRVGpu());
+			//mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
 #if 0
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), true, &mContext->GetDepthBuffer()->GetDSV_ReadOnly());
 #endif
@@ -299,8 +294,7 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mFrameDataCPU.DirectionalLightColor = SimpleMath::Vector4(1.0f, 1.0f, 1.0f,1.0f);
 	mFrameDataCPU.DirectionalLightDir = SimpleMath::Vector4(1.0, 1.0, 2.0,1.0f);
 
-	mLightBuffer = std::make_unique<Resource::StructuredBuffer>();
-	mLightBuffer->Create(L"LightBuffer", (UINT32)mLights.size(), sizeof(ECS::LigthData), nullptr);
+	
 
 	mLightUploadBuffer = std::make_shared<Resource::UploadBuffer>();
 	mLightUploadBuffer->Create(L"LightUploadBuffer", sizeof(ECS::LigthData) * mLights.size());
@@ -344,6 +338,14 @@ void Renderer::BaseRenderer::CreateBuffers()
 
 	//
 	mLightUploadBuffer->UploadData<ECS::LigthData>(mLights);
+
+	//mDummyBuffer = std::make_unique<Resource::StructuredBuffer>();
+	//mDummyBuffer->Create(L"Dummy", 1, sizeof(uint8_t), nullptr);
+	//mDummyBuffer->CreateSRV();
+
+	//FrameResource Table
+	mLightBuffer = std::make_unique<Resource::StructuredBuffer>();
+	mLightBuffer->Create(L"LightBuffer", (UINT32)mLights.size(), sizeof(ECS::LigthData), nullptr);
 
 	mClusterBuffer = std::make_unique<Resource::StructuredBuffer>();
 	mCLusters.resize(CLUSTER_X * CLUSTER_Y * CLUSTER_Z);
@@ -589,25 +591,32 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		frameDataCBV.Descriptor.ShaderRegister = 0;
 		frameDataCBV.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
-		D3D12_ROOT_PARAMETER clusterBuffer = {};
-		clusterBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
-		clusterBuffer.Descriptor.RegisterSpace = 0;
-		clusterBuffer.Descriptor.ShaderRegister = 2;
-		clusterBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		D3D12_ROOT_PARAMETER frameResourceTable = {};
+		frameResourceTable.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
 
-		D3D12_ROOT_PARAMETER lightBuffer = {};
-		lightBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		lightBuffer.Descriptor.RegisterSpace = 0;
-		lightBuffer.Descriptor.ShaderRegister = 1;
-		lightBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		D3D12_DESCRIPTOR_RANGE light_buffer_range = {};
+		light_buffer_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		light_buffer_range.NumDescriptors = 1;
+		light_buffer_range.BaseShaderRegister = 1;
+		light_buffer_range.RegisterSpace = 0;
+		light_buffer_range.OffsetInDescriptorsFromTableStart = 0;
 
-		//D3D12_ROOT_PARAMETER lightCullViewData = {};
-		//lightCullViewData.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		//lightCullViewData.Descriptor.RegisterSpace = 0;
-		//lightCullViewData.Descriptor.ShaderRegister = 3;
-		//lightCullViewData.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
+		D3D12_DESCRIPTOR_RANGE cluster_range = {};
+		cluster_range.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
+		cluster_range.NumDescriptors = 1;
+		cluster_range.BaseShaderRegister = 2;
+		cluster_range.RegisterSpace = 0;
+		//warning !!! skip two descriptors than used by counter buffer within uav buffer
+		//offset is 3 = 2(counter buffer desc) + 1(light buffer desc)
+		auto cluster_offset = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->CalcHandleOffset(mClusterBuffer->GetUAV());
+		auto light_offset = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->CalcHandleOffset(mLightBuffer->GetSRV());
+		cluster_range.OffsetInDescriptorsFromTableStart = cluster_offset - light_offset;
 		
+
+		std::vector<D3D12_DESCRIPTOR_RANGE> frame_resource_ranges = { light_buffer_range,cluster_range };
+		frameResourceTable.DescriptorTable.NumDescriptorRanges = frame_resource_ranges.size();
+		frameResourceTable.DescriptorTable.pDescriptorRanges = frame_resource_ranges.data();
+		frameResourceTable.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
 
 		D3D12_ROOT_PARAMETER componentData = {};
         componentData.ParameterType = D3D12_ROOT_PARAMETER_TYPE_32BIT_CONSTANTS;
@@ -627,7 +636,7 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		diffuseRange.NumDescriptors = 1;
 		diffuseRange.BaseShaderRegister = 5;
 		diffuseRange.RegisterSpace = 0;
-		diffuseRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
+		diffuseRange.OffsetInDescriptorsFromTableStart = 0;
 
 		D3D12_DESCRIPTOR_RANGE normalRange = {};
 		normalRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
@@ -661,15 +670,13 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		shadowMap.DescriptorTable.pDescriptorRanges = shadowmapranges.data();
 		shadowMap.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
-
 		std::vector<D3D12_ROOT_PARAMETER> parameters =
 		{
 			frameDataCBV,//0
-			clusterBuffer,//1
-			lightBuffer,//2
-            componentData,//3
-			diffuseColorTexture,//4
-			shadowMap//5
+			frameResourceTable,//1
+            componentData,//2
+			diffuseColorTexture,//3
+			shadowMap//4
 		};
 
 		//Samplers

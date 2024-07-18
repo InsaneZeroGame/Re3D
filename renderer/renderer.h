@@ -117,6 +117,9 @@ namespace Renderer
         bool mHasSkybox = true;
         std::future<void> mLoadResourceFuture;
 		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>> mTextureMap;
+
+		std::shared_ptr<Resource::StructuredBuffer> mDummyBuffer;
+
 	};
 
 	

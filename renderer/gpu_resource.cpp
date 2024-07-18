@@ -764,6 +764,7 @@ namespace Renderer
 			{
 				auto [cpuHandle, gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
 				m_SRV = cpuHandle;
+				m_SRVGpu = gpuHandle;
 			}
 			g_Device->CreateShaderResourceView(m_pResource, &SRVDesc, m_SRV);
 
@@ -781,6 +782,7 @@ namespace Renderer
 			{
 				auto [cpuHandle, gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
 				m_UAV = cpuHandle;
+				m_UAVGpu = gpuHandle;
 			}
 			g_Device->CreateUnorderedAccessView(m_pResource, m_CounterBuffer.GetResource(), &UAVDesc, m_UAV);
 		}

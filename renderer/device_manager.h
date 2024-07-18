@@ -11,6 +11,8 @@ namespace Renderer
 	inline ID3D12Device4* g_Device = nullptr;
 	inline class DescHeap* g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
     inline DXGI_FORMAT g_DisplayFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
+	//IMGUI Needs 3 desc to work.
+	constexpr int IMGUI_DESC_HEAP_ONLY = 3;
 
 	class DescHeap
 	{
@@ -18,13 +20,14 @@ namespace Renderer
 		DescHeap(D3D12_DESCRIPTOR_HEAP_TYPE Type);
 		~DescHeap();
 		std::tuple<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> Allocate(int count = 1);
+		int CalcHandleOffset(D3D12_CPU_DESCRIPTOR_HANDLE InHandle);
 		ID3D12DescriptorHeap* GetDescHeap();
 	private:
 		ID3D12DescriptorHeap* mDescHeap;
-		UINT mDescSize;
+		uint64_t mDescSize;
 		D3D12_CPU_DESCRIPTOR_HANDLE mCpuStart;
 		D3D12_GPU_DESCRIPTOR_HANDLE mGpuStart;
-		UINT mCurrentIndex;
+		uint64_t mCurrentIndex;
 	};
 
 	class CommandAllocatorPool

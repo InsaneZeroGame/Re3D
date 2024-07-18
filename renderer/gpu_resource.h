@@ -234,6 +234,9 @@ namespace Renderer
 			const D3D12_CPU_DESCRIPTOR_HANDLE& GetUAV(void) const { return m_UAV; }
 			const D3D12_CPU_DESCRIPTOR_HANDLE& GetSRV(void) const { return m_SRV; }
 
+			const D3D12_GPU_DESCRIPTOR_HANDLE& GetUAVGpu(void) const { return m_UAVGpu; }
+			const D3D12_GPU_DESCRIPTOR_HANDLE& GetSRVGpu(void) const { return m_SRVGpu; }
+
 			D3D12_GPU_VIRTUAL_ADDRESS RootConstantBufferView(void) const { return m_GpuVirtualAddress; }
 
 			D3D12_CPU_DESCRIPTOR_HANDLE CreateConstantBufferView(uint32_t Offset, uint32_t Size) const;
@@ -256,6 +259,9 @@ namespace Renderer
 			uint32_t GetElementCount() const { return m_ElementCount; }
 			uint32_t GetElementSize() const { return m_ElementSize; }
 
+			void SetUAV(D3D12_CPU_DESCRIPTOR_HANDLE InView) { m_UAV = InView; };
+			void SetSRV(D3D12_CPU_DESCRIPTOR_HANDLE InView) { m_SRV = InView; };
+
 		protected:
 
 			GpuBuffer(void) : m_BufferSize(0), m_ElementCount(0), m_ElementSize(0)
@@ -270,6 +276,8 @@ namespace Renderer
 
 			D3D12_CPU_DESCRIPTOR_HANDLE m_UAV;
 			D3D12_CPU_DESCRIPTOR_HANDLE m_SRV;
+			D3D12_GPU_DESCRIPTOR_HANDLE m_UAVGpu;
+			D3D12_GPU_DESCRIPTOR_HANDLE m_SRVGpu;
 
 			size_t m_BufferSize;
 			uint32_t m_ElementCount;
@@ -329,10 +337,7 @@ namespace Renderer
 			}
 
 			virtual void CreateDerivedViews(void) override;
-
 			ByteAddressBuffer& GetCounterBuffer(void) { return m_CounterBuffer; }
-
-
 		private:
 			ByteAddressBuffer m_CounterBuffer;
 		};
