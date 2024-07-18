@@ -505,6 +505,11 @@ std::tuple<D3D12_CPU_DESCRIPTOR_HANDLE, D3D12_GPU_DESCRIPTOR_HANDLE> Renderer::D
 	return {cpuHandle,gpuHandle};
 }
 
+int Renderer::DescHeap::CalcHandleOffset(D3D12_CPU_DESCRIPTOR_HANDLE InHandle)
+{
+	return (InHandle.ptr - mCpuStart.ptr) / mDescSize;//Minus first 3 desc to support imgui,todo remove this.
+}
+
 ID3D12DescriptorHeap* Renderer::DescHeap::GetDescHeap()
 {
 	return mDescHeap;

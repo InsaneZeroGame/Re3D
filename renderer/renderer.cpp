@@ -24,6 +24,7 @@ Renderer::BaseRenderer::BaseRenderer():
 	mComputeCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COMPUTE);
 	mBatchUploader = std::make_unique<ResourceUploadBatch>(g_Device);
 	mContext = std::make_unique<RendererContext>(mCmdManager);
+	g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate(3);
 	CreateTextures();
 	CreateBuffers();
 	CreateRootSignature();
