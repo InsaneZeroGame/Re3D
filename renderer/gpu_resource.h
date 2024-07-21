@@ -221,14 +221,14 @@ namespace Renderer
 			virtual ~GpuBuffer() { Destroy(); }
 
 			// Create a buffer.  If initial data is provided, it will be copied into the buffer using the default command context.
-			void Create(const std::wstring& name, uint32_t NumElements, uint32_t ElementSize,
+			void Create(const std::wstring& name, uint32_t NumElements, uint32_t ElementSize, D3D12_RESOURCE_STATES InitState = D3D12_RESOURCE_STATE_COMMON,
 				const void* initialData = nullptr);
 
 			void Create(const std::wstring& name, uint32_t NumElements, uint32_t ElementSize,
-				const UploadBuffer& srcData, uint32_t srcOffset = 0);
+				const UploadBuffer& srcData, D3D12_RESOURCE_STATES InitState = D3D12_RESOURCE_STATE_COMMON, uint32_t srcOffset = 0);
 			
 			// Sub-Allocate a buffer out of a pre-allocated heap.  If initial data is provided, it will be copied into the buffer using the default command context.
-			void CreatePlaced(const std::wstring& name, ID3D12Heap* pBackingHeap, uint32_t HeapOffset, uint32_t NumElements, uint32_t ElementSize,
+			void CreatePlaced(const std::wstring& name, ID3D12Heap* pBackingHeap, uint32_t HeapOffset, uint32_t NumElements, uint32_t ElementSize, D3D12_RESOURCE_STATES InitState = D3D12_RESOURCE_STATE_COMMON,
 				const void* initialData = nullptr);
 
 			const D3D12_CPU_DESCRIPTOR_HANDLE& GetUAV(void) const { return m_UAV; }

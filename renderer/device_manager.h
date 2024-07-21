@@ -2,11 +2,11 @@
 #include <queue>
 #include <map>
 #include "gpu_resource.h"
+#include "graphics_common.h"
 
 
 namespace Renderer
 {
-	inline constexpr int SWAP_CHAIN_BUFFER_COUNT = 3;
 	inline Resource::ColorBuffer g_DisplayPlane[SWAP_CHAIN_BUFFER_COUNT];
 	inline ID3D12Device4* g_Device = nullptr;
 	inline class DescHeap* g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];

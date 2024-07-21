@@ -6,6 +6,7 @@
 #include <camera.h>
 #include "game_scene.h"
 #include <future>
+#include <array>
 
 namespace tf
 {
@@ -25,6 +26,7 @@ namespace Renderer
 		class Texture;
 		class UploadBuffer;
 		class StructuredBuffer;
+		class VertexBuffer;
 	}
 
 	struct FrameData
@@ -49,7 +51,6 @@ namespace Renderer
 		DirectX::SimpleMath::Matrix ModelMatrix;
 		DirectX::XMFLOAT3 DiffuseColor;
 	};
-
 	
 	class BaseRenderer : public std::enable_shared_from_this<BaseRenderer>
 	{
@@ -101,8 +102,9 @@ namespace Renderer
 		ID3D12RootSignature* mLightCullPassRootSignature;
 		std::unique_ptr<Gameplay::PerspectCamera> mDefaultCamera;
 		std::unique_ptr<Gameplay::PerspectCamera> mShadowCamera;
-		FrameData mFrameDataCPU;
-		std::shared_ptr<Resource::UploadBuffer> mFrameDataGPU;
+		std::array<FrameData,SWAP_CHAIN_BUFFER_COUNT> mFrameData;
+		std::array<std::shared_ptr<Resource::UploadBuffer>,SWAP_CHAIN_BUFFER_COUNT> mFrameDataCPU;
+		std::array<std::unique_ptr<Resource::VertexBuffer>,SWAP_CHAIN_BUFFER_COUNT> mFrameDataGPU;
 		int mWidth;
 		int mHeight;
 		std::unique_ptr<class tf::Taskflow> mRenderFlow;
@@ -126,6 +128,7 @@ namespace Renderer
 		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>> mTextureMap;
 
 		std::shared_ptr<Resource::StructuredBuffer> mDummyBuffer;
+		int mFrameIndexCpu = 0;
 
 	};
 

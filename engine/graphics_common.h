@@ -20,4 +20,5 @@ namespace Renderer
 	constexpr int CLUSTER_X = 32;
 	constexpr int CLUSTER_Y = 16;
 	constexpr int CLUSTER_Z = 16;
+	inline constexpr int SWAP_CHAIN_BUFFER_COUNT = 3;
 }

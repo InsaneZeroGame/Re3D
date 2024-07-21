@@ -174,14 +174,15 @@ float4 main(PSInput input) : SV_TARGET
     float gamma = 2.2f;
     float4 ambient = float4(0.15, 0.15, 0.15, 1.0f);
     float4 color = float4(pointLight, 1.0f);
-    float4 diffuseColor = defaultTexture.Sample(defaultSampler, input.UVCoord);
+    //float4 diffuseColor = defaultTexture.Sample(defaultSampler, input.UVCoord);
+    float4 diffuseColor = input.color;
     color *= diffuseColor;
     float4 colorAfterCorrection = pow(color, 1.0 / gamma);
     float2 shadowCoord = input.shadowCoord.xy /input.shadowCoord.w;
     //shadwo map
     shadowCoord = shadowCoord * float2(0.5, -0.5) + 0.5;
     float shadow = shadowMap.SampleCmpLevelZero(shadowSampler, shadowCoord, input.shadowCoord.z/input.shadowCoord.w);
-    //shadow = 1.0f;
+    shadow = 1.0f;
     return colorAfterCorrection * (0.15 + 0.85 * shadow);
     //if (input.position.x / screen_size  < 0.5)
     //{

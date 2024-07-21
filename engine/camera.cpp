@@ -152,7 +152,7 @@ Gameplay::PerspectCamera::PerspectCamera(float InWidth, float InHeight, float In
 	mWidth(InWidth),
 	mHeight(InHeight),
 	mNear(InNear),
-	mFar(12500.0)
+	mFar(120.0)
 {
 	float aspectRatio = (float)InWidth / (float)InHeight;
 	float fovAngleY = 90.0 * XM_PI / 180.0f;

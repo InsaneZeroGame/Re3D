@@ -582,7 +582,7 @@ namespace Renderer
 		//		D3D12_RESOURCE_STATE_NON_PIXEL_SHADER_RESOURCE);
 		//}
 
-		void GpuBuffer::Create(const std::wstring& name, uint32_t NumElements, uint32_t ElementSize, const void* initialData)
+		void GpuBuffer::Create(const std::wstring& name, uint32_t NumElements, uint32_t ElementSize, D3D12_RESOURCE_STATES InitState, const void* initialData)
 		{
 			Destroy();
 
@@ -592,7 +592,7 @@ namespace Renderer
 
 			D3D12_RESOURCE_DESC ResourceDesc = DescribeBuffer();
 
-			m_UsageState = D3D12_RESOURCE_STATE_COMMON;
+			m_UsageState = InitState;
 
 			D3D12_HEAP_PROPERTIES HeapProps;
 			HeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -619,7 +619,7 @@ namespace Renderer
 			CreateDerivedViews();
 		}
 
-		void GpuBuffer::Create(const std::wstring& name, uint32_t NumElements, uint32_t ElementSize, const UploadBuffer& srcData, uint32_t srcOffset)
+		void GpuBuffer::Create(const std::wstring& name, uint32_t NumElements, uint32_t ElementSize, const UploadBuffer& srcData, D3D12_RESOURCE_STATES InitState, uint32_t srcOffset)
 		{
 			Destroy();
 
@@ -629,7 +629,7 @@ namespace Renderer
 
 			D3D12_RESOURCE_DESC ResourceDesc = DescribeBuffer();
 
-			m_UsageState = D3D12_RESOURCE_STATE_COMMON;
+			m_UsageState = InitState;
 
 			D3D12_HEAP_PROPERTIES HeapProps;
 			HeapProps.Type = D3D12_HEAP_TYPE_DEFAULT;
@@ -657,6 +657,7 @@ namespace Renderer
 
 		// Sub-Allocate a buffer out of a pre-allocated heap.  If initial data is provided, it will be copied into the buffer using the default command context.
 		void GpuBuffer::CreatePlaced(const std::wstring& name, ID3D12Heap* pBackingHeap, uint32_t HeapOffset, uint32_t NumElements, uint32_t ElementSize,
+			D3D12_RESOURCE_STATES InitState,
 			const void* initialData)
 		{
 			m_ElementCount = NumElements;
@@ -665,7 +666,7 @@ namespace Renderer
 
 			D3D12_RESOURCE_DESC ResourceDesc = DescribeBuffer();
 
-			m_UsageState = D3D12_RESOURCE_STATE_COMMON;
+			m_UsageState = InitState;
 
 			Ensures(g_Device->CreatePlacedResource(pBackingHeap, HeapOffset, &ResourceDesc, m_UsageState, nullptr, MY_IID_PPV_ARGS(&m_pResource)) == S_OK);
 

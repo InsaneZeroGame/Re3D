@@ -98,10 +98,11 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			{
 				return;
 			}
+			auto frameDataIndex = lCurrentBackbufferIndex % SWAP_CHAIN_BUFFER_COUNT;
 			TransitState(mGraphicsCmd, mContext->GetColorBuffer()->GetResource(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			mGraphicsCmd->SetPipelineState(mSkybox->GetPipelineState());
 			mGraphicsCmd->SetGraphicsRootSignature(mSkybox->GetRS());
-			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
+			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU[frameDataIndex]->RootConstantBufferView());
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
 			mGraphicsCmd->SetGraphicsRootDescriptorTable(1, mSkyboxTexture->GetSRVGpu());
@@ -114,6 +115,9 @@ void Renderer::BaseRenderer::CreateRenderTask()
 		{
 			mDeviceManager->BeginFrame();
 			auto lCurrentBackbufferIndex = mDeviceManager->GetCurrentFrameIndex();
+			auto frameDataIndex = lCurrentBackbufferIndex % SWAP_CHAIN_BUFFER_COUNT;
+
+
 			mGraphicsCmdAllocator = mCmdManager->RequestAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, mGraphicsFenceValue);
 			mGraphicsCmd->Reset(mGraphicsCmdAllocator, mPipelineStateDepthOnly);
 			if (mIsFirstFrame)
@@ -121,6 +125,15 @@ void Renderer::BaseRenderer::CreateRenderTask()
 				FirstFrame();
 				mIsFirstFrame = false;
 			}
+			//Update Frame Resource
+			TransitState(mGraphicsCmd, mFrameDataGPU[frameDataIndex]->GetResource(),
+				D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
+				D3D12_RESOURCE_STATE_COPY_DEST);
+			mGraphicsCmd->CopyResource(mFrameDataGPU[frameDataIndex]->GetResource(),mFrameDataCPU[frameDataIndex]->GetResource());
+			TransitState(mGraphicsCmd, mFrameDataGPU[frameDataIndex]->GetResource(),
+				D3D12_RESOURCE_STATE_COPY_DEST,
+				D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+
 
 			//Setup RenderTarget
 			TransitState(mGraphicsCmd, g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
@@ -132,7 +145,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			//Set Resources
 			mGraphicsCmd->SetGraphicsRootSignature(mColorPassRootSignature);
 			mGraphicsCmd->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-			mGraphicsCmd->SetGraphicsRootConstantBufferView(ROOT_PARA_FRAME_DATA_CBV, mFrameDataGPU->GetGpuVirtualAddress());
+			mGraphicsCmd->SetGraphicsRootConstantBufferView(ROOT_PARA_FRAME_DATA_CBV, mFrameDataGPU[frameDataIndex]->RootConstantBufferView());
 			auto vbview = mContext->GetVertexBuffer()->VertexBufferView();
 			mGraphicsCmd->IASetVertexBuffers(0, 1, &vbview);
 			auto ibview = mContext->GetIndexBuffer()->IndexBufferView();
@@ -175,11 +188,14 @@ void Renderer::BaseRenderer::CreateRenderTask()
 
 	auto ColorPass = [this]()
 		{
+			auto lCurrentBackbufferIndex = mDeviceManager->GetCurrentFrameIndex();
+			auto frameDataIndex = lCurrentBackbufferIndex % SWAP_CHAIN_BUFFER_COUNT;
+
 			ID3D12CommandAllocator* cmdAllcator = mDeviceManager->GetCmdManager()->RequestAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE, mComputeFenceValue);
 			mComputeCmd->Reset(cmdAllcator, mLightCullPass);
 			mComputeCmd->SetPipelineState(mLightCullPass);
 			mComputeCmd->SetComputeRootSignature(mLightCullPassRootSignature);
-			mComputeCmd->SetComputeRootConstantBufferView(0, mFrameDataGPU->GetGpuVirtualAddress());
+			mComputeCmd->SetComputeRootConstantBufferView(0, mFrameDataGPU[frameDataIndex]->RootConstantBufferView());
 			mComputeCmd->SetComputeRootShaderResourceView(1, mLightBuffer->GetGpuVirtualAddress());
 			mComputeCmd->SetComputeRootUnorderedAccessView(2, mClusterBuffer->GetGpuVirtualAddress());
 			mComputeCmd->Dispatch(CLUSTER_X, CLUSTER_Y, CLUSTER_Z);
@@ -194,7 +210,6 @@ void Renderer::BaseRenderer::CreateRenderTask()
 
 			//Render Scene
 			WaitForSingleObject(mComputeFenceHandle, INFINITE);
-			auto lCurrentBackbufferIndex = mDeviceManager->GetCurrentFrameIndex();
 #if 0
 			mGraphicsCmd->SetPipelineState(mColorPassPipelineState);
 #endif
@@ -202,7 +217,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsCmd->SetGraphicsRootSignature(mColorPassRootSignature);
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
-			mGraphicsCmd->SetGraphicsRootConstantBufferView(ROOT_PARA_FRAME_DATA_CBV, mFrameDataGPU->GetGpuVirtualAddress());
+			mGraphicsCmd->SetGraphicsRootConstantBufferView(ROOT_PARA_FRAME_DATA_CBV, mFrameDataGPU[frameDataIndex]->RootConstantBufferView());
 			mGraphicsCmd->SetGraphicsRootDescriptorTable(ROOT_PARA_FRAME_SOURCE_TABLE, mLightBuffer->GetSRVGpu());
 			//mGraphicsCmd->SetGraphicsRootConstantBufferView(3, mLightCullViewDataGpu->GetGpuVirtualAddress());
 #if 0
@@ -293,13 +308,17 @@ void Renderer::BaseRenderer::CreateRenderTask()
 void Renderer::BaseRenderer::CreateBuffers()
 {
 
-	mFrameDataGPU = std::make_shared<Resource::UploadBuffer>();
-	mFrameDataGPU->Create(L"FrameData", sizeof(mFrameDataCPU));
+	for (auto i = 0 ; i < SWAP_CHAIN_BUFFER_COUNT ; ++i)
+	{
+		mFrameDataCPU[i] = std::make_shared<Resource::UploadBuffer>();
+		mFrameDataCPU[i]->Create(L"FrameData", sizeof(FrameData));
 
-	mFrameDataCPU.DirectionalLightColor = SimpleMath::Vector4(1.0f, 1.0f, 1.0f,1.0f);
-	mFrameDataCPU.DirectionalLightDir = SimpleMath::Vector4(1.0, 1.0, 2.0,1.0f);
+		mFrameDataGPU[i] = std::make_unique<Resource::VertexBuffer>();
+		mFrameDataGPU[i]->Create(L"FrameData", 1, sizeof(FrameData),D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
-	
+		mFrameData[i].DirectionalLightColor = SimpleMath::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
+		mFrameData[i].DirectionalLightDir = SimpleMath::Vector4(1.0, 1.0, 2.0, 1.0f);
+	}
 
 	mLightUploadBuffer = std::make_shared<Resource::UploadBuffer>();
 	mLightUploadBuffer->Create(L"LightUploadBuffer", sizeof(ECS::LigthData) * mLights.size());
@@ -328,7 +347,7 @@ void Renderer::BaseRenderer::CreateBuffers()
 		light.pos.z = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
 
 		light.pos.x *= size;
-		light.pos.y = 0.5;
+		light.pos.y *= 2.0;
 		light.pos.z *= size;
 		light.pos.w = 1.0f;
 
@@ -336,7 +355,7 @@ void Renderer::BaseRenderer::CreateBuffers()
 		light.color.y = float(rand()) / RAND_MAX;
 		light.color.z = float(rand()) / RAND_MAX;
         light.radius_attenu.x = 25.0f;
-		light.radius_attenu.y = float(rand()) * 1.2f / RAND_MAX;
+		//light.radius_attenu.y = float(rand()) * 1.2f / RAND_MAX;
 		light.radius_attenu.z = float(rand()) * 1.2f / RAND_MAX;
 		light.radius_attenu.w = float(rand()) * 1.2f / RAND_MAX;
 	}
@@ -350,11 +369,11 @@ void Renderer::BaseRenderer::CreateBuffers()
 
 	//FrameResource Table
 	mLightBuffer = std::make_unique<Resource::StructuredBuffer>();
-	mLightBuffer->Create(L"LightBuffer", (UINT32)mLights.size(), sizeof(ECS::LigthData), nullptr);
+	mLightBuffer->Create(L"LightBuffer", (UINT32)mLights.size(), sizeof(ECS::LigthData));
 
 	mClusterBuffer = std::make_unique<Resource::StructuredBuffer>();
 	mCLusters.resize(CLUSTER_X * CLUSTER_Y * CLUSTER_Z);
-	mClusterBuffer->Create(L"ClusterBuffer", (UINT32)mCLusters.size(), sizeof(Cluster), nullptr);
+	mClusterBuffer->Create(L"ClusterBuffer", (UINT32)mCLusters.size(), sizeof(Cluster));
 }
 
 void Renderer::BaseRenderer::CreateTextures()
@@ -503,10 +522,10 @@ void Renderer::BaseRenderer::FirstFrame()
 	}
 
 	auto gridParas = Utils::GetLightGridZParams(mDefaultCamera->GetFar(), mDefaultCamera->GetNear());
-	mFrameDataCPU.LightGridZParams = SimpleMath::Vector4(gridParas.x,gridParas.y, gridParas.z,0.0f);
-	mFrameDataCPU.ClipToView = mDefaultCamera->GetClipToView();
-	mFrameDataCPU.ViewMatrix = mDefaultCamera->GetView();
-	mFrameDataCPU.InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
+	mFrameData[0].LightGridZParams = SimpleMath::Vector4(gridParas.x,gridParas.y, gridParas.z,0.0f);
+	mFrameData[0].ClipToView = mDefaultCamera->GetClipToView();
+	mFrameData[0].ViewMatrix = mDefaultCamera->GetView();
+	mFrameData[0].InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
 }
 
 void Renderer::BaseRenderer::PreRender()
@@ -764,22 +783,26 @@ void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D
 
 void Renderer::BaseRenderer::UpdataFrameData()
 {
-	mFrameDataCPU.PrjView = mDefaultCamera->GetPrjView();
-	mFrameDataCPU.View = mDefaultCamera->GetView();
-	mFrameDataCPU.Prj = mDefaultCamera->GetPrj();
-	mFrameDataCPU.ShadowViewMatrix = mShadowCamera->GetView();
-	mFrameDataCPU.ShadowViewPrjMatrix = mShadowCamera->GetPrjView();
-	mFrameDataCPU.NormalMatrix = mDefaultCamera->GetNormalMatrix();
-	mFrameDataCPU.DirectionalLightDir.Normalize();
+	auto frameDataCpuIndex = mFrameIndexCpu % SWAP_CHAIN_BUFFER_COUNT;
+
 	auto gridParas = Utils::GetLightGridZParams(mDefaultCamera->GetNear(), mDefaultCamera->GetFar());
-	mFrameDataCPU.LightGridZParams.x = gridParas.x;
-	mFrameDataCPU.LightGridZParams.y = gridParas.y;
-	mFrameDataCPU.LightGridZParams.z = gridParas.z;
-	mFrameDataCPU.ViewSizeAndInvSize = SimpleMath::Vector4((float)mWidth, (float)mHeight, 1.0f / (float)mWidth, 1.0f / (float)mHeight);
-	mFrameDataCPU.ClipToView = mDefaultCamera->GetClipToView();
-	mFrameDataCPU.ViewMatrix = mDefaultCamera->GetView();
-	mFrameDataCPU.InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
-	mFrameDataGPU->UpdataData<FrameData>(mFrameDataCPU);
+	mFrameData[frameDataCpuIndex].PrjView = mDefaultCamera->GetPrjView();
+	mFrameData[frameDataCpuIndex].View = mDefaultCamera->GetView();
+	mFrameData[frameDataCpuIndex].Prj = mDefaultCamera->GetPrj();
+	mFrameData[frameDataCpuIndex].ShadowViewMatrix = mShadowCamera->GetView();
+	mFrameData[frameDataCpuIndex].ShadowViewPrjMatrix = mShadowCamera->GetPrjView();
+	mFrameData[frameDataCpuIndex].NormalMatrix = mDefaultCamera->GetNormalMatrix();
+	mFrameData[frameDataCpuIndex].DirectionalLightDir.Normalize();
+	mFrameData[frameDataCpuIndex].LightGridZParams.x = gridParas.x;
+	mFrameData[frameDataCpuIndex].LightGridZParams.y = gridParas.y;
+	mFrameData[frameDataCpuIndex].LightGridZParams.z = gridParas.z;
+	mFrameData[frameDataCpuIndex].ViewSizeAndInvSize = SimpleMath::Vector4((float)mWidth, (float)mHeight, 1.0f / (float)mWidth, 1.0f / (float)mHeight);
+	mFrameData[frameDataCpuIndex].ClipToView = mDefaultCamera->GetClipToView();
+	mFrameData[frameDataCpuIndex].ViewMatrix = mDefaultCamera->GetView();
+	mFrameData[frameDataCpuIndex].InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
+	mFrameDataCPU[frameDataCpuIndex]->UpdataData<FrameData>(mFrameData[frameDataCpuIndex]);
+	//Advance CPU Frame Index
+	mFrameIndexCpu++;
 }
 
 void Renderer::BaseRenderer::LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent)
