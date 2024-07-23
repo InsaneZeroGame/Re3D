@@ -323,42 +323,44 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mLightUploadBuffer = std::make_shared<Resource::UploadBuffer>();
 	mLightUploadBuffer->Create(L"LightUploadBuffer", sizeof(ECS::LigthData) * mLights.size());
 
-	mLights[0].pos = { 0.0, 0.0, -5.0, 1.0f };
-	mLights[0].radius_attenu = { 200.0, 0.0, 0.0, 1.0f };
+	//float size = 50.0f;
+	//
+	//for (auto& light : mLights)
+	//{
+	//	light.pos.x = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+	//	light.pos.y = float(rand()) / RAND_MAX;
+	//	light.pos.z = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+	//
+	//	light.pos.x *= size;
+	//	light.pos.y *= 2.0;
+	//	light.pos.z *= size;
+	//	light.pos.w = 1.0f;
+	//
+	//	light.color.x = float(rand()) / RAND_MAX;
+	//	light.color.y = float(rand()) / RAND_MAX;
+	//	light.color.z = float(rand()) / RAND_MAX;
+	//	light.radius_attenu.x = 0.0f;
+	//	//light.radius_attenu.y = float(rand()) * 1.2f / RAND_MAX;
+	//	light.radius_attenu.z = float(rand()) * 1.2f / RAND_MAX;
+	//	light.radius_attenu.w = float(rand()) * 1.2f / RAND_MAX;
+	//}
+
+	mLights[0].pos = { 0.0, 1.0, 0.0, 1.0f };
+	mLights[0].radius_attenu = { 20.0, 0.0, 0.0, 1.0f };
 	mLights[0].color = {1.0f,0.0f,0.0f,1.0f};
 
-	mLights[1].pos = { -5.0, 0.0, 0.0, 1.0f };
-	mLights[1].radius_attenu = { 200.0, 0.0, 0.0, 1.0f };
-	mLights[1].color = { 0.0f,1.0f,0.0f,1.0f };
-
-	mLights[3].pos = { 0.0, 0.0, 5.0, 1.0f };
-	mLights[3].radius_attenu = { 50.0, 0.0, 0.0, 1.0f };
-	mLights[3].color = { 1.0f,1.0f,0.0f,1.0f };
-
-	mLights[2].pos = { 5.0, 0.0, 0.0, 1.0f };
-	mLights[2].radius_attenu = { 10.0, 0.0, 0.0, 1.0f };
-	mLights[2].color = { 1.0f,1.0f,1.0f,1.0f };
-	float size = 50.0f;
-
-	for (auto& light : mLights)
-	{
-		light.pos.x = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
-		light.pos.y = float(rand()) / RAND_MAX;
-		light.pos.z = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
-
-		light.pos.x *= size;
-		light.pos.y *= 2.0;
-		light.pos.z *= size;
-		light.pos.w = 1.0f;
-
-		light.color.x = float(rand()) / RAND_MAX;
-		light.color.y = float(rand()) / RAND_MAX;
-		light.color.z = float(rand()) / RAND_MAX;
-        light.radius_attenu.x = 25.0f;
-		//light.radius_attenu.y = float(rand()) * 1.2f / RAND_MAX;
-		light.radius_attenu.z = float(rand()) * 1.2f / RAND_MAX;
-		light.radius_attenu.w = float(rand()) * 1.2f / RAND_MAX;
-	}
+	//mLights[1].pos = { -5.0, 0.0, 0.0, 1.0f };
+	//mLights[1].radius_attenu = { 200.0, 0.0, 0.0, 1.0f };
+	//mLights[1].color = { 0.0f,1.0f,0.0f,1.0f };
+	//
+	//mLights[3].pos = { 0.0, 0.0, 5.0, 1.0f };
+	//mLights[3].radius_attenu = { 50.0, 0.0, 0.0, 1.0f };
+	//mLights[3].color = { 1.0f,1.0f,0.0f,1.0f };
+	//
+	//mLights[2].pos = { 5.0, 0.0, 0.0, 1.0f };
+	//mLights[2].radius_attenu = { 10.0, 0.0, 0.0, 1.0f };
+	//mLights[2].color = { 1.0f,1.0f,1.0f,1.0f };
+	
 
 	//
 	mLightUploadBuffer->UploadData<ECS::LigthData>(mLights);

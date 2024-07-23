@@ -136,17 +136,21 @@ float4 main(PSInput input) : SV_TARGET
      float4 colorAfterCorrection = pow(input.color, 1.0 / gamma);
     return (diffuse + ambient) * colorAfterCorrection;
 #else
+    float4 diffuseColor = defaultTexture.Sample(defaultSampler, input.UVCoord);
+    //float4 diffuseColor = input.color;
     float4 DirLightViewSpace = mul(float4(input.DirectionalLightDir.xyz, 0.0), frameData.ViewMatrix);
     float DirLightIntense = 0.2f;
     float3 directionalLight = ApplyLightCommon(
-    input.color.xyz,
-    input.color.xyz,
+    diffuseColor.xyz,
+    diffuseColor.xyz,
     0, 0, input.normalViewSpace.xyz, input.viewsSpacePos, 
     DirLightViewSpace, input.DirectionalLightColor) * DirLightIntense;
     
     float3 pointLight = float3(0.0,0.0,0.0);
     uint GirdIndex = ComputeLightGridCellIndex(uint2(input.position.xy), input.position.w);
     uint3 GridCoord = ComputeLightGridCellCoordinate(uint2(input.position.xy), input.position.w, 0);
+    
+    
     for (int i = 0; i < 256; ++i)
     {
         if ((clusters[GirdIndex].lightMask[i / 32] >> (i % 32)) & 0x1  == 1)
@@ -157,8 +161,8 @@ float4 main(PSInput input) : SV_TARGET
             if (d < lights[i].radius_attenu[0])
             {
                 pointLight += ApplyPointLight(
-                input.color.xyz,
-                input.color.xyz,
+                diffuseColor.xyz,
+                diffuseColor.xyz,
                 0, 0, input.normalViewSpace.xyz,
                 input.viewsSpacePos.xyz,
                 input.viewsSpacePos.xyz,
@@ -172,17 +176,15 @@ float4 main(PSInput input) : SV_TARGET
     }
     pointLight += directionalLight;
     float gamma = 2.2f;
-    float4 ambient = float4(0.15, 0.15, 0.15, 1.0f);
+    //float4 ambient = float4(0.15, 0.15, 0.15, 1.0f);
     float4 color = float4(pointLight, 1.0f);
-    //float4 diffuseColor = defaultTexture.Sample(defaultSampler, input.UVCoord);
-    float4 diffuseColor = input.color;
-    color *= diffuseColor;
     float4 colorAfterCorrection = pow(color, 1.0 / gamma);
     float2 shadowCoord = input.shadowCoord.xy /input.shadowCoord.w;
     //shadwo map
     shadowCoord = shadowCoord * float2(0.5, -0.5) + 0.5;
     float shadow = shadowMap.SampleCmpLevelZero(shadowSampler, shadowCoord, input.shadowCoord.z/input.shadowCoord.w);
     shadow = 1.0f;
+    //return diffuseColor;
     return colorAfterCorrection * (0.15 + 0.85 * shadow);
     //if (input.position.x / screen_size  < 0.5)
     //{
