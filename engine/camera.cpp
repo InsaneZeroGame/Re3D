@@ -5,9 +5,12 @@
 
 Gameplay::BaseCamera::BaseCamera(bool moveAble):mMoveable(moveAble)
 {
-	Delegates::KeyPressDelegate.push_back(std::bind(&BaseCamera::KeyDown, this,
-		std::placeholders::_1
-	));
+	if (mMoveable)
+	{
+		Delegates::KeyPressDelegate.push_back(std::bind(&BaseCamera::KeyDown, this,
+			std::placeholders::_1
+		));
+	}
 }
 
 Gameplay::BaseCamera::~BaseCamera()
