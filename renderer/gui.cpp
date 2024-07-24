@@ -51,6 +51,11 @@ void Renderer::Gui::EndGui(ID3D12GraphicsCommandList* InCmd) {
 
 void Renderer::Gui::Render() {
     ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "Hello Re3D");
+    if (mRenderer.lock())
+    {
+		//ImGui::Checkbox("Tone Mapping", &mRenderer.lock()->mUseToneMapping);
+        ImGui::SliderFloat("Tone Mapping Exposure", &mRenderer.lock()->mExposure, 0.0f, 1.0f);
+    }
     if (mCurrentScene)
     {
         SceneUpdate();

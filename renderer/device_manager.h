@@ -11,6 +11,7 @@ namespace Renderer
 	inline ID3D12Device4* g_Device = nullptr;
 	inline class DescHeap* g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_NUM_TYPES];
     inline DXGI_FORMAT g_DisplayFormat = DXGI_FORMAT_R10G10B10A2_UNORM;
+	inline DXGI_FORMAT g_ColorBufferFormat = DXGI_FORMAT_R16G16B16A16_FLOAT;
 	//IMGUI Needs 3 desc to work.
 	constexpr int IMGUI_DESC_HEAP_ONLY = 3;
 

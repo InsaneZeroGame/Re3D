@@ -45,6 +45,8 @@ namespace Renderer
 		void UpdateDataToVertexBuffer(std::span<Vertex> InData);
 		void UpdateDataToIndexBuffer(std::span<int> InData);
 		std::shared_ptr<Resource::ColorBuffer> GetColorBuffer();
+		std::shared_ptr<Resource::ColorBuffer> GetColorAttachment0();
+
 	private:
 		template<typename T>
 		void UploadDataToResource(ID3D12Resource* InDestResource, std::span<T> InData, std::shared_ptr<VertexBufferRenderer<T>> InCpuResource);
@@ -73,5 +75,6 @@ namespace Renderer
 		{
 			MSAA_8X = 8,
 		};
+		std::shared_ptr<Resource::ColorBuffer> mColorAttachment0;
 	};
 }

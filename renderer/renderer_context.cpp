@@ -34,6 +34,9 @@ void Renderer::RendererContext::CreateWindowDependentResource(int InWindowWidth,
 	mDepthBuffer->Create(L"DepthBuffer", mWindowWidth, mWindowHeight, DXGI_FORMAT_D32_FLOAT);
 	CreateShadowMap(mWindowWidth, mWindowHeight);
 	CreateColorBuffer(mWindowWidth, mWindowHeight);
+
+	mColorAttachment0 = std::make_unique<Resource::ColorBuffer>();
+	mColorAttachment0->Create(L"ColorAttachment0", mWindowWidth, mWindowHeight, 1, g_ColorBufferFormat);
 }
 
 void Renderer::RendererContext::UpdateDataToVertexBuffer(std::span<Vertex> InData)
@@ -49,6 +52,11 @@ void Renderer::RendererContext::UpdateDataToIndexBuffer(std::span<int> InData)
 std::shared_ptr<Renderer::Resource::ColorBuffer> Renderer::RendererContext::GetColorBuffer()
 {
 	return mColorBuffer;
+}
+
+std::shared_ptr<Renderer::Resource::ColorBuffer> Renderer::RendererContext::GetColorAttachment0()
+{
+	return mColorAttachment0;
 }
 
 std::shared_ptr<Renderer::Resource::DepthBuffer> Renderer::RendererContext::GetDepthBuffer()
@@ -91,7 +99,7 @@ void Renderer::RendererContext::CreateColorBuffer(int InShadowMapWidth, int InSh
 {
 	mColorBuffer = std::make_shared<Resource::ColorBuffer>();
 	mColorBuffer->SetMsaaMode(MSAA_8X);
-	mColorBuffer->Create(L"ColorBufferMSAA", mWindowWidth, mWindowHeight, 1, DXGI_FORMAT_R10G10B10A2_UNORM);
+	mColorBuffer->Create(L"ColorBufferMSAA", mWindowWidth, mWindowHeight, 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
 }
 
 void Renderer::RendererContext::UploadDataToResource(

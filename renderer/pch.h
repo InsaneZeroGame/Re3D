@@ -89,6 +89,7 @@
 #include <Keyboard.h>
 #include <Mouse.h>
 #include "renderer_context.h"
+#include "PostProcess.h"
 
 
 #pragma comment(lib,"dxgi.lib")

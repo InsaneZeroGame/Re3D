@@ -5,6 +5,8 @@
 #include "components.h"
 #include "gui.h"
 #include "renderer_context.h"
+#include "PostProcess.h"
+#include "GraphicsMemory.h"
 
 Renderer::BaseRenderer::BaseRenderer():
 	mDeviceManager(std::make_unique<DeviceManager>()),
@@ -24,6 +26,7 @@ Renderer::BaseRenderer::BaseRenderer():
 	mComputeCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COMPUTE);
 	mBatchUploader = std::make_unique<ResourceUploadBatch>(g_Device);
 	mContext = std::make_unique<RendererContext>(mCmdManager);
+	//Allocate 3 desc for IMGUI.Todo:move this gui,make it transparent to renderer.
 	g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate(3);
 	CreateTextures();
 	CreateBuffers();
@@ -31,6 +34,7 @@ Renderer::BaseRenderer::BaseRenderer():
 	CreatePipelineState();
 	CreateRenderTask();
 	CreateSkybox();
+	InitPostProcess();
 }
 
 Renderer::BaseRenderer::~BaseRenderer()
@@ -265,10 +269,37 @@ void Renderer::BaseRenderer::CreateRenderTask()
 					}
 				});
 			}
-			TransitState(mGraphicsCmd, g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_DEST);
-			TransitState(mGraphicsCmd, mContext->GetColorBuffer()->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-			mGraphicsCmd->ResolveSubresource(g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), 0, mContext->GetColorBuffer()->GetResource(), 0, DXGI_FORMAT_R10G10B10A2_UNORM);
-			TransitState(mGraphicsCmd, g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+			if (mUseToneMapping)
+			{
+				//Resolve MSAA RT to normal RT
+				TransitState(mGraphicsCmd, mContext->GetColorBuffer()->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+				TransitState(mGraphicsCmd, mContext->GetColorAttachment0()->GetResource(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RESOLVE_DEST);
+				mGraphicsCmd->ResolveSubresource(mContext->GetColorAttachment0()->GetResource(), 0, mContext->GetColorBuffer()->GetResource(), 0, DXGI_FORMAT_R16G16B16A16_FLOAT);
+				TransitState(mGraphicsCmd, mContext->GetColorAttachment0()->GetResource(), D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+
+				//Tone Mapping
+				ppToneMap->SetHDRSourceTexture(mContext->GetColorAttachment0()->GetSRVGPU());
+				mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), true, nullptr);
+				ppToneMap->SetExposure(mExposure);
+				ppToneMap->Process(mGraphicsCmd);
+
+			}
+			else
+			{
+				//Resolve MSAA RT to swap chain back buffer
+				TransitState(mGraphicsCmd, g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_DEST);
+				TransitState(mGraphicsCmd, mContext->GetColorBuffer()->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+				mGraphicsCmd->ResolveSubresource(g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), 0, mContext->GetColorBuffer()->GetResource(), 0, DXGI_FORMAT_R16G16B16A16_FLOAT);
+				TransitState(mGraphicsCmd, g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RESOLVE_DEST);
+				TransitState(mGraphicsCmd, g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			}
+			
+		};
+
+	auto PostProcess = [=](){
+			
+
 
 		};
 
@@ -295,11 +326,12 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsFenceValue++;
 			mDeviceManager->EndFrame();
 		};
-    auto [depthOnlyPass, skyboxpass, colorPass, postRender, computePass, guiPass ] =
-            mRenderFlow->emplace(DepthOnlyPass, SkyboxPass, ColorPass, PostRender, ComputePass, GuiPass);
+    auto [depthOnlyPass, skyboxpass, colorPass, postRender, computePass, ppPass, guiPass ] =
+            mRenderFlow->emplace(DepthOnlyPass, SkyboxPass, ColorPass, PostRender, ComputePass, PostProcess,GuiPass);
 	skyboxpass.succeed(depthOnlyPass, computePass);
 	colorPass.succeed(skyboxpass);
-	guiPass.succeed(colorPass);
+	ppPass.succeed(colorPass);
+	guiPass.succeed(ppPass);
 	postRender.succeed(guiPass);
 }
 
@@ -503,6 +535,34 @@ void Renderer::BaseRenderer::CreateSkybox()
 	mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
 }
 
+void Renderer::BaseRenderer::InitPostProcess()
+{
+	using namespace DirectX::DX12;
+
+	mGPUMemory = std::make_unique<GraphicsMemory>(g_Device);
+
+	DirectX::RenderTargetState bloomState(DXGI_FORMAT_R16G16B16A16_FLOAT, DXGI_FORMAT_UNKNOWN);
+
+	ppBloomExtract = std::make_unique<BasicPostProcess>(g_Device, bloomState,
+		BasicPostProcess::BloomExtract);
+
+	ppBloomBlur = std::make_unique<BasicPostProcess>(g_Device, bloomState,
+		BasicPostProcess::BloomBlur);
+
+	ppBloomCombine = std::make_unique<DualPostProcess>(g_Device, bloomState,
+		DualPostProcess::BloomCombine);
+
+	RenderTargetState toneMapRTState(g_DisplayFormat,
+		DXGI_FORMAT_UNKNOWN);
+	ppToneMap = std::make_unique<ToneMapPostProcess>(g_Device, toneMapRTState,
+		ToneMapPostProcess::ACESFilmic,
+		ToneMapPostProcess::SRGB);
+
+	//RenderTargetState imageBlit(g_DisplayFormat,
+	//	DXGI_FORMAT_D32_FLOAT);
+	//mImageBlit = std::make_unique<BasicPostProcess>(g_Device, imageBlit, BasicPostProcess::Copy);
+}
+
 void Renderer::BaseRenderer::FirstFrame()
 {
 	TransitState(mGraphicsCmd, mContext->GetShadowMap()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -512,6 +572,7 @@ void Renderer::BaseRenderer::FirstFrame()
 	TransitState(mGraphicsCmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	TransitState(mGraphicsCmd, mContext->GetDepthBuffer()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	TransitState(mGraphicsCmd, mContext->GetColorBuffer()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+	TransitState(mGraphicsCmd, mContext->GetColorAttachment0()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
 	{
@@ -562,7 +623,7 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	lDesc.InputLayout.pInputElementDescs = elements.data();
 	lDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	lDesc.NumRenderTargets = 1;
-	lDesc.RTVFormats[0] = DXGI_FORMAT_R10G10B10A2_UNORM;
+	lDesc.RTVFormats[0] = g_ColorBufferFormat;
 	lDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	lDesc.SampleDesc.Count = 1;
 	lDesc.Flags = D3D12_PIPELINE_STATE_FLAG_NONE;
@@ -575,7 +636,7 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	lDesc.RasterizerState.MultisampleEnable = true;
 	lDesc.SampleDesc.Count = 8;
 	lDesc.SampleDesc.Quality = 0;
-	lDesc.RTVFormats[0] = DXGI_FORMAT_R10G10B10A2_UNORM;
+	lDesc.RTVFormats[0] = g_ColorBufferFormat;
 	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mColorPassPipelineState8XMSAA));
 	mColorPassPipelineState8XMSAA->SetName(L"mColorPassPipelineState8XMSAA");
 

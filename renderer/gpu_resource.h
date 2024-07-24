@@ -126,6 +126,8 @@ namespace Renderer
 			// Get pre-created CPU-visible descriptor handles
 			const D3D12_CPU_DESCRIPTOR_HANDLE& GetSRV(void) const { return m_SRVHandle; }
 			const D3D12_CPU_DESCRIPTOR_HANDLE& GetRTV(void) const { return m_RTVHandle; }
+			const D3D12_GPU_DESCRIPTOR_HANDLE& GetSRVGPU(void) const { return m_SRVGPUHandle; }
+			const D3D12_GPU_DESCRIPTOR_HANDLE& GetRTVGPU(void) const { return m_RTVGPUHandle; }
 			const D3D12_CPU_DESCRIPTOR_HANDLE& GetUAV(void) const { return m_UAVHandle[0]; }
 
 			void SetClearColor(Color ClearColor) { m_ClearColor = ClearColor; }
@@ -171,6 +173,8 @@ namespace Renderer
 			D3D12_CPU_DESCRIPTOR_HANDLE m_SRVHandle;
 			D3D12_CPU_DESCRIPTOR_HANDLE m_RTVHandle;
 			D3D12_CPU_DESCRIPTOR_HANDLE m_UAVHandle[12];
+			D3D12_GPU_DESCRIPTOR_HANDLE m_SRVGPUHandle;
+			D3D12_GPU_DESCRIPTOR_HANDLE m_RTVGPUHandle;
 			uint32_t m_NumMipMaps; // number of texture sublevels
 			uint32_t m_SampleCount;
 			//uint32_t m_SampleCount;

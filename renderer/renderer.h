@@ -17,6 +17,13 @@ namespace tf
 namespace DirectX
 {
 	class ResourceUploadBatch;
+	namespace DX12
+	{
+		class BasicPostProcess;
+		class DualPostProcess;
+		class ToneMapPostProcess;
+		class GraphicsMemory;
+	}
 }
 
 namespace Renderer
@@ -27,6 +34,7 @@ namespace Renderer
 		class UploadBuffer;
 		class StructuredBuffer;
 		class VertexBuffer;
+		class ColorBuffer;
 	}
 
 	struct FrameData
@@ -65,6 +73,9 @@ namespace Renderer
 		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, std::string_view InMatName = {},const std::wstring& InDebugName = L"");
 		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, AssetLoader::TextureData* textureData, const std::wstring& InDebugName = L"");
 
+
+		bool mUseToneMapping = true;
+		float mExposure = 0.0f;
 	protected:
         void CreateGui();
 		void CreateRenderTask();
@@ -72,6 +83,7 @@ namespace Renderer
 		void CreateTextures();
 		void DepthOnlyPass(const ECS::StaticMeshComponent& InAsset);
 		void CreateSkybox();
+		void InitPostProcess();
 		virtual void FirstFrame();
 		virtual void PreRender();
 		virtual void PostRender();
@@ -129,7 +141,12 @@ namespace Renderer
 
 		std::shared_ptr<Resource::StructuredBuffer> mDummyBuffer;
 		int mFrameIndexCpu = 0;
-
+		std::unique_ptr<DirectX::DX12::BasicPostProcess> ppBloomExtract;
+		std::unique_ptr<DirectX::DX12::BasicPostProcess> ppBloomBlur;
+		std::unique_ptr<DirectX::DX12::DualPostProcess> ppBloomCombine;
+		std::unique_ptr<DirectX::DX12::ToneMapPostProcess> ppToneMap;
+		std::unique_ptr<DirectX::DX12::BasicPostProcess> mImageBlit;
+		std::unique_ptr<DirectX::DX12::GraphicsMemory> mGPUMemory;
 	};
 
 	

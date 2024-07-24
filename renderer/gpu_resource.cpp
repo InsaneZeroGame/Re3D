@@ -443,8 +443,11 @@ namespace Renderer
 			{
 				auto [cpuHandleRTV,gpuHanleRTV] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_RTV]->Allocate();
 				m_RTVHandle = cpuHandleRTV;
+				m_RTVGPUHandle = gpuHanleRTV;
+
 				auto [cpuHandle, gpuHanle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
 				m_SRVHandle = cpuHandle;
+				m_SRVGPUHandle = gpuHanle;
 			}
 
 			ID3D12Resource* Resource = m_pResource;

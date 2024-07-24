@@ -51,7 +51,7 @@ void Renderer::Skybox::CreatePipelineState()
 	lDesc.InputLayout.pInputElementDescs = elements.data();
 	lDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
 	lDesc.NumRenderTargets = 1;
-	lDesc.RTVFormats[0] = DXGI_FORMAT_R10G10B10A2_UNORM;
+	lDesc.RTVFormats[0] = g_ColorBufferFormat;
 	//lDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	lDesc.SampleDesc.Count = 8;
 	lDesc.SampleDesc.Quality = 0;
