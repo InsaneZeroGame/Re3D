@@ -279,13 +279,104 @@ void Renderer::BaseRenderer::CreateRenderTask()
 				TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_RESOLVED)->GetResource(), D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 				//Bloom
 
+				auto sceneTex = mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_RESOLVED);
+				auto blurHalf = mContext->GetRenderTarget(RenderTarget::BLUR_HALF);
+				auto blurQuat = mContext->GetRenderTarget(RenderTarget::BLUR_QUAT);
+				auto bloomRes = mContext->GetRenderTarget(RenderTarget::BLOOM_RES);
+
+
+				// Bloom Pass 1 (scene -> blur1)
+				ppBloomExtract->SetSourceTexture(sceneTex->GetSRVGPU(),sceneTex->GetResource());
+				ppBloomExtract->SetBloomExtractParameter(mBloomThreshold);
+				mGraphicsCmd->OMSetRenderTargets(1, &blurHalf->GetRTV(), FALSE, nullptr);
+				SimpleMath::Viewport halfvp(mViewPort);
+				halfvp.height /= 2.f;
+				halfvp.width /= 2.f;
+				mGraphicsCmd->RSSetViewports(1, halfvp.Get12());
+				ppBloomExtract->Process(mGraphicsCmd);
+
+				// Pass 2 (blur1 -> blur2)
+				{
+					auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(blurHalf->GetResource(),
+						D3D12_RESOURCE_STATE_RENDER_TARGET,
+						D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, 0);
+					mGraphicsCmd->ResourceBarrier(1, &barrier);
+				}
+				
+
+				ppBloomBlur->SetSourceTexture(blurHalf->GetSRVGPU(), blurHalf->GetResource());
+				ppBloomBlur->SetBloomBlurParameters(true, mBloomBlurKernelSize, mBloomBrightness);
+				mGraphicsCmd->OMSetRenderTargets(1, &blurQuat->GetRTV(), FALSE, nullptr);
+				ppBloomBlur->Process(mGraphicsCmd);
+
+
+				// Pass 3 (blur2 -> blur1)
+				{
+					CD3DX12_RESOURCE_BARRIER barriers[2] =
+					{
+						CD3DX12_RESOURCE_BARRIER::Transition(blurHalf->GetResource(),
+						D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+						D3D12_RESOURCE_STATE_RENDER_TARGET, 0),
+						CD3DX12_RESOURCE_BARRIER::Transition(blurQuat->GetResource(),
+						D3D12_RESOURCE_STATE_RENDER_TARGET,
+						D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, 0),
+					};
+					mGraphicsCmd->ResourceBarrier(2, barriers);
+				}
+				ppBloomBlur->SetSourceTexture(blurQuat->GetSRVGPU(), blurQuat->GetResource());
+				ppBloomBlur->SetBloomBlurParameters(false, mBloomBlurKernelSize, mBloomBrightness);
+				mGraphicsCmd->OMSetRenderTargets(1, &blurHalf->GetRTV(), FALSE, nullptr);
+				ppBloomBlur->Process(mGraphicsCmd);
+
+
+				// Pass 4 (scene+blur1 -> rt)
+				{
+					auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(blurHalf->GetResource(),
+						D3D12_RESOURCE_STATE_RENDER_TARGET,
+						D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, 0);
+					mGraphicsCmd->ResourceBarrier(1, &barrier);
+				}
+
+				ppBloomCombine->SetSourceTexture(sceneTex->GetSRVGPU());
+				ppBloomCombine->SetSourceTexture2(blurHalf->GetSRVGPU());
+				ppBloomCombine->SetBloomCombineParameters(1.25f, 1.f, 1.f, 1.f);
+				mGraphicsCmd->OMSetRenderTargets(1, &bloomRes->GetRTV(), FALSE, nullptr);
+				mGraphicsCmd->RSSetViewports(1, &mViewPort);
+				ppBloomCombine->Process(mGraphicsCmd);
+
+				{
+					CD3DX12_RESOURCE_BARRIER barriers[3] =
+					{
+						CD3DX12_RESOURCE_BARRIER::Transition(blurHalf->GetResource(),
+							D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+							D3D12_RESOURCE_STATE_RENDER_TARGET, 0),
+						CD3DX12_RESOURCE_BARRIER::Transition(blurQuat->GetResource(),
+							D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+							D3D12_RESOURCE_STATE_RENDER_TARGET, 0),
+						CD3DX12_RESOURCE_BARRIER::Transition(bloomRes->GetResource(),
+							D3D12_RESOURCE_STATE_RENDER_TARGET,
+							D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, 0)
+					};
+					mGraphicsCmd->ResourceBarrier(3, barriers);
+				}
+
+
 
 
 				//Tone Mapping
-				ppToneMap->SetHDRSourceTexture(mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_RESOLVED)->GetSRVGPU());
+				ppToneMap->SetHDRSourceTexture(bloomRes->GetSRVGPU());
 				mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), true, nullptr);
 				ppToneMap->SetExposure(mExposure);
 				ppToneMap->Process(mGraphicsCmd);
+
+				{
+					auto barrier = CD3DX12_RESOURCE_BARRIER::Transition(bloomRes->GetResource(),
+						D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE,
+						D3D12_RESOURCE_STATE_RENDER_TARGET, 0);
+					mGraphicsCmd->ResourceBarrier(1, &barrier);
+
+				}
+				
 
 			}
 			else
@@ -351,31 +442,31 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mLightUploadBuffer = std::make_shared<Resource::UploadBuffer>();
 	mLightUploadBuffer->Create(L"LightUploadBuffer", sizeof(ECS::LigthData) * mLights.size());
 
-	//float size = 50.0f;
-	//
-	//for (auto& light : mLights)
-	//{
-	//	light.pos.x = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
-	//	light.pos.y = float(rand()) / RAND_MAX;
-	//	light.pos.z = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
-	//
-	//	light.pos.x *= size;
-	//	light.pos.y *= 2.0;
-	//	light.pos.z *= size;
-	//	light.pos.w = 1.0f;
-	//
-	//	light.color.x = float(rand()) / RAND_MAX;
-	//	light.color.y = float(rand()) / RAND_MAX;
-	//	light.color.z = float(rand()) / RAND_MAX;
-	//	light.radius_attenu.x = 0.0f;
-	//	//light.radius_attenu.y = float(rand()) * 1.2f / RAND_MAX;
-	//	light.radius_attenu.z = float(rand()) * 1.2f / RAND_MAX;
-	//	light.radius_attenu.w = float(rand()) * 1.2f / RAND_MAX;
-	//}
+	float size = 50.0f;
+	
+	for (auto& light : mLights)
+	{
+		light.pos.x = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+		light.pos.y = float(rand()) / RAND_MAX;
+		light.pos.z = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
+	
+		light.pos.x *= size;
+		light.pos.y *= 2.0;
+		light.pos.z *= size;
+		light.pos.w = 1.0f;
+	
+		light.color.x = float(rand()) / RAND_MAX;
+		light.color.y = float(rand()) / RAND_MAX;
+		light.color.z = float(rand()) / RAND_MAX;
+		light.radius_attenu.x = 15.0f;
+		//light.radius_attenu.y = float(rand()) * 1.2f / RAND_MAX;
+		light.radius_attenu.z = float(rand()) * 1.2f / RAND_MAX;
+		light.radius_attenu.w = float(rand()) * 1.2f / RAND_MAX;
+	}
 
-	mLights[0].pos = { 0.0, 1.0, 0.0, 1.0f };
-	mLights[0].radius_attenu = { 20.0, 0.0, 0.0, 1.0f };
-	mLights[0].color = {1.0f,0.0f,0.0f,1.0f};
+	//mLights[0].pos = { 0.0, 1.0, 0.0, 1.0f };
+	//mLights[0].radius_attenu = { 20.0, 0.0, 0.0, 1.0f };
+	//mLights[0].color = {1.0f,0.0f,0.0f,1.0f};
 
 	//mLights[1].pos = { -5.0, 0.0, 0.0, 1.0f };
 	//mLights[1].radius_attenu = { 200.0, 0.0, 0.0, 1.0f };
@@ -569,6 +660,9 @@ void Renderer::BaseRenderer::FirstFrame()
 	TransitState(mGraphicsCmd, mContext->GetDepthBuffer()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 	TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
 	TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_RESOLVED)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::BLUR_HALF)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::BLUR_QUAT)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
+	TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::BLOOM_RES)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
 	for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
 	{

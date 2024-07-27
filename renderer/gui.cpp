@@ -55,6 +55,10 @@ void Renderer::Gui::Render() {
     {
 		//ImGui::Checkbox("Tone Mapping", &mRenderer.lock()->mUseToneMapping);
         ImGui::SliderFloat("Tone Mapping Exposure", &mRenderer.lock()->mExposure, 0.0f, 1.0f);
+		ImGui::SliderFloat("Bloom: Threshold", &mRenderer.lock()->mBloomThreshold, 0.0f, 1.0f);
+		ImGui::SliderFloat("Bloom: Kernel Size", &mRenderer.lock()->mBloomBlurKernelSize, 0.0f, 10.0f);
+		ImGui::SliderFloat("Bloom: Brightness", &mRenderer.lock()->mBloomBrightness, 1.0, 10.0f);
+
     }
     if (mCurrentScene)
     {

@@ -33,6 +33,7 @@ namespace Renderer
 	{
 		COLOR_OUTPUT_MSAA,
 		COLOR_OUTPUT_RESOLVED,
+		BLOOM_RES,
 		BLUR_HALF,
 		BLUR_QUAT
 	};
@@ -87,5 +88,7 @@ namespace Renderer
 		std::shared_ptr<Resource::ColorBuffer> mColorAttachmentResolved;
 		std::shared_ptr<Resource::ColorBuffer> mBloomBlurRTHalf;
 		std::shared_ptr<Resource::ColorBuffer> mBloomBlurRTQuater;
+		std::shared_ptr<Resource::ColorBuffer> mBloomRes;
+
 	};
 }

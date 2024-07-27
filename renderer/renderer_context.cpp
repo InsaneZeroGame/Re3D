@@ -38,11 +38,14 @@ void Renderer::RendererContext::CreateWindowDependentResource(int InWindowWidth,
 	mColorAttachmentResolved = std::make_unique<Resource::ColorBuffer>();
 	mColorAttachmentResolved->Create(L"ColorAttachmentResolved", mWindowWidth, mWindowHeight, 1, g_ColorBufferFormat);
 
+	mBloomRes = std::make_unique<Resource::ColorBuffer>();
+	mBloomRes->Create(L"Bloom Res", mWindowWidth, mWindowHeight, 1, g_ColorBufferFormat);
+
 	mBloomBlurRTHalf = std::make_shared<Resource::ColorBuffer>();
 	mBloomBlurRTHalf->Create(L"BlurHalf", mWindowWidth/2, mWindowHeight/2, 1, g_ColorBufferFormat);
 
 	mBloomBlurRTQuater = std::make_shared<Resource::ColorBuffer>();
-	mBloomBlurRTQuater->Create(L"BlurQuater", mWindowWidth / 4, mWindowHeight / 4, 1, g_ColorBufferFormat);
+	mBloomBlurRTQuater->Create(L"BlurQuater", mWindowWidth / 2, mWindowHeight / 2, 1, g_ColorBufferFormat);
 
 }
 
@@ -75,6 +78,9 @@ std::shared_ptr<Renderer::Resource::ColorBuffer> Renderer::RendererContext::GetR
 		break;
 	case RenderTarget::COLOR_OUTPUT_MSAA:
 		return mColorBufferMSAA;
+		break;
+	case RenderTarget::BLOOM_RES:
+		return mBloomRes;
 		break;
 	default:
 		break;

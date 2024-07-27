@@ -73,9 +73,15 @@ namespace Renderer
 		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, std::string_view InMatName = {},const std::wstring& InDebugName = L"");
 		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, AssetLoader::TextureData* textureData, const std::wstring& InDebugName = L"");
 
-
+		//Tone Mapping Settings
 		bool mUseToneMapping = true;
 		float mExposure = 0.0f;
+
+		//Bloom Settings
+		float mBloomThreshold = 0.25;
+		float mBloomBlurKernelSize = 4.0f;
+		float mBloomBrightness = 1.0f;
+		
 	protected:
         void CreateGui();
 		void CreateRenderTask();
