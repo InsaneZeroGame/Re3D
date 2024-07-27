@@ -29,6 +29,14 @@ namespace Renderer
 		uint64_t mOffsetBytes = 0;
 	};
 
+	enum class RenderTarget
+	{
+		COLOR_OUTPUT_MSAA,
+		COLOR_OUTPUT_RESOLVED,
+		BLUR_HALF,
+		BLUR_QUAT
+	};
+
 	class RendererContext
 	{
 	public:
@@ -44,8 +52,9 @@ namespace Renderer
 		void CreateWindowDependentResource(int InWindowWidth, int InWindowHeight);
 		void UpdateDataToVertexBuffer(std::span<Vertex> InData);
 		void UpdateDataToIndexBuffer(std::span<int> InData);
-		std::shared_ptr<Resource::ColorBuffer> GetColorBuffer();
-		std::shared_ptr<Resource::ColorBuffer> GetColorAttachment0();
+		//std::shared_ptr<Resource::ColorBuffer> GetColorBuffer();
+		//std::shared_ptr<Resource::ColorBuffer> GetColorAttachment0();
+		std::shared_ptr<Resource::ColorBuffer> GetRenderTarget(RenderTarget InTarget);
 
 	private:
 		template<typename T>
@@ -59,7 +68,7 @@ namespace Renderer
 		std::shared_ptr<VertexBufferRenderer<int>> mIndexBufferCpu;
 		std::shared_ptr<Resource::DepthBuffer> mDepthBuffer;
 		std::shared_ptr<Resource::DepthBuffer> mShadowMap;
-		std::shared_ptr<Resource::ColorBuffer> mColorBuffer;
+		std::shared_ptr<Resource::ColorBuffer> mColorBufferMSAA;
 		void CreateShadowMap(int InShadowMapWidth,int InShadowMapHeight);
 		void CreateColorBuffer(int InShadowMapWidth, int InShadowMapHeight);
 		int mWindowHeight;
@@ -75,6 +84,8 @@ namespace Renderer
 		{
 			MSAA_8X = 8,
 		};
-		std::shared_ptr<Resource::ColorBuffer> mColorAttachment0;
+		std::shared_ptr<Resource::ColorBuffer> mColorAttachmentResolved;
+		std::shared_ptr<Resource::ColorBuffer> mBloomBlurRTHalf;
+		std::shared_ptr<Resource::ColorBuffer> mBloomBlurRTQuater;
 	};
 }

@@ -103,14 +103,14 @@ void Renderer::BaseRenderer::CreateRenderTask()
 				return;
 			}
 			auto frameDataIndex = lCurrentBackbufferIndex % SWAP_CHAIN_BUFFER_COUNT;
-			TransitState(mGraphicsCmd, mContext->GetColorBuffer()->GetResource(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetResource(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			mGraphicsCmd->SetPipelineState(mSkybox->GetPipelineState());
 			mGraphicsCmd->SetGraphicsRootSignature(mSkybox->GetRS());
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU[frameDataIndex]->RootConstantBufferView());
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
 			mGraphicsCmd->SetGraphicsRootDescriptorTable(1, mSkyboxTexture->GetSRVGpu());
-			mGraphicsCmd->OMSetRenderTargets(1, &mContext->GetColorBuffer()->GetRTV(), true, nullptr);
+			mGraphicsCmd->OMSetRenderTargets(1, &mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetRTV(), true, nullptr);
 			mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), mColorRGBA, 1, &mRect);
 			RenderObject(*mSkybox->GetStaticMeshComponent());
 		};
@@ -227,7 +227,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 #if 0
 			mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), true, &mContext->GetDepthBuffer()->GetDSV_ReadOnly());
 #endif
-			mGraphicsCmd->OMSetRenderTargets(1, &mContext->GetColorBuffer()->GetRTV(), true, &mContext->GetDepthBuffer()->GetDSV_ReadOnly());
+			mGraphicsCmd->OMSetRenderTargets(1, &mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetRTV(), true, &mContext->GetDepthBuffer()->GetDSV_ReadOnly());
 			mGraphicsCmd->SetGraphicsRootDescriptorTable(ROOT_PARA_SHADOW_MAP, mContext->GetShadowMap()->GetDepthSRVGPU());
 			using namespace ECS;
             if (mCurrentScene && mCurrentScene->IsSceneReady()) 
@@ -273,13 +273,16 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			if (mUseToneMapping)
 			{
 				//Resolve MSAA RT to normal RT
-				TransitState(mGraphicsCmd, mContext->GetColorBuffer()->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-				TransitState(mGraphicsCmd, mContext->GetColorAttachment0()->GetResource(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RESOLVE_DEST);
-				mGraphicsCmd->ResolveSubresource(mContext->GetColorAttachment0()->GetResource(), 0, mContext->GetColorBuffer()->GetResource(), 0, DXGI_FORMAT_R16G16B16A16_FLOAT);
-				TransitState(mGraphicsCmd, mContext->GetColorAttachment0()->GetResource(), D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+				TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+				TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_RESOLVED)->GetResource(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RESOLVE_DEST);
+				mGraphicsCmd->ResolveSubresource(mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_RESOLVED)->GetResource(), 0, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetResource(), 0, DXGI_FORMAT_R16G16B16A16_FLOAT);
+				TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_RESOLVED)->GetResource(), D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+				//Bloom
+
+
 
 				//Tone Mapping
-				ppToneMap->SetHDRSourceTexture(mContext->GetColorAttachment0()->GetSRVGPU());
+				ppToneMap->SetHDRSourceTexture(mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_RESOLVED)->GetSRVGPU());
 				mGraphicsCmd->OMSetRenderTargets(1, &g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), true, nullptr);
 				ppToneMap->SetExposure(mExposure);
 				ppToneMap->Process(mGraphicsCmd);
@@ -289,18 +292,12 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			{
 				//Resolve MSAA RT to swap chain back buffer
 				TransitState(mGraphicsCmd, g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_DEST);
-				TransitState(mGraphicsCmd, mContext->GetColorBuffer()->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-				mGraphicsCmd->ResolveSubresource(g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), 0, mContext->GetColorBuffer()->GetResource(), 0, DXGI_FORMAT_R16G16B16A16_FLOAT);
+				TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+				mGraphicsCmd->ResolveSubresource(g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), 0, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetResource(), 0, DXGI_FORMAT_R16G16B16A16_FLOAT);
 				TransitState(mGraphicsCmd, g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, D3D12_RESOURCE_STATE_RESOLVE_DEST);
 				TransitState(mGraphicsCmd, g_DisplayPlane[lCurrentBackbufferIndex].GetResource(), D3D12_RESOURCE_STATE_RESOLVE_DEST, D3D12_RESOURCE_STATE_RENDER_TARGET);
 			}
 			
-		};
-
-	auto PostProcess = [=](){
-			
-
-
 		};
 
 	auto GuiPass = [=] {
@@ -326,12 +323,11 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsFenceValue++;
 			mDeviceManager->EndFrame();
 		};
-    auto [depthOnlyPass, skyboxpass, colorPass, postRender, computePass, ppPass, guiPass ] =
-            mRenderFlow->emplace(DepthOnlyPass, SkyboxPass, ColorPass, PostRender, ComputePass, PostProcess,GuiPass);
+    auto [depthOnlyPass, skyboxpass, colorPass, postRender, computePass, guiPass ] =
+            mRenderFlow->emplace(DepthOnlyPass, SkyboxPass, ColorPass, PostRender, ComputePass,GuiPass);
 	skyboxpass.succeed(depthOnlyPass, computePass);
 	colorPass.succeed(skyboxpass);
-	ppPass.succeed(colorPass);
-	guiPass.succeed(ppPass);
+	guiPass.succeed(colorPass);
 	postRender.succeed(guiPass);
 }
 
@@ -571,8 +567,8 @@ void Renderer::BaseRenderer::FirstFrame()
 	mGraphicsCmd->CopyResource(mLightBuffer->GetResource(), mLightUploadBuffer->GetResource());
 	TransitState(mGraphicsCmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 	TransitState(mGraphicsCmd, mContext->GetDepthBuffer()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	TransitState(mGraphicsCmd, mContext->GetColorBuffer()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-	TransitState(mGraphicsCmd, mContext->GetColorAttachment0()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+	TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_RESOLVED)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
 	for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
 	{

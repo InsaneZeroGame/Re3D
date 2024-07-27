@@ -8,6 +8,7 @@ constexpr static bool RequireDXRSupport = true;
 static bool g_bTypedUAVLoadSupport_R11G11B10_FLOAT = false;
 static bool g_bTypedUAVLoadSupport_R16G16B16A16_FLOAT = false;
 constexpr int MAX_DESC_NUM = 512;
+bool useDebug = false;
 
 // Check adapter support for DirectX Raytracing.
 bool IsDirectXRaytracingSupported(ID3D12Device* testDevice)
@@ -38,7 +39,7 @@ void Renderer::DeviceManager::CreateD3DDevice()
 	uint32_t useDebugLayers = 0;
 #if _DEBUG
 	// Default to true for debug builds
-	useDebugLayers = 0;
+	useDebugLayers = useDebug;
 #endif
 
 	DWORD dxgiFactoryFlags = 0;
@@ -52,7 +53,7 @@ void Renderer::DeviceManager::CreateD3DDevice()
 
 			uint32_t useGPUBasedValidation = 0;
 #if _DEBUG
-			useGPUBasedValidation = 0;
+			useGPUBasedValidation = useDebug;
 #endif
 			if (useGPUBasedValidation)
 			{

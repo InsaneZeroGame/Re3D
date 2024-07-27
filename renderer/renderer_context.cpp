@@ -35,8 +35,15 @@ void Renderer::RendererContext::CreateWindowDependentResource(int InWindowWidth,
 	CreateShadowMap(mWindowWidth, mWindowHeight);
 	CreateColorBuffer(mWindowWidth, mWindowHeight);
 
-	mColorAttachment0 = std::make_unique<Resource::ColorBuffer>();
-	mColorAttachment0->Create(L"ColorAttachment0", mWindowWidth, mWindowHeight, 1, g_ColorBufferFormat);
+	mColorAttachmentResolved = std::make_unique<Resource::ColorBuffer>();
+	mColorAttachmentResolved->Create(L"ColorAttachmentResolved", mWindowWidth, mWindowHeight, 1, g_ColorBufferFormat);
+
+	mBloomBlurRTHalf = std::make_shared<Resource::ColorBuffer>();
+	mBloomBlurRTHalf->Create(L"BlurHalf", mWindowWidth/2, mWindowHeight/2, 1, g_ColorBufferFormat);
+
+	mBloomBlurRTQuater = std::make_shared<Resource::ColorBuffer>();
+	mBloomBlurRTQuater->Create(L"BlurQuater", mWindowWidth / 4, mWindowHeight / 4, 1, g_ColorBufferFormat);
+
 }
 
 void Renderer::RendererContext::UpdateDataToVertexBuffer(std::span<Vertex> InData)
@@ -49,14 +56,29 @@ void Renderer::RendererContext::UpdateDataToIndexBuffer(std::span<int> InData)
 	UploadDataToResource<int>(mIndexBuffer->GetResource(), InData, mIndexBufferCpu);
 }
 
-std::shared_ptr<Renderer::Resource::ColorBuffer> Renderer::RendererContext::GetColorBuffer()
-{
-	return mColorBuffer;
-}
 
-std::shared_ptr<Renderer::Resource::ColorBuffer> Renderer::RendererContext::GetColorAttachment0()
+
+
+
+std::shared_ptr<Renderer::Resource::ColorBuffer> Renderer::RendererContext::GetRenderTarget(RenderTarget InTarget)
 {
-	return mColorAttachment0;
+	switch (InTarget)
+	{
+	case Renderer::RenderTarget::COLOR_OUTPUT_RESOLVED:
+		return mColorAttachmentResolved;
+		break;
+	case Renderer::RenderTarget::BLUR_HALF:
+		return mBloomBlurRTHalf;
+		break;
+	case Renderer::RenderTarget::BLUR_QUAT:
+		return mBloomBlurRTQuater;
+		break;
+	case RenderTarget::COLOR_OUTPUT_MSAA:
+		return mColorBufferMSAA;
+		break;
+	default:
+		break;
+	}
 }
 
 std::shared_ptr<Renderer::Resource::DepthBuffer> Renderer::RendererContext::GetDepthBuffer()
@@ -97,9 +119,9 @@ void Renderer::RendererContext::CreateShadowMap(int InShadowMapWidth, int InShad
 
 void Renderer::RendererContext::CreateColorBuffer(int InShadowMapWidth, int InShadowMapHeight)
 {
-	mColorBuffer = std::make_shared<Resource::ColorBuffer>();
-	mColorBuffer->SetMsaaMode(MSAA_8X);
-	mColorBuffer->Create(L"ColorBufferMSAA", mWindowWidth, mWindowHeight, 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
+	mColorBufferMSAA = std::make_shared<Resource::ColorBuffer>();
+	mColorBufferMSAA->SetMsaaMode(MSAA_8X);
+	mColorBufferMSAA->Create(L"ColorBufferMSAA", mWindowWidth, mWindowHeight, 1, DXGI_FORMAT_R16G16B16A16_FLOAT);
 }
 
 void Renderer::RendererContext::UploadDataToResource(

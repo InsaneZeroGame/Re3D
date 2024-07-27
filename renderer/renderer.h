@@ -147,6 +147,7 @@ namespace Renderer
 		std::unique_ptr<DirectX::DX12::ToneMapPostProcess> ppToneMap;
 		std::unique_ptr<DirectX::DX12::BasicPostProcess> mImageBlit;
 		std::unique_ptr<DirectX::DX12::GraphicsMemory> mGPUMemory;
+		
 	};
 
 	
