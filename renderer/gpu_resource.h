@@ -415,6 +415,7 @@ namespace Renderer
 
 			void CreateTGAFromMemory(const void* memBuffer, size_t fileSize, bool sRGB);
 			bool CreateDDSFromMemory(const void* memBuffer, size_t fileSize, bool sRGB);
+			bool CreateDDSFromFile(std::string InFileName,ID3D12CommandQueue* InCmdQueue, bool sRGB);
 			void CreatePIXImageFromMemory(const void* memBuffer, size_t fileSize);
 
 			virtual void Destroy() override

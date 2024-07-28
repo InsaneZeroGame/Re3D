@@ -2183,7 +2183,7 @@ void DisplayMaterialConnections(const FbxMesh* pMesh,ECS::StaticMesh& InMesh) {
 
     char header[MAT_HEADER_LENGTH];
 
-    DisplayString("    Polygons Material Connections");
+     DisplayString("    Polygons Material Connections");
 
     //check whether the material maps with only one mesh
     bool lIsAllSame = true;

@@ -35,6 +35,7 @@ Renderer::BaseRenderer::BaseRenderer():
 	CreateRenderTask();
 	CreateSkybox();
 	InitPostProcess();
+	//GAS::GameScene::sOnNewEntityAdded.push_back(std::bind(&Renderer::BaseRenderer::OnGameSceneUpdated,this,std::placeholders::_1, std::placeholders::_2));
 }
 
 Renderer::BaseRenderer::~BaseRenderer()
@@ -51,9 +52,9 @@ void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, in
 	mDeviceManager->SetTargetWindowAndCreateSwapChain(InWindow, InWidth, InHeight);
 	//Use Reverse Z
 	mDefaultCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f,true);
-	mDefaultCamera->LookAt({ 0.0,3.0,2.0 }, { 0.0f,0.0f,0.0f }, { 0.0f,1.0f,0.0f });
+	mDefaultCamera->LookAt({ 0.0,3.0,2.0 }, { 0.0f,3.0f,0.0f }, { 0.0f,1.0f,0.0f });
 	mShadowCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f,false);
-	mShadowCamera->LookAt({ 20,20,20 }, { 0.0f,0.0f,0.0f }, { 0.0f,1.0f,0.0f });
+	mShadowCamera->LookAt({ -0.1,50,5.0 }, { 0.0f,0.0f,0.0f }, { 0.0f,1.0f,0.0f });
 	mViewPort = { 0,0,(float)mWidth,(float)mHeight,0.0,1.0 };
 	mRect = { 0,0,mWidth,mHeight };
 	mContext->CreateWindowDependentResource(InWidth, InHeight);
@@ -442,7 +443,7 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mLightUploadBuffer = std::make_shared<Resource::UploadBuffer>();
 	mLightUploadBuffer->Create(L"LightUploadBuffer", sizeof(ECS::LigthData) * mLights.size());
 
-	float size = 50.0f;
+	float size = 65.0f;
 	
 	for (auto& light : mLights)
 	{
@@ -451,14 +452,14 @@ void Renderer::BaseRenderer::CreateBuffers()
 		light.pos.z = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
 	
 		light.pos.x *= size;
-		light.pos.y *= 2.0;
+		light.pos.y *= 15.0;
 		light.pos.z *= size;
 		light.pos.w = 1.0f;
 	
 		light.color.x = float(rand()) / RAND_MAX;
 		light.color.y = float(rand()) / RAND_MAX;
 		light.color.z = float(rand()) / RAND_MAX;
-		light.radius_attenu.x = 15.0f;
+		light.radius_attenu.x = 55.0f;
 		//light.radius_attenu.y = float(rand()) * 1.2f / RAND_MAX;
 		light.radius_attenu.z = float(rand()) * 1.2f / RAND_MAX;
 		light.radius_attenu.w = float(rand()) * 1.2f / RAND_MAX;
@@ -543,16 +544,27 @@ std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMateria
 		return mTextureMap[InTextureName.data()];
 	}
 	std::shared_ptr<Resource::Texture> newTexture = std::make_shared<Resource::Texture>();
-	auto RowPitchBytes = textureData->mWidth * textureData->mComponent;
-	newTexture->Create2D(RowPitchBytes, textureData->mWidth, textureData->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
-	mBatchUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
-	D3D12_SUBRESOURCE_DATA sourceData = {};
-	sourceData.pData = textureData->mdata;
-	sourceData.RowPitch = RowPitchBytes;
-	sourceData.SlicePitch = RowPitchBytes * textureData->mHeight;
-	mBatchUploader->Upload(newTexture->GetResource(), 0, &sourceData, 1);
-	mBatchUploader->Transition(newTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
+
+	//Empty Data,load dds texture in renderer
+	if (!textureData->mdata)
+	{
+		//load and upload
+		newTexture->CreateDDSFromFile(textureData->mFilePath,mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_DIRECT), false);
+	}
+	else
+	{
+		auto RowPitchBytes = textureData->mWidth * textureData->mComponent;
+		newTexture->Create2D(RowPitchBytes, textureData->mWidth, textureData->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+		mBatchUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
+		D3D12_SUBRESOURCE_DATA sourceData = {};
+		sourceData.pData = textureData->mdata;
+		sourceData.RowPitch = RowPitchBytes;
+		sourceData.SlicePitch = RowPitchBytes * textureData->mHeight;
+		mBatchUploader->Upload(newTexture->GetResource(), 0, &sourceData, 1);
+		mBatchUploader->Transition(newTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+		mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
+	}
+	
 	newTexture->GetResource()->SetName(InDebugName.c_str());
 	if (!InTextureName.empty())
 	{
@@ -863,8 +875,12 @@ void Renderer::BaseRenderer::CreateRootSignature()
 
 		D3D12_STATIC_SAMPLER_DESC shadowSampler = CD3DX12_STATIC_SAMPLER_DESC(0);
 		shadowSampler.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+		shadowSampler.AddressU = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		shadowSampler.AddressV = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
+		shadowSampler.AddressW = D3D12_TEXTURE_ADDRESS_MODE_CLAMP;
 		shadowSampler.Filter = D3D12_FILTER_COMPARISON_MIN_MAG_MIP_LINEAR;
 		shadowSampler.ComparisonFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
+		shadowSampler.BorderColor = D3D12_STATIC_BORDER_COLOR_OPAQUE_BLACK;
 		shadowSampler.ShaderRegister = 1;
 
 		std::vector<D3D12_STATIC_SAMPLER_DESC> samplers = { texture2DSampler,shadowSampler };
@@ -956,6 +972,18 @@ void Renderer::BaseRenderer::UpdataFrameData()
 	mFrameDataCPU[frameDataCpuIndex]->UpdataData<FrameData>(mFrameData[frameDataCpuIndex]);
 	//Advance CPU Frame Index
 	mFrameIndexCpu++;
+}
+
+void Renderer::BaseRenderer::OnGameSceneUpdated(std::shared_ptr<GAS::GameScene> InScene, std::span<entt::entity> InNewEntities)
+{
+	if (InScene == mCurrentScene)
+	{
+		auto& textureMap = mCurrentScene->GetTextureMap();
+		for (auto [textureName,textureData] : textureMap)
+		{
+			LoadMaterial(textureName, textureData);
+		}
+	}
 }
 
 void Renderer::BaseRenderer::LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent)

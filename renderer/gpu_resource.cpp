@@ -2,6 +2,8 @@
 #include "color.h"
 #include "device_manager.h"
 #include <DDSTextureLoader.h>
+#include <codecvt>
+#include <string>
 
 namespace Renderer
 {
@@ -1155,17 +1157,50 @@ namespace Renderer
 
 		bool Texture::CreateDDSFromMemory(const void* filePtr, size_t fileSize, bool sRGB)
 		{
-			//if (m_hCpuDescriptorHandle.ptr == D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN)
-			//{
-			//	auto [cpuHandle, gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
-			//	m_hCpuDescriptorHandle = cpuHandle;
-			//}
-			//
-			//HRESULT hr = CreateDDSTextureFromMemory(g_Device,
-			//	(const uint8_t*)filePtr, fileSize, 0, sRGB, &m_pResource, m_hCpuDescriptorHandle);
-			//
-			//return SUCCEEDED(hr);
 			return false;
+		}
+
+		std::wstring utf8ToUtf16(const std::string& utf8Str)
+		{
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
+			return conv.from_bytes(utf8Str);
+		}
+
+		std::string utf16ToUtf8(const std::wstring& utf16Str)
+		{
+			std::wstring_convert<std::codecvt_utf8_utf16<wchar_t>> conv;
+			return conv.to_bytes(utf16Str);
+		}
+
+		bool Texture::CreateDDSFromFile(std::string InFileName, ID3D12CommandQueue* InCmdQueue, bool sRGB)
+		{
+			
+
+
+			ResourceUploadBatch resourceUpload(g_Device);
+			if (m_hCpuDescriptorHandle.ptr == D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN)
+			{
+				auto [cpuHandle, gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
+				m_hCpuDescriptorHandle = cpuHandle;
+				m_hGpuDescriptorHandle = gpuHandle;
+			}
+
+
+			resourceUpload.Begin();
+			CreateDDSTextureFromFile(g_Device, resourceUpload, utf8ToUtf16(InFileName).c_str(),&m_pResource);
+			if (m_hCpuDescriptorHandle.ptr == D3D12_GPU_VIRTUAL_ADDRESS_UNKNOWN)
+			{
+				auto [cpuHandle, gpuHandle] = g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate();
+				m_hCpuDescriptorHandle = cpuHandle;
+				m_hGpuDescriptorHandle = gpuHandle;
+
+			}
+			g_Device->CreateShaderResourceView(m_pResource, nullptr, m_hCpuDescriptorHandle);
+			// Upload the resources to the GPU.
+			auto uploadResourcesFinished = resourceUpload.End(InCmdQueue);
+			// Wait for the upload thread to terminate
+			uploadResourcesFinished.wait();
+			return true;
 		}
 
 		void Texture::CreatePIXImageFromMemory(const void* memBuffer, size_t fileSize)

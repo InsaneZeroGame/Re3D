@@ -9,7 +9,7 @@ namespace AssetLoader
 		int mHeight;
 		int mComponent;
 		uint8_t* mdata;
-
+		std::string mFilePath;
 		TextureData():mdata(nullptr),mWidth(0),mHeight(0),mComponent(0) {};
 		~TextureData() 
 		{
@@ -40,7 +40,7 @@ namespace AssetLoader
 
 		virtual std::vector<ECS::StaticMesh>& LoadAssetFromFile(std::string_view InFileName) { return mStaticMeshes; };
 
-		const std::unordered_map<std::string, TextureData*>& GetTextureMap() { return mTextureMap; };
+		const std::unordered_map<std::string, TextureData*> GetTextureMap() { return mTextureMap; };
 
 	protected:
         std::vector<ECS::StaticMesh> mStaticMeshes;
