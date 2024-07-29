@@ -136,7 +136,8 @@ float4 main(PSInput input) : SV_TARGET
      float4 colorAfterCorrection = pow(input.color, 1.0 / gamma);
     return (diffuse + ambient) * colorAfterCorrection;
 #else
-    float4 diffuseColor = defaultTexture.Sample(defaultSampler, input.UVCoord);
+    float2 uvCoordFlip = float2(input.UVCoord.x, 1.0 - input.UVCoord.y);
+    float4 diffuseColor = defaultTexture.Sample(defaultSampler, uvCoordFlip);
     //float4 diffuseColor = float4(input.color);
     float4 DirLightViewSpace = mul(float4(input.DirectionalLightDir.xyz, 0.0), frameData.ViewMatrix);
     float3 directionalLight = ApplyLightCommon(
