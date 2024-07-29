@@ -37,11 +37,11 @@ const DirectX::SimpleMath::Matrix& ECS::TransformComponent::GetModelMatrix(bool 
 {
     //Todo::Move calc to update data.
     mMat =
-        DirectX::SimpleMath::Matrix::CreateTranslation(mTranslation) *
-        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(X_AXIS, mRotation.x) *
-        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(Y_AXIS, mRotation.y) *
-        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(Z_AXIS, mRotation.z) *
-        DirectX::SimpleMath::Matrix::CreateScale(mScale);
+		DirectX::SimpleMath::Matrix::CreateScale(mScale)*
+        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(X_AXIS, mRotation.x)*
+        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(Y_AXIS, mRotation.y)*
+        DirectX::SimpleMath::Matrix::CreateFromAxisAngle(Z_AXIS, mRotation.z)*
+        DirectX::SimpleMath::Matrix::CreateTranslation(mTranslation);
 
     return UploadToGpu ? mMat.Transpose() : mMat;
 }
