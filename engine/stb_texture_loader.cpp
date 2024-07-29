@@ -28,7 +28,7 @@ namespace AssetLoader
 		const auto& filePath = std::filesystem::path(fileName);
 		const auto& fileExtension = str_tolower(filePath.extension().string());
 
-		if (fileExtension == ".png")
+		if (fileExtension == ".png" || fileExtension == ".jpg" || fileExtension == ".jpeg")
 		{
 			return stbLoadTexture(filePath);
 		}

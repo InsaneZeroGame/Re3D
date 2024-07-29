@@ -52,14 +52,15 @@ void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, in
 	mDeviceManager->SetTargetWindowAndCreateSwapChain(InWindow, InWidth, InHeight);
 	//Use Reverse Z
 	mDefaultCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f,true);
-	mDefaultCamera->LookAt({ 0.0,3.0,2.0 }, { 0.0f,3.0f,0.0f }, { 0.0f,1.0f,0.0f });
+	mDefaultCamera->LookAt({ 3.0,3.0,2.0 }, { 0.0f,3.0f,0.0f }, { 0.0f,1.0f,0.0f });
 	mShadowCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f,false);
-	mShadowCamera->LookAt({ -0.1,50,5.0 }, { 0.0f,0.0f,0.0f }, { 0.0f,1.0f,0.0f });
+	mShadowCamera->LookAt({ -5,25,0.0 }, { 0.0f,0.0f,0.0f }, { 0.0f,1.0f,0.0f });
 	mViewPort = { 0,0,(float)mWidth,(float)mHeight,0.0,1.0 };
 	mRect = { 0,0,mWidth,mHeight };
 	mContext->CreateWindowDependentResource(InWidth, InHeight);
     CreateGui();
 }
+
 
 void Renderer::BaseRenderer::Update(float delta)
 {
@@ -340,9 +341,9 @@ void Renderer::BaseRenderer::CreateRenderTask()
 
 				ppBloomCombine->SetSourceTexture(sceneTex->GetSRVGPU());
 				ppBloomCombine->SetSourceTexture2(blurHalf->GetSRVGPU());
-				ppBloomCombine->SetBloomCombineParameters(1.25f, 1.f, 1.f, 1.f);
+				ppBloomCombine->SetBloomCombineParameters(mbloomIntensity, mbaseIntensity, mbloomSaturation, mbloomBaseSaturation);
 				mGraphicsCmd->OMSetRenderTargets(1, &bloomRes->GetRTV(), FALSE, nullptr);
-				mGraphicsCmd->RSSetViewports(1, &mViewPort);
+				mGraphicsCmd->RSSetViewports(1, &mViewPort); 
 				ppBloomCombine->Process(mGraphicsCmd);
 
 				{
@@ -436,8 +437,10 @@ void Renderer::BaseRenderer::CreateBuffers()
 		mFrameDataGPU[i] = std::make_unique<Resource::VertexBuffer>();
 		mFrameDataGPU[i]->Create(L"FrameData", 1, sizeof(FrameData),D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
 
-		mFrameData[i].DirectionalLightColor = SimpleMath::Vector4(1.0f, 1.0f, 1.0f, 1.0f);
-		mFrameData[i].DirectionalLightDir = SimpleMath::Vector4(1.0, 1.0, 2.0, 1.0f);
+		mFrameData[i].DirectionalLightColor = SimpleMath::Vector4(1.0f, 1.0f, 1.0f, 1.0);
+		mFrameData[i].DirectionalLightDir = SimpleMath::Vector3(1.0, 10.0, 12.0);
+		mFrameData[i].SunLightIntensity = 1.0;
+
 	}
 
 	mLightUploadBuffer = std::make_shared<Resource::UploadBuffer>();
@@ -594,12 +597,13 @@ void Renderer::BaseRenderer::CreateSkybox()
 	LoadStaticMeshToGpu(*mSkybox->GetStaticMeshComponent());
 
 	mSkyboxTexture = std::make_shared<Resource::Texture>();
-    auto skybox_bottom = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/ny.png");
-    auto skybox_top = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/py.png");
-    auto skybox_front = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/pz.png");
-    auto skybox_back = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/nz.png");
-    auto skybox_left = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/nx.png");
-    auto skybox_right = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/px.png");
+	auto skybox_bottom = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/bottom.jpg");
+	auto skybox_top = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/top.jpg");
+	auto skybox_front = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/front.jpg");
+	auto skybox_back = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/back.jpg");
+	auto skybox_left = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/left.jpg");
+	auto skybox_right = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/right.jpg");
+
 	Ensures(skybox_bottom.has_value());
 	Ensures(skybox_top.has_value());
 	Ensures(skybox_front.has_value());
@@ -655,7 +659,7 @@ void Renderer::BaseRenderer::InitPostProcess()
 		DXGI_FORMAT_UNKNOWN);
 	ppToneMap = std::make_unique<ToneMapPostProcess>(g_Device, toneMapRTState,
 		ToneMapPostProcess::ACESFilmic,
-		ToneMapPostProcess::SRGB);
+		ToneMapPostProcess::Linear);
 
 	//RenderTargetState imageBlit(g_DisplayFormat,
 	//	DXGI_FORMAT_D32_FLOAT);
@@ -961,6 +965,10 @@ void Renderer::BaseRenderer::UpdataFrameData()
 	mFrameData[frameDataCpuIndex].ShadowViewMatrix = mShadowCamera->GetView();
 	mFrameData[frameDataCpuIndex].ShadowViewPrjMatrix = mShadowCamera->GetPrjView();
 	mFrameData[frameDataCpuIndex].NormalMatrix = mDefaultCamera->GetNormalMatrix();
+	mFrameData[frameDataCpuIndex].DirectionalLightDir.x = mSunLightDir[0];
+	mFrameData[frameDataCpuIndex].DirectionalLightDir.y = mSunLightDir[1];
+	mFrameData[frameDataCpuIndex].DirectionalLightDir.z = mSunLightDir[2];
+	mFrameData[frameDataCpuIndex].SunLightIntensity = mSunLightIntensity;
 	mFrameData[frameDataCpuIndex].DirectionalLightDir.Normalize();
 	mFrameData[frameDataCpuIndex].LightGridZParams.x = gridParas.x;
 	mFrameData[frameDataCpuIndex].LightGridZParams.y = gridParas.y;

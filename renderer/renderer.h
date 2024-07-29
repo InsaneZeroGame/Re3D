@@ -45,7 +45,8 @@ namespace Renderer
 		DirectX::SimpleMath::Matrix NormalMatrix;
 		DirectX::SimpleMath::Matrix ShadowViewMatrix;
 		DirectX::SimpleMath::Matrix ShadowViewPrjMatrix;
-		DirectX::SimpleMath::Vector4 DirectionalLightDir;
+		DirectX::SimpleMath::Vector3 DirectionalLightDir;
+		float SunLightIntensity;
 		DirectX::SimpleMath::Vector4 DirectionalLightColor;
 		DirectX::SimpleMath::Vector4 ViewSizeAndInvSize;
 		DirectX::SimpleMath::Matrix  ClipToView;
@@ -81,7 +82,12 @@ namespace Renderer
 		float mBloomThreshold = 0.25;
 		float mBloomBlurKernelSize = 4.0f;
 		float mBloomBrightness = 1.0f;
-		
+		float mbloomIntensity = 0.0f;
+		float mbaseIntensity = 1.0f;
+		float mbloomSaturation = 1.0f;
+		float mbloomBaseSaturation = 1.0f;
+		std::array<float, 3> mSunLightDir = {1.0,1.0,1.0};
+		float mSunLightIntensity = 1.0;
 	protected:
         void CreateGui();
 		void CreateRenderTask();

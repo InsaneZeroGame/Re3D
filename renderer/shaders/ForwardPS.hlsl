@@ -48,12 +48,12 @@ float3 ApplyLightCommon(
     float3 halfVec = normalize(lightDir - viewDir);
     float nDotH = saturate(dot(halfVec, normal));
 
-    FSchlick(specularColor,diffuseColor , lightDir, halfVec);
+    //FSchlick(specularColor,diffuseColor , lightDir, halfVec);
 
     float specularFactor = nDotH;
     //float specularFactor = specularMask * pow(nDotH, gloss) * (gloss + 2) / 8;
     
-
+    //specularFactor = 0.0f;
     float nDotL = saturate(dot(normal, lightDir));
     
     //return nDotL * lightColor * (diffuseColor + specularColor);
@@ -137,15 +137,14 @@ float4 main(PSInput input) : SV_TARGET
     return (diffuse + ambient) * colorAfterCorrection;
 #else
     float4 diffuseColor = defaultTexture.Sample(defaultSampler, input.UVCoord);
-    //float4 diffuseColor = input.color;
+    //float4 diffuseColor = float4(input.color);
     float4 DirLightViewSpace = mul(float4(input.DirectionalLightDir.xyz, 0.0), frameData.ViewMatrix);
-    float DirLightIntense = 0.25f;
     float3 directionalLight = ApplyLightCommon(
     diffuseColor.xyz,
     diffuseColor.xyz,
     0, 0, input.normalViewSpace.xyz, input.viewsSpacePos, 
-    DirLightViewSpace, input.DirectionalLightColor) * DirLightIntense;
-    
+    DirLightViewSpace, input.DirectionalLightColor) * frameData.DirectionalLightDir.w;
+    //return float4(directionalLight, 1.0f);
     float3 pointLight = float3(0.0,0.0,0.0);
     uint GirdIndex = ComputeLightGridCellIndex(uint2(input.position.xy), input.position.w);
     uint3 GridCoord = ComputeLightGridCellCoordinate(uint2(input.position.xy), input.position.w, 0);
@@ -183,7 +182,7 @@ float4 main(PSInput input) : SV_TARGET
     float shadow = shadowMap.SampleCmpLevelZero(shadowSampler, shadowCoord, input.shadowCoord.z/input.shadowCoord.w);
     //shadow = 1.0f;
     //return diffuseColor;
-    return color * (0.15 + 0.85 * shadow);
+    return color * (0.25 + 0.75 * shadow);
     //if (input.position.x / screen_size  < 0.5)
     //{
     // return diffuse;

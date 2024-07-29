@@ -51,6 +51,10 @@ void Renderer::Gui::EndGui(ID3D12GraphicsCommandList* InCmd) {
 
 void Renderer::Gui::Render() {
     ImGui::TextColored({ 0.0f, 1.0f, 0.0f, 1.0f }, "Hello Re3D");
+    ImGui::SliderFloat3("SunLight Dir", mRenderer.lock()->mSunLightDir.data(),-360,360);
+	ImGui::SliderFloat("SunLight Intensity", &mRenderer.lock()->mSunLightIntensity, 0.0f, 10.0f);
+
+
     if (mRenderer.lock())
     {
 		//ImGui::Checkbox("Tone Mapping", &mRenderer.lock()->mUseToneMapping);
@@ -59,6 +63,10 @@ void Renderer::Gui::Render() {
 		ImGui::SliderFloat("Bloom: Kernel Size", &mRenderer.lock()->mBloomBlurKernelSize, 0.0f, 10.0f);
 		ImGui::SliderFloat("Bloom: Brightness", &mRenderer.lock()->mBloomBrightness, 1.0, 10.0f);
 
+		ImGui::SliderFloat("Bloom: bloom intensity", &mRenderer.lock()->mbloomIntensity, 0.0, 10.0f);
+		ImGui::SliderFloat("Bloom: base intensity", &mRenderer.lock()->mbaseIntensity, 0.0, 10.0f);
+		ImGui::SliderFloat("Bloom: bloom saturation", &mRenderer.lock()->mbloomSaturation, 0.0, 10.0f);
+		ImGui::SliderFloat("Bloom: base saturation", &mRenderer.lock()->mbloomBaseSaturation, 0.0, 10.0f);
     }
     if (mCurrentScene)
     {
