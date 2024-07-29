@@ -85,7 +85,7 @@ static void DestroySdkObjects(FbxManager* pManager, bool pExitStatus) {
     if (pExitStatus)
         FBXSDK_printf("Program Success!\n");
 }
-static bool LoadScene(FbxManager* pManager, FbxDocument* pScene, const char* pFilename) {
+bool AssetLoader::FbxLoader::LoadScene(const char* pFilename) {
     int lFileMajor, lFileMinor, lFileRevision;
     int lSDKMajor, lSDKMinor, lSDKRevision;
     //int lFileFormat = -1;
@@ -97,10 +97,10 @@ static bool LoadScene(FbxManager* pManager, FbxDocument* pScene, const char* pFi
     FbxManager::GetFileFormatVersion(lSDKMajor, lSDKMinor, lSDKRevision);
 
     // Create an importer.
-    FbxImporter* lImporter = FbxImporter::Create(pManager, "");
+    FbxImporter* lImporter = FbxImporter::Create(mSdkManager, "");
 
     // Initialize the importer by providing a filename.
-    const bool lImportStatus = lImporter->Initialize(pFilename, -1, pManager->GetIOSettings());
+    const bool lImportStatus = lImporter->Initialize(pFilename, -1, mSdkManager->GetIOSettings());
     lImporter->GetFileVersion(lFileMajor, lFileMinor, lFileRevision);
 
     if (!lImportStatus) {
@@ -153,17 +153,17 @@ static bool LoadScene(FbxManager* pManager, FbxDocument* pScene, const char* pFi
 
         // Set the import states. By default, the import states are always set to
         // true. The code below shows how to change these states.
-        IOS_REF.SetBoolProp(IMP_FBX_MATERIAL, true);
-        IOS_REF.SetBoolProp(IMP_FBX_TEXTURE, true);
-        IOS_REF.SetBoolProp(IMP_FBX_LINK, true);
-        IOS_REF.SetBoolProp(IMP_FBX_SHAPE, true);
-        IOS_REF.SetBoolProp(IMP_FBX_GOBO, true);
-        IOS_REF.SetBoolProp(IMP_FBX_ANIMATION, true);
-        IOS_REF.SetBoolProp(IMP_FBX_GLOBAL_SETTINGS, true);
+        //IOS_REF.SetBoolProp(IMP_FBX_MATERIAL, true);
+        //IOS_REF.SetBoolProp(IMP_FBX_TEXTURE, true);
+        //IOS_REF.SetBoolProp(IMP_FBX_LINK, true);
+        //IOS_REF.SetBoolProp(IMP_FBX_SHAPE, true);
+        //IOS_REF.SetBoolProp(IMP_FBX_GOBO, true);
+        //IOS_REF.SetBoolProp(IMP_FBX_ANIMATION, true);
+        //IOS_REF.SetBoolProp(IMP_FBX_GLOBAL_SETTINGS, true);
     }
 
     // Import the scene.
-    lStatus = lImporter->Import(pScene);
+    lStatus = lImporter->Import(mScene);
     if (lStatus == false && lImporter->GetStatus() == FbxStatus::ePasswordError) {
         FBXSDK_printf("Please enter password: ");
 
@@ -175,10 +175,10 @@ static bool LoadScene(FbxManager* pManager, FbxDocument* pScene, const char* pFi
 
         FbxString lString(lPassword);
 
-        IOS_REF.SetStringProp(IMP_FBX_PASSWORD, lString);
-        IOS_REF.SetBoolProp(IMP_FBX_PASSWORD_ENABLE, true);
+        //IOS_REF.SetStringProp(IMP_FBX_PASSWORD, lString);
+        //IOS_REF.SetBoolProp(IMP_FBX_PASSWORD_ENABLE, true);
 
-        lStatus = lImporter->Import(pScene);
+        lStatus = lImporter->Import(mScene);
 
         if (lStatus == false && lImporter->GetStatus() == FbxStatus::ePasswordError) {
             FBXSDK_printf("\nPassword is wrong, import aborted.\n");
@@ -208,6 +208,38 @@ static bool LoadScene(FbxManager* pManager, FbxDocument* pScene, const char* pFi
         }
         FbxArrayDelete<FbxString*>(history);
         FBXSDK_printf("********************************************************************************\n");
+    }
+
+    if (lStatus)
+    {
+		// Convert Axis System to what is used in this example, if needed
+		FbxAxisSystem SceneAxisSystem = mScene->GetGlobalSettings().GetAxisSystem();
+		FbxAxisSystem OurAxisSystem(FbxAxisSystem::eYAxis, FbxAxisSystem::eParityOdd, FbxAxisSystem::eRightHanded);
+		if (SceneAxisSystem != OurAxisSystem)
+		{
+			OurAxisSystem.ConvertScene(mScene);
+		}
+
+		// Convert Unit System to what is used in this example, if needed
+		//FbxSystemUnit SceneSystemUnit = mScene->GetGlobalSettings().GetSystemUnit();
+		//if (SceneSystemUnit.GetScaleFactor() != 1.0)
+		//{
+		//	//The unit in this example is centimeter.
+		//	FbxSystemUnit::cm.ConvertScene(mScene);
+		//}
+
+		//// Get the list of all the animation stack.
+		//mScene->FillAnimStackNameArray(mAnimStackNameArray);
+        //
+		//// Get the list of all the cameras in the scene.
+		//FillCameraArray(mScene, mCameraArray);
+		FbxGeometryConverter lGeomConverter(mSdkManager);
+		try {
+			lGeomConverter.Triangulate(mScene, /*replace*/true);
+		}
+		catch (std::runtime_error) {
+			FBXSDK_printf("Scene integrity verification failed.\n");
+		}
     }
 
     // Destroy the importer.
@@ -1330,13 +1362,13 @@ void AssetLoader::FbxLoader::DisplayContent(FbxScene* pScene) {
 
 AssetLoader::FbxLoader::FbxLoader() {
     // Prepare the FBX SDK.
-    InitializeSdkObjects(lSdkManager, lScene);
+    InitializeSdkObjects(mSdkManager, mScene);
     // Load the scene.
 }
 
 AssetLoader::FbxLoader::~FbxLoader() {
     // Destroy all objects created by the FBX SDK.
-    DestroySdkObjects(lSdkManager, lResult);
+    DestroySdkObjects(mSdkManager, lResult);
 }
 
 std::vector<ECS::StaticMesh>& AssetLoader::FbxLoader::LoadAssetFromFile(std::string_view InFileName) {
@@ -1363,29 +1395,8 @@ std::vector<ECS::StaticMesh>& AssetLoader::FbxLoader::LoadAssetFromFile(std::str
         return mStaticMeshes;
     } else {
         FBXSDK_printf("\n\nFile: %s\n\n", lFilePath.Buffer());
-        lResult = LoadScene(lSdkManager, lScene, lFilePath.Buffer());
-        LoadTextureMaterial(lScene, lFilePath.Buffer());
-        // Convert mesh, NURBS and patch into triangle mesh
-        FbxGeometryConverter lGeomConverter(lSdkManager);
-        Ensures(lGeomConverter.Triangulate(lScene, /*replace*/ true));
-        // Convert Axis System to what is used in this example, if needed
-        //FbxAxisSystem SceneAxisSystem = lScene->GetGlobalSettings().GetAxisSystem();
-        //FbxAxisSystem OurAxisSystem(FbxAxisSystem::eYAxis, FbxAxisSystem::eParityEven, FbxAxisSystem::eLeftHanded);
-        //if (SceneAxisSystem != OurAxisSystem) {
-        //    OurAxisSystem.ConvertScene(lScene);
-        //}
-
-        const FbxSystemUnit::ConversionOptions lConversionOptions = {
-            false, /* mConvertRrsNodes */
-            true,  /* mConvertLimits */
-            true,  /* mConvertClusters */
-            true,  /* mConvertLightIntensity */
-            true,  /* mConvertPhotometricLProperties */
-            true   /* mConvertCameraClipPlanes */
-        };
-
-        // Convert the scene to meters using the defined options.
-        //FbxSystemUnit::mm.ConvertScene(lScene, lConversionOptions);
+        lResult = LoadScene(lFilePath.Buffer());
+        LoadTextureMaterial(mScene, lFilePath.Buffer());
     }
 
     if (lResult == false) {
@@ -1394,7 +1405,7 @@ std::vector<ECS::StaticMesh>& AssetLoader::FbxLoader::LoadAssetFromFile(std::str
     } else {
         FBXSDK_printf("\n\nScene Loaded Successfully...");
         // Display the scene.
-        DisplayMetaData(lScene);
+        DisplayMetaData(mScene);
 
         //FBXSDK_printf("\n\n---------------------\nGlobal Light Settings\n---------------------\n\n");
 
@@ -1419,7 +1430,7 @@ std::vector<ECS::StaticMesh>& AssetLoader::FbxLoader::LoadAssetFromFile(std::str
         FBXSDK_printf("\n\n------------\nNode Content\n------------\n\n");
 
         if (gVerbose)
-            DisplayContent(lScene);
+            DisplayContent(mScene);
 
         //FBXSDK_printf("\n\n----\nPose\n----\n\n");
         //
@@ -1939,14 +1950,14 @@ bool AssetLoader::FbxLoader::LoadStaticMesh(FbxMesh* pMesh) {
     newMesh.mVertices.resize(lPolygonVertexCount);
     float* lNormals = NULL;
     if (newMesh.mHasNormal) {
-        lNormals = new float[lPolygonVertexCount * NORMAL_STRIDE];
+        //lNormals = new float[lPolygonVertexCount * NORMAL_STRIDE];
     }
     float* lUVs = NULL;
     FbxStringList lUVNames;
     pMesh->GetUVSetNames(lUVNames);
     const char* lUVName = NULL;
     if (newMesh.mHasUV && lUVNames.GetCount()) {
-        lUVs = new float[lPolygonVertexCount * UV_STRIDE];
+        //lUVs = new float[lPolygonVertexCount * UV_STRIDE];
         lUVName = lUVNames[0];
     }
 

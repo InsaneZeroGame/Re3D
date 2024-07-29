@@ -23,14 +23,16 @@ public:
     //static FbxLoader& GetInstance();
 
 private:
-    class FbxManager* lSdkManager = NULL;
-    class FbxScene* lScene = NULL;
+    class FbxManager* mSdkManager = NULL;
+    class FbxScene* mScene = NULL;
     bool lResult;
+    bool LoadScene(const char* pFilename);
     void DisplayContent(FbxScene* pScene);
     void DisplayContent(FbxNode* pNode, FbxTime& pTime, FbxAnimLayer* pAnimLayer, FbxAMatrix& pParentGlobalPosition,
                         FbxPose* pPose);
     void DisplayMesh(FbxNode* pNode,const FbxAMatrix& globalPos);
     void DisplayPolygons(FbxMesh* pMesh);
+
     //inline static std::once_flag mCallOnce;
     //inline static FbxLoader* sLoader = nullptr;
     //ECS::StaticMesh mCurrentMesh;
