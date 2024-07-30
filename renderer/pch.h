@@ -90,6 +90,7 @@
 #include <Mouse.h>
 #include "renderer_context.h"
 #include "PostProcess.h"
+#include <engine.h>
 
 
 #pragma comment(lib,"dxgi.lib")

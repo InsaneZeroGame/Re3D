@@ -20,3 +20,4 @@
 #include "fbxsdk/include/fbxsdk.h"
 #include "utility.h"
 #include <span>
+#include "logger.h"

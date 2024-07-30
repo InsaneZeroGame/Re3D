@@ -2153,13 +2153,14 @@ void DisplayMaterialTextureConnections(FbxSurfaceMaterial* pMaterial, ECS::Stati
     //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sShininess);
     //DisplayTextureNames(lProperty, lConnectionString);
     //
-    ////Bump Textures
-    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sBump);
-    //DisplayTextureNames(lProperty, lConnectionString);
+	//Bump Textures
+	lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sBump);
+    gLogger->info(lConnectionString);
+	//DisplayTextureNames(lProperty, lConnectionString);
     //
-    ////Normal Map Textures
-    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sNormalMap);
-    //DisplayTextureNames(lProperty, lConnectionString);
+    //Normal Map Textures
+    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sNormalMap);
+    DisplayTextureNames(lProperty, lConnectionString);
     //
     ////Transparent Textures
     //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sTransparentColor);

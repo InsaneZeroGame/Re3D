@@ -66,6 +66,8 @@ set(${TARGET}_Headers
             components.h
             game_scene.h
             fbx_loader.h
+            logger.h
+            engine.h
 )
 
 set(${TARGET}_Srcs 
@@ -79,7 +81,9 @@ set(${TARGET}_Srcs
             graphics_common.cpp
             utility.cpp
             obj_model_loader.cpp
-            fbx_loader.cpp            
+            fbx_loader.cpp  
+            logger.cpp    
+            engine.cpp
 )
 
 set(${TARGET}_Srcs

@@ -1,9 +1,10 @@
 #include <iostream>
 #include "window.h"
 #include <renderer.h>
-#include "asset_loader.h"
 #include <memory>
 #include "game_scene.h"
+#include "engine.h"
+
 constexpr int WINDOW_WIDTH = 1920;
 constexpr int WINDOW_HEIGHT = 1080;
 
@@ -11,13 +12,12 @@ constexpr int WINDOW_HEIGHT = 1080;
 int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance*/, _In_ LPWSTR /*lpCmdLine*/,
                     _In_ int nCmdShow) {
 
-	AllocConsole();
-	freopen("CONOUT$", "w", stdout);
-	//asset loader
-	AssetLoader::InitAssetLoader();
+	//AllocConsole();
+	//freopen("CONOUT$", "w", stdout);
+	engine::InitGameEngine();
+
 	//Game Scene 
 	std::shared_ptr<GAS::GameScene> newScene = std::make_shared<GAS::GameScene>();
-	
 	//1.Renderer
 	std::shared_ptr<Renderer::BaseRenderer> renderer = std::make_shared<Renderer::BaseRenderer>();
 	//2.Window
