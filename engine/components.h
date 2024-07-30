@@ -30,7 +30,8 @@ namespace ECS
 		std::vector<int> mIndices;
         //std::vector<SubMesh> mSubmeshMap;
         std::unordered_map<MaterialIndex, SubMesh> mSubmeshMap;
-		std::unordered_map<MaterialIndex, std::string> mMatTextureName;
+		std::unordered_map<MaterialIndex, std::string> mMatBaseColorName;
+		std::unordered_map<MaterialIndex, std::string> mMatNormalMapName;
 		//std::unordered_map<MaterialName, SubMesh> mSubmeshMap;
 		DirectX::XMFLOAT3 mDiffuseColor;
         bool mHasNormal;
@@ -63,7 +64,8 @@ namespace ECS
 		UINT StartIndexLocation;
 		INT BaseVertexLocation;
         std::unordered_map<MaterialIndex, SubMesh> mSubMeshes;
-		std::unordered_map<MaterialIndex, std::string> mMatTextureName;
+		std::unordered_map<MaterialIndex, std::string> mMatBaseColorName;
+		std::unordered_map<MaterialIndex, std::string> mMatNormalMapName;
 		StaticMeshComponent(StaticMesh&& InMesh);
 		DirectX::XMFLOAT3 mBaseColor;
 		MaterialName MatName;

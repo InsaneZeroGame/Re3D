@@ -19,7 +19,8 @@ StartIndexLocation(0),
 BaseVertexLocation(0),
 mSubMeshes(InMesh.mSubmeshMap),
 mName(InMesh.mName),
-mMatTextureName(InMesh.mMatTextureName),
+mMatBaseColorName(InMesh.mMatBaseColorName),
+mMatNormalMapName(InMesh.mMatNormalMapName),
 mBaseColor(InMesh.mDiffuseColor)
 {
 	

@@ -2056,7 +2056,7 @@ bool AssetLoader::FbxLoader::LoadStaticMesh(FbxMesh* pMesh) {
         newMesh.mSubmeshMap[lMaterialIndex].TriangleCount += 1;
     }
 	DisplayMaterialConnections(pMesh,newMesh);
-	DisplayMaterial(pMesh,newMesh);
+	//DisplayMaterial(pMesh,newMesh);
     mStaticMeshes.push_back(newMesh);
     return true;
 }
@@ -2118,15 +2118,16 @@ void DisplayMaterialTextureConnections(FbxSurfaceMaterial* pMaterial, ECS::Stati
     FbxString diffuseColorName;
     lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sDiffuse);
     DisplayTextureNames(lProperty, diffuseColorName);
-    InMesh.mMatTextureName[pMatId] = diffuseColorName;
+    InMesh.mMatBaseColorName[pMatId] = diffuseColorName;
+    //gLogger->info(diffuseColorName);
 
     //DiffuseFactor Textures
     //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sDiffuseFactor);
     //DisplayTextureNames(lProperty, lConnectionString);
     //
     ////Emissive Textures
-    //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sEmissive);
-    //DisplayTextureNames(lProperty, lConnectionString);
+    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sEmissive);
+    //gLogger->info(lConnectionString);
     //
     ////EmissiveFactor Textures
     //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sEmissiveFactor);
@@ -2155,12 +2156,15 @@ void DisplayMaterialTextureConnections(FbxSurfaceMaterial* pMaterial, ECS::Stati
     //
 	//Bump Textures
 	lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sBump);
-    gLogger->info(lConnectionString);
+	gLogger->info(lConnectionString);
 	//DisplayTextureNames(lProperty, lConnectionString);
     //
     //Normal Map Textures
-    lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sNormalMap);
-    DisplayTextureNames(lProperty, lConnectionString);
+    FbxString normalMap;
+	lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sNormalMap);
+	DisplayTextureNames(lProperty, normalMap);
+	InMesh.mMatNormalMapName[pMatId] = normalMap;
+    //gLogger->info(normalMap);
     //
     ////Transparent Textures
     //lProperty = pMaterial->FindProperty(FbxSurfaceMaterial::sTransparentColor);
