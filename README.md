@@ -10,6 +10,7 @@ A game engine develop using Directx12 and C++
   - Texture Material.
   - Skybox.
   - Bloom.
+  - Normal Mapping
 - Todo:
   - PBR.
   - SSAO.
@@ -23,6 +24,10 @@ Cluster Forward Lighting
   
 Amazon Lumberyard Bistro Scene
 ![Screen Shot](https://kkh-1324724049.cos.ap-shanghai.myqcloud.com/Screenshot_bristo.png)
+  
+Normal Mapping
+![Screen Shot](https://kkh-1324724049.cos.ap-shanghai.myqcloud.com/normal_map_compare.png)
+
 
     @misc{ORCAAmazonBistro,
      title = {Amazon Lumberyard Bistro, Open Research Content Archive (ORCA)},
