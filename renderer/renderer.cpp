@@ -239,14 +239,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
                 renderEntities.each([=](auto entity, auto& renderComponent, auto& transformComponent) {
                     auto modelMatrix = transformComponent.GetModelMatrix();
 					
-					//if (mTextureMap.find(renderComponent.NormalMap) == mTextureMap.end())
-					//{
-					//	mGraphicsCmd->SetGraphicsRootDescriptorTable(6, mTextureMap["defaultNormal"]->GetSRVGpu());
-					//}
-					//else
-					//{
-					//	mGraphicsCmd->SetGraphicsRootDescriptorTable(6, mTextureMap[renderComponent.NormalMap]->GetSRVGpu());
-					//}
+					
 					OjbectData objData = {};
 					objData.ModelMatrix = modelMatrix;
 					objData.DiffuseColor = renderComponent.mBaseColor;
@@ -255,7 +248,8 @@ void Renderer::BaseRenderer::CreateRenderTask()
 					//Render 
 					for (const auto& [matid,subMesh] : renderComponent.mSubMeshes)
 					{
-						auto subMeshTextureName = renderComponent.mMatTextureName[matid];
+						auto subMeshTextureName = renderComponent.mMatBaseColorName[matid];
+						auto subMeshNormalMapName = renderComponent.mMatNormalMapName[matid];
 
 						if (mTextureMap.find(subMeshTextureName) == mTextureMap.end())
 						{
@@ -264,6 +258,15 @@ void Renderer::BaseRenderer::CreateRenderTask()
 						else
 						{
 							mGraphicsCmd->SetGraphicsRootDescriptorTable(ROOT_PARA_DIFFUSE_COLOR_TEXTURE, mTextureMap[subMeshTextureName]->GetSRVGpu());
+						}
+
+						if (mTextureMap.find(subMeshNormalMapName) == mTextureMap.end())
+						{
+							mGraphicsCmd->SetGraphicsRootDescriptorTable(ROOT_PARA_NORMAL_MAP_TEXTURE, mTextureMap["defaultNormal"]->GetSRVGpu());
+						}
+						else
+						{
+							mGraphicsCmd->SetGraphicsRootDescriptorTable(ROOT_PARA_NORMAL_MAP_TEXTURE, mTextureMap[subMeshNormalMapName]->GetSRVGpu());
 						}
 
 						mGraphicsCmd->DrawIndexedInstanced((UINT)subMesh.TriangleCount * 3, 1, renderComponent.StartIndexLocation + subMesh.IndexOffset,
@@ -721,8 +724,10 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	std::vector<D3D12_INPUT_ELEMENT_DESC> elements =
 	{
 		{ "POSITION",	0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0,  0, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "NORMAL",		0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
-		{ "TEXCOORD",   0, DXGI_FORMAT_R32G32_FLOAT,	   0, 32, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
+		{ "NORMAL",		0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 16, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TANGENT",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 28, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "BINORMAL",	0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 40, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 },
+		{ "TEXCOORD",   0, DXGI_FORMAT_R32G32_FLOAT,	   0, 52, D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 }
 
 	};
 	lDesc.InputLayout.NumElements = static_cast<UINT>(elements.size());
@@ -832,13 +837,6 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		diffuseRange.RegisterSpace = 0;
 		diffuseRange.OffsetInDescriptorsFromTableStart = 0;
 
-		D3D12_DESCRIPTOR_RANGE normalRange = {};
-		normalRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
-		normalRange.NumDescriptors = 1;
-		normalRange.BaseShaderRegister = 6;
-		normalRange.RegisterSpace = 0;
-		normalRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-
 		D3D12_DESCRIPTOR_RANGE roughnessRange = {};
 		roughnessRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
 		roughnessRange.NumDescriptors = 1;
@@ -846,9 +844,9 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		roughnessRange.RegisterSpace = 0;
 		roughnessRange.OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
 
-		std::vector<D3D12_DESCRIPTOR_RANGE> ranges = { diffuseRange,normalRange,roughnessRange };
-		diffuseColorTexture.DescriptorTable.NumDescriptorRanges = (UINT)ranges.size();
-		diffuseColorTexture.DescriptorTable.pDescriptorRanges = ranges.data();
+		std::vector<D3D12_DESCRIPTOR_RANGE> diffuseRanges = { diffuseRange,roughnessRange };
+		diffuseColorTexture.DescriptorTable.NumDescriptorRanges = (UINT)diffuseRanges.size();
+		diffuseColorTexture.DescriptorTable.pDescriptorRanges = diffuseRanges.data();
 		diffuseColorTexture.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
 		D3D12_ROOT_PARAMETER shadowMap = {};
@@ -864,13 +862,28 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		shadowMap.DescriptorTable.pDescriptorRanges = shadowmapranges.data();
 		shadowMap.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
 
+		D3D12_ROOT_PARAMETER normalMapTexture = {};
+		normalMapTexture.ParameterType = D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE;
+		D3D12_DESCRIPTOR_RANGE normalRange = {};
+		normalRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+		normalRange.NumDescriptors = 1;
+		normalRange.BaseShaderRegister = 6;
+		normalRange.RegisterSpace = 0;
+		normalRange.OffsetInDescriptorsFromTableStart = 0;
+		std::vector<D3D12_DESCRIPTOR_RANGE> normalMapRanges = { normalRange };
+		normalMapTexture.DescriptorTable.NumDescriptorRanges = (UINT)normalMapRanges.size();
+		normalMapTexture.DescriptorTable.pDescriptorRanges = normalMapRanges.data();
+		normalMapTexture.ShaderVisibility = D3D12_SHADER_VISIBILITY_PIXEL;
+
+
 		std::vector<D3D12_ROOT_PARAMETER> parameters =
 		{
 			frameDataCBV,//0
 			frameResourceTable,//1
             componentData,//2
 			diffuseColorTexture,//3
-			shadowMap//4
+			shadowMap,//4,
+			normalMapTexture,
 		};
 
 		//Samplers

@@ -137,13 +137,19 @@ float4 main(PSInput input) : SV_TARGET
     return (diffuse + ambient) * colorAfterCorrection;
 #else
     float2 uvCoordFlip = float2(input.UVCoord.x, 1.0 - input.UVCoord.y);
+    float2 normalPacked = normalTexture.Sample(defaultSampler, uvCoordFlip).xy * 2.0f - 1.0f;
+    float normal_z = sqrt(1.0f - normalPacked.x * normalPacked.x - normalPacked.y * normalPacked.y);
+    float3 normal_normalized = normalize(float3(normalPacked.x, normalPacked.y, normal_z));
+    float3x3 tbn = float3x3(normalize(input.tangent), normalize(input.bitangent), normalize(input.normal));
+    float3 normalWS = normalize(mul(normal_normalized, tbn));
+    float3 normalVS = mul(float4(normalWS, 0.0f), frameData.ViewMatrix);
     float4 diffuseColor = defaultTexture.Sample(defaultSampler, uvCoordFlip);
     //float4 diffuseColor = float4(input.color);
     float4 DirLightViewSpace = mul(float4(input.DirectionalLightDir.xyz, 0.0), frameData.ViewMatrix);
     float3 directionalLight = ApplyLightCommon(
     diffuseColor.xyz,
     diffuseColor.xyz,
-    0, 0, input.normalViewSpace.xyz, input.viewsSpacePos, 
+    0, 0, normalVS, input.viewsSpacePos,
     DirLightViewSpace, input.DirectionalLightColor) * frameData.DirectionalLightDir.w;
     //return float4(directionalLight, 1.0f);
     float3 pointLight = float3(0.0,0.0,0.0);
@@ -163,7 +169,7 @@ float4 main(PSInput input) : SV_TARGET
                 pointLight += ApplyPointLight(
                 diffuseColor.xyz,
                 diffuseColor.xyz,
-                0, 0, input.normalViewSpace.xyz,
+                0, 0, normalVS,
                 input.viewsSpacePos.xyz,
                 input.viewsSpacePos.xyz,
                 lightViewSpace.xyz,

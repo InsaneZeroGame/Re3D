@@ -1918,6 +1918,12 @@ bool AssetLoader::FbxLoader::LoadStaticMesh(FbxMesh* pMesh) {
     // If normal or UV is by polygon vertex, record all vertex attributes by polygon vertex.
     newMesh.mHasNormal = pMesh->GetElementNormalCount() > 0;
     newMesh.mHasUV = pMesh->GetElementUVCount() > 0;
+    if (newMesh.mHasUV)
+    {
+		pMesh->GenerateTangentsData(0);
+    }
+    newMesh.mHasTangent = pMesh->GetElementTangentCount() > 0;
+    newMesh.mHasBitangent = pMesh->GetElementBinormalCount() > 0;
     FbxGeometryElement::EMappingMode lNormalMappingMode = FbxGeometryElement::eNone;
     FbxGeometryElement::EMappingMode lUVMappingMode = FbxGeometryElement::eNone;
     if (newMesh.mHasNormal) {
@@ -1966,6 +1972,9 @@ bool AssetLoader::FbxLoader::LoadStaticMesh(FbxMesh* pMesh) {
     FbxVector4 lCurrentVertex;
     FbxVector4 lCurrentNormal;
     FbxVector2 lCurrentUV;
+	FbxVector4 lCurrentTangent;
+	FbxVector4 lCurrentBitangent;
+
     if (newMesh.mAllByControlPoint) {
         const FbxGeometryElementNormal* lNormalElement = NULL;
         const FbxGeometryElementUV* lUVElement = NULL;
@@ -2005,6 +2014,8 @@ bool AssetLoader::FbxLoader::LoadStaticMesh(FbxMesh* pMesh) {
                 newMesh.mVertices[lIndex].textureCoord[0] = static_cast<float>(lCurrentUV[0]);
                 newMesh.mVertices[lIndex].textureCoord[1] = static_cast<float>(lCurrentUV[1]);
             }
+
+         
         }
     }
 
@@ -2049,6 +2060,67 @@ bool AssetLoader::FbxLoader::LoadStaticMesh(FbxMesh* pMesh) {
                         newMesh.mVertices[lVertexCount].textureCoord[0] = static_cast<float>(lCurrentUV[0]);
                         newMesh.mVertices[lVertexCount].textureCoord[1] = static_cast<float>(lCurrentUV[1]);
                     }
+					if (newMesh.mHasTangent)
+					{
+						FbxGeometryElementTangent* leTangent = pMesh->GetElementTangent();
+
+						if (leTangent->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
+						{
+                            FbxVector4 tangnet;
+							switch (leTangent->GetReferenceMode())
+							{
+							case FbxGeometryElement::eDirect:
+								tangnet = leTangent->GetDirectArray().GetAt(lVertexCount);
+                                newMesh.mVertices[lVertexCount].tangent[0] = tangnet[0];
+								newMesh.mVertices[lVertexCount].tangent[1] = tangnet[1];
+								newMesh.mVertices[lVertexCount].tangent[2] = tangnet[2];
+								break;
+							case FbxGeometryElement::eIndexToDirect:
+							{
+								int id = leTangent->GetIndexArray().GetAt(lVertexCount);
+                                tangnet = leTangent->GetDirectArray().GetAt(id);
+								newMesh.mVertices[lVertexCount].tangent[0] = tangnet[0];
+								newMesh.mVertices[lVertexCount].tangent[1] = tangnet[1];
+								newMesh.mVertices[lVertexCount].tangent[2] = tangnet[2];
+                                break;
+							}
+							break;
+							default:
+								break; // other reference modes not shown here!
+							}
+						}
+
+					}
+
+					if (newMesh.mHasBitangent)
+					{
+						FbxGeometryElementBinormal* leBinormal = pMesh->GetElementBinormal();
+
+						if (leBinormal->GetMappingMode() == FbxGeometryElement::eByPolygonVertex)
+						{
+							FbxVector4 Bitangent;
+							switch (leBinormal->GetReferenceMode())
+							{
+							case FbxGeometryElement::eDirect:
+                                Bitangent = leBinormal->GetDirectArray().GetAt(lVertexCount);
+								newMesh.mVertices[lVertexCount].bitangent[0] = Bitangent[0];
+								newMesh.mVertices[lVertexCount].bitangent[1] = Bitangent[1];
+								newMesh.mVertices[lVertexCount].bitangent[2] = Bitangent[2];
+								break;
+							case FbxGeometryElement::eIndexToDirect:
+							{
+								int id = leBinormal->GetIndexArray().GetAt(lVertexCount);
+                                Bitangent = leBinormal->GetDirectArray().GetAt(id);
+								newMesh.mVertices[lVertexCount].bitangent[0] = Bitangent[0];
+								newMesh.mVertices[lVertexCount].bitangent[1] = Bitangent[1];
+								newMesh.mVertices[lVertexCount].bitangent[2] = Bitangent[2];
+							}
+							break;
+							default:
+								break; // other reference modes not shown here!
+							}
+						}
+					}
                 }
             }
             ++lVertexCount;

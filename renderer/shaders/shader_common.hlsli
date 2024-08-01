@@ -3,12 +3,23 @@ struct PSInput
     float4 position : SV_POSITION;
     float4 color : COLOR0;
     float3 normal : NORMAL0;
+    float3 tangent : TANGNET0;
+    float3 bitangent : BITANGNET0;
     float4 normalViewSpace : NORMAL1;
     float3 DirectionalLightDir : COLOR1;
     float3 DirectionalLightColor : COLOR2;
     float4 viewsSpacePos : COLOR3;
     float2 UVCoord : TEXCOORD0;
     float4 shadowCoord : POSITION0;
+};
+
+struct VSInput
+{
+    float4 pos : POSITION;
+    float3 normal : NORMAL;
+    float3 tangent : TANGENT0;
+    float3 bitangent : BINORMAL0;
+    float2 textureCoord : TEXCOORD;
 };
 
 

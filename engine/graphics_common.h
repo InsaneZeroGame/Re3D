@@ -5,7 +5,9 @@ namespace Renderer
 	struct Vertex
 	{
 		std::array<float, 4> pos;
-		std::array<float, 4> normal;
+		std::array<float, 3> normal;
+		std::array<float, 3> tangent;
+		std::array<float, 3> bitangent;
 		std::array<float, 2> textureCoord;
 	};
 

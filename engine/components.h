@@ -9,6 +9,7 @@ constexpr int ROOT_PARA_FRAME_SOURCE_TABLE = 1;//lights,clusters
 constexpr int ROOT_PARA_COMPONENT_DATA = 2;
 constexpr int ROOT_PARA_DIFFUSE_COLOR_TEXTURE = 3;
 constexpr int ROOT_PARA_SHADOW_MAP = 4;
+constexpr int ROOT_PARA_NORMAL_MAP_TEXTURE = 5;
 
 namespace ECS
 {
@@ -37,6 +38,8 @@ namespace ECS
         bool mHasNormal;
         bool mHasUV;
         bool mAllByControlPoint;
+		bool mHasTangent;
+		bool mHasBitangent;
         DirectX::SimpleMath::Vector3 Rotation;
         DirectX::SimpleMath::Vector3 Scale;
         DirectX::SimpleMath::Vector3 Translation;
