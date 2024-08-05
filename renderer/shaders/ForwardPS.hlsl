@@ -142,22 +142,22 @@ float4 main(PSInput input) : SV_TARGET
     float3 normal_normalized = normalize(float3(normalPacked.x, normalPacked.y, normal_z));
     float3x3 tbn = float3x3(normalize(input.tangent), normalize(input.bitangent), normalize(input.normal));
     float3 normalWS = normalize(mul(normal_normalized, tbn));
-    float3 normalVS = mul(float4(normalWS, 0.0f), frameData.ViewMatrix);
+    float3 normalVS = mul(float4(normalWS, 0.0f), frameData.ViewMatrix).xyz;
     float4 diffuseColor = defaultTexture.Sample(defaultSampler, uvCoordFlip);
     //float4 diffuseColor = float4(input.color);
     float4 DirLightViewSpace = mul(float4(input.DirectionalLightDir.xyz, 0.0), frameData.ViewMatrix);
     float3 directionalLight = ApplyLightCommon(
     diffuseColor.xyz,
     diffuseColor.xyz,
-    0, 0, normalVS, input.viewsSpacePos,
-    DirLightViewSpace, input.DirectionalLightColor) * frameData.DirectionalLightDir.w;
+    0, 0, normalVS, input.viewsSpacePos.xyz,
+    DirLightViewSpace.xyz, input.DirectionalLightColor) * frameData.DirectionalLightDir.w;
     //return float4(directionalLight, 1.0f);
     float3 pointLight = float3(0.0,0.0,0.0);
     uint GirdIndex = ComputeLightGridCellIndex(uint2(input.position.xy), input.position.w);
     uint3 GridCoord = ComputeLightGridCellCoordinate(uint2(input.position.xy), input.position.w, 0);
     
     
-    for (int i = 0; i < 256; ++i)
+    for (uint i = 0; i < 256; ++i)
     {
         if ((clusters[GirdIndex].lightMask[i / 32] >> (i % 32)) & 0x1  == 1)
         {

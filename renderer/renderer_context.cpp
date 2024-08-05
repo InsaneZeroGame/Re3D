@@ -83,6 +83,7 @@ std::shared_ptr<Renderer::Resource::ColorBuffer> Renderer::RendererContext::GetR
 		return mBloomRes;
 		break;
 	default:
+		return nullptr;
 		break;
 	}
 }

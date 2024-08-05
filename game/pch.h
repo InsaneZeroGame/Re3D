@@ -16,3 +16,6 @@
 #include <d3d12.h>
 #include <Mouse.h>
 #include <Keyboard.h>
+#include <renderer_common.h>
+#include <future>
+#include <array>

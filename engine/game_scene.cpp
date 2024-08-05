@@ -20,12 +20,12 @@ std::vector<entt::entity> GAS::GameScene::CreateEntitiesWithMesh(const std::stri
 	//Todo: Thread Safe 
     std::vector<ECS::StaticMesh> models;
     AssetLoader::ModelAssetLoader* loader = nullptr;
-    auto extension = std::filesystem::path(InMeshFilePath).extension().string();
+    std::wstring extension = std::filesystem::path(InMeshFilePath).extension().wstring();
     std::transform(extension.begin(), extension.end(), extension.begin(), ::towlower);
-    if (extension == ".obj")
+    if (extension == L".obj")
 	{
         loader = AssetLoader::gObjModelLoader;
-    } else if (extension == ".fbx") {
+    } else if (extension == L".fbx") {
         loader = AssetLoader::gFbxModelLoader;
     }
     models = loader->LoadAssetFromFile(InMeshFilePath);

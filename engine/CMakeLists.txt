@@ -51,6 +51,12 @@ CPMAddPackage(
         GIT_TAG feb2024
 )
 
+CPMAddPackage(
+        NAME spdlog
+        GITHUB_REPOSITORY "gabime/spdlog"
+        GIT_TAG v1.13.0
+)
+
 set(${TARGET}_Headers
             delegates.h
             camera.h

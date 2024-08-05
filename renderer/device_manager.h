@@ -1,6 +1,4 @@
 #pragma once
-#include <queue>
-#include <map>
 #include "gpu_resource.h"
 #include "graphics_common.h"
 

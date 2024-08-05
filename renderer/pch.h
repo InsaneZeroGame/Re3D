@@ -91,6 +91,7 @@
 #include "renderer_context.h"
 #include "PostProcess.h"
 #include <engine.h>
+#include "renderer_common.h"
 
 
 #pragma comment(lib,"dxgi.lib")

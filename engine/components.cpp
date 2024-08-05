@@ -34,7 +34,7 @@ mBaseColor(InMesh.mDiffuseColor)
     Rotate(InMesh.Rotation);
  }
 
-const DirectX::SimpleMath::Matrix& ECS::TransformComponent::GetModelMatrix(bool UploadToGpu /*= true*/) 
+const DirectX::SimpleMath::Matrix ECS::TransformComponent::GetModelMatrix(bool UploadToGpu /*= true*/) 
 {
     //Todo::Move calc to update data.
     mMat =

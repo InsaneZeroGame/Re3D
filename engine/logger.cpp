@@ -8,7 +8,7 @@ void InitLog()
 {
 	try
 	{
-		gLogger = spdlog::basic_logger_mt("engine_logger", "logs/basic-log.txt",true);
+		gLogger = spdlog::basic_logger_mt("engine_logger", "logs/re3d_log.txt",true);
 		spdlog::flush_every(std::chrono::seconds(3));
 		gLogger->info("Re3D Engine Startup");
 		//gLogger = spdlog::stdout_color_mt("console");

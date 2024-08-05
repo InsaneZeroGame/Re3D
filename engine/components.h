@@ -89,7 +89,7 @@ namespace ECS
 	struct TransformComponent : public Component
 	{
         TransformComponent(StaticMesh&& InMesh);
-        const DirectX::SimpleMath::Matrix& GetModelMatrix(bool UploadToGpu = true);
+        const DirectX::SimpleMath::Matrix GetModelMatrix(bool UploadToGpu = true);
         void Translate(const DirectX::SimpleMath::Vector3& InTranslate);
         void Scale(const DirectX::SimpleMath::Vector3& InScale);
         void Rotate(const DirectX::SimpleMath::Vector3& InAngles);

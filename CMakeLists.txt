@@ -5,6 +5,9 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR})
 
+SET(CMAKE_CXX_FLAGS "/wd4996  /EHsc")
+#SET(CMAKE_CXX_FLAGS  "${CMAKE_CXX_FLAGS} /W4")
+
 include(cmake/CPM.cmake)
 
 CPMAddPackage(
@@ -13,11 +16,7 @@ CPMAddPackage(
         GIT_TAG v4.0.0
 )
 
-CPMAddPackage(
-        NAME spdlog
-        GITHUB_REPOSITORY "gabime/spdlog"
-        GIT_TAG v1.13.0
-)
+
 
 CPMAddPackage(
         NAME GLFW

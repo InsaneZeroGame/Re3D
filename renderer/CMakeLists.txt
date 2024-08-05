@@ -15,6 +15,7 @@ set(${TARGET}_Headers
             render_utils.h
             gui.h
             renderer_context.h
+            renderer_common.h
             )
 
 set(${TARGET}_Srcs 
