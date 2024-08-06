@@ -16,6 +16,7 @@ set(${TARGET}_Headers
             gui.h
             renderer_context.h
             renderer_common.h
+            light_cull_pass.h
             )
 
 set(${TARGET}_Srcs 
@@ -26,7 +27,9 @@ set(${TARGET}_Srcs
             gpu_resource.cpp
             device_manager.cpp
             renderer_context.cpp
-            renderer.cpp)
+            renderer.cpp
+            light_cull_pass.cpp
+)
 
 set(${TARGET}_Srcs
             ${${TARGET}_Srcs}

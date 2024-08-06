@@ -34,6 +34,7 @@ Renderer::BaseRenderer::BaseRenderer():
 	CreatePipelineState();
 	CreateRenderTask();
 	mSkyboxPass = std::make_unique<SkyboxPass>(mContext);
+	mLightCullPass = std::make_unique<LightCullPass>(mContext);
 	InitPostProcess();
 }
 
@@ -184,24 +185,18 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			}
 		};
 
-	auto ComputePass = [this]() 
-		{
-			
-		};
-
 	auto ColorPass = [this]()
 		{
 			auto lCurrentBackbufferIndex = mDeviceManager->GetCurrentFrameIndex();
 			auto frameDataIndex = lCurrentBackbufferIndex % SWAP_CHAIN_BUFFER_COUNT;
 
 			ID3D12CommandAllocator* cmdAllcator = mDeviceManager->GetCmdManager()->RequestAllocator(D3D12_COMMAND_LIST_TYPE_COMPUTE, mComputeFenceValue);
-			mComputeCmd->Reset(cmdAllcator, mLightCullPass);
-			mComputeCmd->SetPipelineState(mLightCullPass);
-			mComputeCmd->SetComputeRootSignature(mLightCullPassRootSignature);
+			mComputeCmd->Reset(cmdAllcator, nullptr);
+			mLightCullPass->SetRenderPassStates(mComputeCmd);
 			mComputeCmd->SetComputeRootConstantBufferView(0, mFrameDataGPU[frameDataIndex]->RootConstantBufferView());
 			mComputeCmd->SetComputeRootShaderResourceView(1, mLightBuffer->GetGpuVirtualAddress());
 			mComputeCmd->SetComputeRootUnorderedAccessView(2, mClusterBuffer->GetGpuVirtualAddress());
-			mComputeCmd->Dispatch(CLUSTER_X, CLUSTER_Y, CLUSTER_Z);
+			mLightCullPass->RenderScene(mComputeCmd);
 			ID3D12CommandQueue* queue = mDeviceManager->GetCmdManager()->GetQueue(D3D12_COMMAND_LIST_TYPE_COMPUTE);
 			ID3D12CommandList* lCmds = { mComputeCmd };
 			mComputeCmd->Close();
@@ -416,9 +411,9 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			mGraphicsFenceValue++;
 			mDeviceManager->EndFrame();
 		};
-    auto [depthOnlyPass, skyboxpass, colorPass, postRender, computePass, guiPass ] =
-            mRenderFlow->emplace(DepthOnlyPass, SkyboxPass, ColorPass, PostRender, ComputePass,GuiPass);
-	skyboxpass.succeed(depthOnlyPass, computePass);
+    auto [depthOnlyPass, skyboxpass, colorPass, postRender, guiPass ] =
+            mRenderFlow->emplace(DepthOnlyPass, SkyboxPass, ColorPass, PostRender,GuiPass);
+	skyboxpass.succeed(depthOnlyPass);
 	colorPass.succeed(skyboxpass);
 	guiPass.succeed(colorPass);
 	postRender.succeed(guiPass);
@@ -723,13 +718,6 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	lDesc.RasterizerState.CullMode = D3D12_CULL_MODE_FRONT;
 	g_Device->CreateGraphicsPipelineState(&lDesc, IID_PPV_ARGS(&mPipelineStateShadowMap));
 	mPipelineStateShadowMap->SetName(L"mPipelineStateShadowMap");
-
-	//Compute:Light Cull Pass
-	D3D12_COMPUTE_PIPELINE_STATE_DESC lightCullPassDesc = {};
-	lightCullPassDesc.CS = Utils::ReadShader(L"LightCull.cso");
-	lightCullPassDesc.pRootSignature = mLightCullPassRootSignature;
-	g_Device->CreateComputePipelineState(&lightCullPassDesc, IID_PPV_ARGS(&mLightCullPass));
-	mLightCullPass->SetName(L"mLightCullPass");
 }
 
 void Renderer::BaseRenderer::CreateRootSignature()
@@ -864,40 +852,6 @@ void Renderer::BaseRenderer::CreateRootSignature()
 		D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
 		g_Device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&mColorPassRootSignature));
 	}
-	
-	//Light Cull Pass RS
-	{
-		CD3DX12_ROOT_SIGNATURE_DESC lightCullRootSignatureDesc;
-		D3D12_ROOT_PARAMETER lightBuffer = {};
-		lightBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_SRV;
-		lightBuffer.Descriptor.RegisterSpace = 0;
-		lightBuffer.Descriptor.ShaderRegister = 1;
-		lightBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-		D3D12_ROOT_PARAMETER clusterBuffer = {};
-		clusterBuffer.ParameterType = D3D12_ROOT_PARAMETER_TYPE_UAV;
-		clusterBuffer.Descriptor.RegisterSpace = 0;
-		clusterBuffer.Descriptor.ShaderRegister = 2;
-		clusterBuffer.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-		D3D12_ROOT_PARAMETER lightCullViewData = {};
-		lightCullViewData.ParameterType = D3D12_ROOT_PARAMETER_TYPE_CBV;
-		lightCullViewData.Descriptor.RegisterSpace = 0;
-		lightCullViewData.Descriptor.ShaderRegister = 0;
-		lightCullViewData.ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL;
-
-		std::vector<D3D12_ROOT_PARAMETER> parameters =
-		{
-			lightCullViewData,lightBuffer,clusterBuffer
-		};
-		lightCullRootSignatureDesc.Init((UINT)parameters.size(), parameters.data(), 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_NONE);
-		
-		ID3DBlob* signature;
-		ID3DBlob* error;
-		D3D12SerializeRootSignature(&lightCullRootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
-		g_Device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&mLightCullPassRootSignature));
-	}
-	
 }
 
 void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter, UINT InSubResource)

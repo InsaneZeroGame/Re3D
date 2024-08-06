@@ -1,5 +1,6 @@
 #pragma once
 #include "skybox.h"
+#include "light_cull_pass.h"
 #include <asset_loader.h>
 #include <camera.h>
 #include "game_scene.h"
@@ -84,9 +85,7 @@ namespace Renderer
 		ID3D12PipelineState* mColorPassPipelineState8XMSAA;
 		ID3D12PipelineState* mPipelineStateDepthOnly;
 		ID3D12PipelineState* mPipelineStateShadowMap;
-		ID3D12PipelineState* mLightCullPass;
 		ID3D12RootSignature* mColorPassRootSignature;
-		ID3D12RootSignature* mLightCullPassRootSignature;
 		std::unique_ptr<Gameplay::PerspectCamera> mDefaultCamera;
 		std::unique_ptr<Gameplay::PerspectCamera> mShadowCamera;
 		std::array<FrameData,SWAP_CHAIN_BUFFER_COUNT> mFrameData;
@@ -105,6 +104,8 @@ namespace Renderer
 		std::vector<Cluster> mCLusters;
 		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
 		std::unique_ptr<SkyboxPass> mSkyboxPass;
+		std::unique_ptr<LightCullPass> mLightCullPass;
+
 		std::array<ECS::LigthData, 256> mLights;
 		std::shared_ptr<GAS::GameScene> mCurrentScene;
         HWND mWindow;

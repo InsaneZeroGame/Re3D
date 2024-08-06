@@ -4,11 +4,9 @@
 Renderer::BaseRenderPass::BaseRenderPass(const wchar_t* InVertexShader, const wchar_t* InPixelShader, std::shared_ptr<RendererContext> InGraphicsContext):
 	mPipelineState(nullptr),
 	mRS(nullptr),
-	mUploadBuffer(),
 	mContext(InGraphicsContext)
 {
 	Ensures(g_Device);
-	mUploadBuffer = std::make_unique<DirectX::ResourceUploadBatch>(g_Device);
 	mVertexShader = Utils::ReadShader(InVertexShader);
 	if (InPixelShader)
 	{
