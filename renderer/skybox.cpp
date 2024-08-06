@@ -2,33 +2,89 @@
 #include "obj_model_loader.h"
 
 
-Renderer::Skybox::Skybox():
-	BaseRenderPass(L"SkyboxVS.cso",L"SkyboxPS.cso"),
+Renderer::SkyboxPass::SkyboxPass(std::shared_ptr<RendererContext> InGraphicsContext):
+	BaseRenderPass(L"SkyboxVS.cso",L"SkyboxPS.cso",InGraphicsContext),
 	mStaticMeshComponent(nullptr)
 {
 	using namespace DirectX::DX12;
 	Ensures(g_Device);
+	CreateMesh();
+	CreateRS();
+	CreatePipelineState();
+	CreateTextures();
+}
+
+void Renderer::SkyboxPass::CreateMesh()
+{
 	GeometricPrimitive::VertexCollection vertices;
 	GeometricPrimitive::IndexCollection indices;
 	GeometricPrimitive::CreateBox(vertices, indices, { 1.0f,1.0f,1.0f }, false, false);
 	AssetLoader::ObjModelLoader* objLoader = AssetLoader::gObjModelLoader;
 	auto mesh = objLoader->LoadAssetFromFile("cube.obj");
 	Ensures(!mesh.empty());
-    mStaticMeshComponent = std::make_shared<ECS::StaticMeshComponent>(std::move(mesh[0]));
-	CreateRS();
-	CreatePipelineState();
+	mStaticMeshComponent = std::make_shared<ECS::StaticMeshComponent>(std::move(mesh[0]));
+	mContext->LoadStaticMeshToGpu(*mStaticMeshComponent);
 }
 
-Renderer::Skybox::~Skybox()
+void Renderer::SkyboxPass::CreateTextures()
+{
+	auto textureUploader = std::make_unique<ResourceUploadBatch>(g_Device);
+
+
+	mSkyboxTexture = std::make_shared<Resource::Texture>();
+	auto skybox_bottom = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/bottom.jpg");
+	auto skybox_top = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/top.jpg");
+	auto skybox_front = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/front.jpg");
+	auto skybox_back = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/back.jpg");
+	auto skybox_left = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/left.jpg");
+	auto skybox_right = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/right.jpg");
+
+	Ensures(skybox_bottom.has_value());
+	Ensures(skybox_top.has_value());
+	Ensures(skybox_front.has_value());
+	Ensures(skybox_back.has_value());
+	Ensures(skybox_left.has_value());
+	Ensures(skybox_right.has_value());
+	std::vector<AssetLoader::TextureData*> textures =
+	{
+		skybox_right.value(),
+		skybox_left.value(),
+		skybox_top.value(),
+		skybox_bottom.value(),
+		skybox_front.value(),
+		skybox_back.value()
+	};
+
+	auto RowPitchBytes = textures[0]->mWidth * textures[0]->mComponent;
+	mSkyboxTexture->CreateCube(RowPitchBytes, textures[0]->mWidth, textures[0]->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
+	textureUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
+	int i = 0;
+	std::array<D3D12_SUBRESOURCE_DATA, 6> subResourceData;
+	for (AssetLoader::TextureData* newTexture : textures)
+	{
+		D3D12_SUBRESOURCE_DATA& sourceData = subResourceData[i];
+		sourceData.pData = newTexture->mdata;
+		sourceData.RowPitch = RowPitchBytes;
+		sourceData.SlicePitch = RowPitchBytes * newTexture->mHeight;
+		++i;
+	}
+	textureUploader->Upload(mSkyboxTexture->GetResource(), 0, subResourceData.data(), subResourceData.size());
+	//mBatchUploader->Transition(mSkyboxTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+	textureUploader->End(mContext->GetCmdManager()->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
+}
+
+Renderer::SkyboxPass::~SkyboxPass()
 {
 
 }
 
-void Renderer::Skybox::RenderScene()
+void Renderer::SkyboxPass::RenderScene(ID3D12GraphicsCommandList* InCmdList)
 {
+	mGraphicsCmd->SetGraphicsRootDescriptorTable(1, mSkyboxTexture->GetSRVGpu());
+	DrawObject(*mStaticMeshComponent);
 }
 
-void Renderer::Skybox::CreatePipelineState()
+void Renderer::SkyboxPass::CreatePipelineState()
 {
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC lDesc = {};
 	lDesc.pRootSignature = mRS;
@@ -65,7 +121,7 @@ void Renderer::Skybox::CreatePipelineState()
 	mPipelineState->SetName(L"Skybox PipelineState");
 }
 
-void Renderer::Skybox::CreateRS()
+void Renderer::SkyboxPass::CreateRS()
 {
 	CD3DX12_ROOT_SIGNATURE_DESC lDesc = {};
 
@@ -112,13 +168,17 @@ void Renderer::Skybox::CreateRS()
 	mRS->SetName(L"SkyBox Root Signature");
 }
 
-void Renderer::Skybox::SetEntity(entt::entity InEntity)
+void Renderer::SkyboxPass::SetEntity(entt::entity InEntity)
 {
 }
 
-std::shared_ptr < ECS::StaticMeshComponent> Renderer::Skybox::GetStaticMeshComponent()
+std::shared_ptr < ECS::StaticMeshComponent> Renderer::SkyboxPass::GetStaticMeshComponent()
 {
 	return mStaticMeshComponent;
 }
 
+ID3D12Resource* Renderer::SkyboxPass::GetSkyBoxTexture()
+{
+	return mSkyboxTexture->GetResource();
+}
 

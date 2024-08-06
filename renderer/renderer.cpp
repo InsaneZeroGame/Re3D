@@ -14,7 +14,7 @@ Renderer::BaseRenderer::BaseRenderer():
 	mIsFirstFrame(true),
 	mComputeFence(nullptr),
 	mGraphicsCmd(nullptr),
-	mSkybox(nullptr),
+	mSkyboxPass(nullptr),
 	mComputeFenceValue(1),
 	mCurrentScene(nullptr),
 	mGraphicsFenceValue(1)
@@ -25,7 +25,7 @@ Renderer::BaseRenderer::BaseRenderer():
 	mGraphicsCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COMPUTE);
 	mBatchUploader = std::make_unique<ResourceUploadBatch>(g_Device);
-	mContext = std::make_unique<RendererContext>(mCmdManager);
+	mContext = std::make_shared<RendererContext>(mCmdManager);
 	//Allocate 3 desc for IMGUI.Todo:move this gui,make it transparent to renderer.
 	g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate(3);
 	CreateTextures();
@@ -33,9 +33,8 @@ Renderer::BaseRenderer::BaseRenderer():
 	CreateRootSignature();
 	CreatePipelineState();
 	CreateRenderTask();
-	CreateSkybox();
+	mSkyboxPass = std::make_unique<SkyboxPass>(mContext);
 	InitPostProcess();
-	//GAS::GameScene::sOnNewEntityAdded.push_back(std::bind(&Renderer::BaseRenderer::OnGameSceneUpdated,this,std::placeholders::_1, std::placeholders::_2));
 }
 
 Renderer::BaseRenderer::~BaseRenderer()
@@ -76,7 +75,7 @@ void Renderer::BaseRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGam
 		{
 			auto allStaticMeshComponents = sceneRegistery.view<ECS::StaticMeshComponent>();
 			allStaticMeshComponents.each([this](auto entity, ECS::StaticMeshComponent& renderComponent) {
-				LoadStaticMeshToGpu(renderComponent);
+				mContext->LoadStaticMeshToGpu(renderComponent);
 			});
 			for (auto [textureName, textureData] : mCurrentScene->GetTextureMap())
 			{
@@ -106,15 +105,13 @@ void Renderer::BaseRenderer::CreateRenderTask()
 			}
 			auto frameDataIndex = lCurrentBackbufferIndex % SWAP_CHAIN_BUFFER_COUNT;
 			TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetResource(), D3D12_RESOURCE_STATE_RESOLVE_SOURCE, D3D12_RESOURCE_STATE_RENDER_TARGET);
-			mGraphicsCmd->SetPipelineState(mSkybox->GetPipelineState());
-			mGraphicsCmd->SetGraphicsRootSignature(mSkybox->GetRS());
+			mSkyboxPass->SetRenderPassStates(mGraphicsCmd);
 			mGraphicsCmd->SetGraphicsRootConstantBufferView(0, mFrameDataGPU[frameDataIndex]->RootConstantBufferView());
 			std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 			mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
-			mGraphicsCmd->SetGraphicsRootDescriptorTable(1, mSkyboxTexture->GetSRVGpu());
 			mGraphicsCmd->OMSetRenderTargets(1, &mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetRTV(), true, nullptr);
 			mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[lCurrentBackbufferIndex].GetRTV(), mColorRGBA, 1, &mRect);
-			RenderObject(*mSkybox->GetStaticMeshComponent());
+			mSkyboxPass->RenderScene(mGraphicsCmd);
 		};
 
 	auto DepthOnlyPass = [this]()
@@ -166,7 +163,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
                 renderEntities.each([=](auto entity, auto& renderComponent, auto& transformComponent) {
                     auto modelMatrix = transformComponent.GetModelMatrix();
                     mGraphicsCmd->SetGraphicsRoot32BitConstants(ROOT_PARA_COMPONENT_DATA, 16, &modelMatrix, 0);
-                    RenderObject(renderComponent);
+                    DrawObject(renderComponent);
                 });
 
 				//ShadowMap
@@ -179,7 +176,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 				renderEntities.each([=](auto entity, auto& renderComponent, auto& transformComponent) {
 					auto modelMatrix = transformComponent.GetModelMatrix();
 					mGraphicsCmd->SetGraphicsRoot32BitConstants(ROOT_PARA_COMPONENT_DATA, 16, &modelMatrix, 0);
-					RenderObject(renderComponent);
+					DrawObject(renderComponent);
 					});
 				TransitState(mGraphicsCmd, shadowMap->GetResource(),D3D12_RESOURCE_STATE_DEPTH_WRITE, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 
@@ -543,6 +540,11 @@ std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMateria
 
 }
 
+std::shared_ptr<class Renderer::RendererContext> Renderer::BaseRenderer::GetContext()
+{
+	return mContext;
+}
+
 std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMaterial(std::string_view InTextureName, AssetLoader::TextureData* textureData, const std::wstring& InDebugName /*= L""*/)
 {
 	if (mTextureMap.find(InTextureName.data()) != mTextureMap.end())
@@ -594,53 +596,6 @@ void Renderer::BaseRenderer::DepthOnlyPass(const ECS::StaticMeshComponent& InAss
 
 }
 
-void Renderer::BaseRenderer::CreateSkybox()
-{
-	mSkybox = std::make_unique<Skybox>();
-	LoadStaticMeshToGpu(*mSkybox->GetStaticMeshComponent());
-
-	mSkyboxTexture = std::make_shared<Resource::Texture>();
-	auto skybox_bottom = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/bottom.jpg");
-	auto skybox_top = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/top.jpg");
-	auto skybox_front = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/front.jpg");
-	auto skybox_back = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/back.jpg");
-	auto skybox_left = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/left.jpg");
-	auto skybox_right = AssetLoader::gStbTextureLoader->LoadTextureFromFile("skybox/right.jpg");
-
-	Ensures(skybox_bottom.has_value());
-	Ensures(skybox_top.has_value());
-	Ensures(skybox_front.has_value());
-	Ensures(skybox_back.has_value());
-	Ensures(skybox_left.has_value());
-	Ensures(skybox_right.has_value());
-	std::vector<AssetLoader::TextureData*> textures =
-	{
-		skybox_right.value(),
-		skybox_left.value(),
-		skybox_top.value(),
-		skybox_bottom.value(),
-		skybox_front.value(),
-		skybox_back.value()
-	};
-
-	auto RowPitchBytes = textures[0]->mWidth * textures[0]->mComponent;
-	mSkyboxTexture->CreateCube(RowPitchBytes, textures[0]->mWidth, textures[0]->mHeight, DXGI_FORMAT_R8G8B8A8_UNORM, nullptr);
-	mBatchUploader->Begin(D3D12_COMMAND_LIST_TYPE_COPY);
-	int i = 0;
-	std::array<D3D12_SUBRESOURCE_DATA, 6> subResourceData;
-	for (AssetLoader::TextureData* newTexture : textures)
-	{
-		D3D12_SUBRESOURCE_DATA& sourceData = subResourceData[i];
-		sourceData.pData = newTexture->mdata;
-		sourceData.RowPitch = RowPitchBytes;
-		sourceData.SlicePitch = RowPitchBytes * newTexture->mHeight;
-		++i;
-	}
-	mBatchUploader->Upload(mSkyboxTexture->GetResource(), 0, subResourceData.data(), subResourceData.size());
-	//mBatchUploader->Transition(mSkyboxTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	mBatchUploader->End(mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_COPY));
-}
-
 void Renderer::BaseRenderer::InitPostProcess()
 {
 	using namespace DirectX::DX12;
@@ -685,7 +640,7 @@ void Renderer::BaseRenderer::FirstFrame()
 
 	for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
 	{
-		TransitState(mGraphicsCmd, mSkyboxTexture->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, cubeFace);
+		TransitState(mGraphicsCmd, mSkyboxPass->GetSkyBoxTexture(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, cubeFace);
 	}
 
 	for (auto& texture : mTextureMap)
@@ -945,16 +900,6 @@ void Renderer::BaseRenderer::CreateRootSignature()
 	
 }
 
-void Renderer::BaseRenderer::RenderObject(const ECS::StaticMeshComponent& InAsset)
-{
-	//Render 
-	for (const auto& subMesh : InAsset.mSubMeshes)
-	{
-        mGraphicsCmd->DrawIndexedInstanced((UINT)subMesh.second.TriangleCount * 3, 1, InAsset.StartIndexLocation + subMesh.second.IndexOffset,
-                                           InAsset.BaseVertexLocation, 0);
-	}
-}
-
 void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter, UINT InSubResource)
 {
 	D3D12_RESOURCE_BARRIER barrier = {};
@@ -1007,14 +952,14 @@ void Renderer::BaseRenderer::OnGameSceneUpdated(std::shared_ptr<GAS::GameScene> 
 	}
 }
 
-void Renderer::BaseRenderer::LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent)
+void Renderer::BaseRenderer::DrawObject(const ECS::StaticMeshComponent& InAsset)
 {
-	auto& vertices = InComponent.mVertices;
-	auto& indices = InComponent.mIndices;
-	InComponent.BaseVertexLocation = mContext->GetVertexBufferCpu()->GetOffset();
-	InComponent.StartIndexLocation = mContext->GetIndexBufferCpu()->GetOffset();
-	mContext->UpdateDataToVertexBuffer(vertices);
-	mContext->UpdateDataToIndexBuffer(indices);
+	//Render 
+	for (const auto& subMesh : InAsset.mSubMeshes)
+	{
+		mGraphicsCmd->DrawIndexedInstanced((UINT)subMesh.second.TriangleCount * 3, 1, InAsset.StartIndexLocation + subMesh.second.IndexOffset,
+			InAsset.BaseVertexLocation, 0);
+	}
 }
 
 

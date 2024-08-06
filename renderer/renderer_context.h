@@ -1,5 +1,6 @@
 #pragma once
 #include "BufferHelpers.h"
+#include "components.h"
 
 
 namespace Renderer
@@ -56,7 +57,8 @@ namespace Renderer
 		//std::shared_ptr<Resource::ColorBuffer> GetColorBuffer();
 		//std::shared_ptr<Resource::ColorBuffer> GetColorAttachment0();
 		std::shared_ptr<Resource::ColorBuffer> GetRenderTarget(RenderTarget InTarget);
-
+		std::shared_ptr<class CmdManager> GetCmdManager();
+		void LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent);
 	private:
 		template<typename T>
 		void UploadDataToResource(ID3D12Resource* InDestResource, std::span<T> InData, std::shared_ptr<VertexBufferRenderer<T>> InCpuResource);

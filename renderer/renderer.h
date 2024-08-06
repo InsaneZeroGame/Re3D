@@ -1,6 +1,5 @@
 #pragma once
 #include "skybox.h"
-#include "components.h"
 #include <asset_loader.h>
 #include <camera.h>
 #include "game_scene.h"
@@ -35,10 +34,9 @@ namespace Renderer
 		void Update(float delta);
 		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>>& GetSceneTextureMap();
 		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene);
-		void LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent);
 		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, std::string_view InMatName = {},const std::wstring& InDebugName = L"");
 		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, AssetLoader::TextureData* textureData, const std::wstring& InDebugName = L"");
-
+		std::shared_ptr<class RendererContext> GetContext();
 		//Tone Mapping Settings
 		bool mUseToneMapping = true;
 		float mExposure = 0.0f;
@@ -59,21 +57,21 @@ namespace Renderer
 		void CreateBuffers();
 		void CreateTextures();
 		void DepthOnlyPass(const ECS::StaticMeshComponent& InAsset);
-		void CreateSkybox();
 		void InitPostProcess();
 		virtual void FirstFrame();
 		virtual void PreRender();
 		virtual void PostRender();
 		virtual void CreatePipelineState();
 		virtual void CreateRootSignature();
-		virtual void RenderObject(const ECS::StaticMeshComponent& InAsset);
 		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter,UINT InSubResource = 0);
 		void UpdataFrameData();
 		void OnGameSceneUpdated(std::shared_ptr<GAS::GameScene> InScene, std::span<entt::entity> InNewEntities);
+		virtual void DrawObject(const ECS::StaticMeshComponent& InAsset);
+
 	protected:
 		std::unique_ptr<class DeviceManager> mDeviceManager;
 		std::shared_ptr<class CmdManager> mCmdManager;
-		std::unique_ptr<class RendererContext> mContext;
+		std::shared_ptr<class RendererContext> mContext;
 		bool mIsFirstFrame;
 		uint64_t mComputeFenceValue;
 		uint64_t mGraphicsFenceValue;
@@ -105,9 +103,8 @@ namespace Renderer
 		std::shared_ptr<Resource::UploadBuffer> mLightUploadBuffer;
 		std::unique_ptr<Resource::StructuredBuffer> mClusterBuffer;
 		std::vector<Cluster> mCLusters;
-		std::shared_ptr<Resource::Texture> mSkyboxTexture;
 		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
-		std::unique_ptr<Skybox> mSkybox;
+		std::unique_ptr<SkyboxPass> mSkyboxPass;
 		std::array<ECS::LigthData, 256> mLights;
 		std::shared_ptr<GAS::GameScene> mCurrentScene;
         HWND mWindow;

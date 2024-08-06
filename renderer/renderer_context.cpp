@@ -1,4 +1,6 @@
 #include "renderer_context.h"
+#include "components.h"
+
 const int SHADOW_MAP_WIDTH = 1920;
 const int SHADOW_MAP_HEIGHT = 1080;
 
@@ -86,6 +88,21 @@ std::shared_ptr<Renderer::Resource::ColorBuffer> Renderer::RendererContext::GetR
 		return nullptr;
 		break;
 	}
+}
+
+std::shared_ptr<class Renderer::CmdManager> Renderer::RendererContext::GetCmdManager()
+{
+	return mCmdManager;
+}
+
+void Renderer::RendererContext::LoadStaticMeshToGpu(ECS::StaticMeshComponent& InComponent)
+{
+	auto& vertices = InComponent.mVertices;
+	auto& indices = InComponent.mIndices;
+	InComponent.BaseVertexLocation = GetVertexBufferCpu()->GetOffset();
+	InComponent.StartIndexLocation = GetIndexBufferCpu()->GetOffset();
+	UpdateDataToVertexBuffer(vertices);
+	UpdateDataToIndexBuffer(indices);
 }
 
 std::shared_ptr<Renderer::Resource::DepthBuffer> Renderer::RendererContext::GetDepthBuffer()
