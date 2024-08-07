@@ -214,10 +214,11 @@ bool AssetLoader::FbxLoader::LoadScene(const char* pFilename) {
     {
 		// Convert Axis System to what is used in this example, if needed
 		FbxAxisSystem SceneAxisSystem = mScene->GetGlobalSettings().GetAxisSystem();
-		FbxAxisSystem OurAxisSystem(FbxAxisSystem::eYAxis, FbxAxisSystem::eParityOdd, FbxAxisSystem::eRightHanded);
+        //FbxAxisSystem OurAxisSystem(FbxAxisSystem::eOpenGL);
+		FbxAxisSystem OurAxisSystem(FbxAxisSystem::eYAxis, FbxAxisSystem::eParityOdd, FbxAxisSystem::eLeftHanded);
 		if (SceneAxisSystem != OurAxisSystem)
 		{
-			OurAxisSystem.ConvertScene(mScene);
+			OurAxisSystem.DeepConvertScene(mScene);
 		}
 
 		// Convert Unit System to what is used in this example, if needed
