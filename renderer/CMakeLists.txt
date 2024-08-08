@@ -17,6 +17,8 @@ set(${TARGET}_Headers
             renderer_context.h
             renderer_common.h
             light_cull_pass.h
+            base_renderer.h
+            renderer_dxr.h
             )
 
 set(${TARGET}_Srcs 
@@ -29,6 +31,8 @@ set(${TARGET}_Srcs
             renderer_context.cpp
             renderer.cpp
             light_cull_pass.cpp
+            base_renderer.cpp
+            renderer_dxr.cpp
 )
 
 set(${TARGET}_Srcs

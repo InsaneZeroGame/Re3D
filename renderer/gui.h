@@ -10,11 +10,11 @@ namespace GAS
 }
 namespace Renderer 
 {
-    class BaseRenderer;
+    class ClusterForwardRenderer;
 
     class Gui {
     public:
-        explicit Gui(std::weak_ptr<BaseRenderer> InRenderer);
+        explicit Gui(std::weak_ptr<ClusterForwardRenderer> InRenderer);
         ~Gui();
 
         bool CreateGui(HWND InWindow);
@@ -25,7 +25,7 @@ namespace Renderer
         void SceneMaterials();
 
         void SetCurrentScene(std::shared_ptr<GAS::GameScene> InGameScene);
-        void SetRenderer(std::weak_ptr<BaseRenderer> InRenderer);
+        void SetRenderer(std::weak_ptr<ClusterForwardRenderer> InRenderer);
     private:
         void SceneUpdate();
         void GameSceneUpdate(std::shared_ptr<GAS::GameScene> InGameScene, std::span<entt::entity> InEntities);
@@ -39,7 +39,7 @@ namespace Renderer
         float r[3] = { 0.0f };
         float s[3] = { 0.0f };
         entt::entity mCurrentEntity;
-        std::weak_ptr<BaseRenderer> mRenderer;
+        std::weak_ptr<ClusterForwardRenderer> mRenderer;
         int mMatIndex = -1;
         void AddFile(std::function<void(const std::filesystem::path&)>);
         std::string_view mSelectedMatName;

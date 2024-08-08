@@ -8,9 +8,7 @@
 #include "PostProcess.h"
 #include "GraphicsMemory.h"
 
-Renderer::BaseRenderer::BaseRenderer():
-	mDeviceManager(std::make_unique<DeviceManager>()),
-	mCmdManager(mDeviceManager->GetCmdManager()),
+Renderer::ClusterForwardRenderer::ClusterForwardRenderer():
 	mIsFirstFrame(true),
 	mComputeFence(nullptr),
 	mGraphicsCmd(nullptr),
@@ -24,8 +22,6 @@ Renderer::BaseRenderer::BaseRenderer():
 	mComputeFenceHandle = CreateEvent(nullptr, false, false, nullptr);
 	mGraphicsCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COMPUTE);
-	mBatchUploader = std::make_unique<ResourceUploadBatch>(g_Device);
-	mContext = std::make_shared<RendererContext>(mCmdManager);
 	//Allocate 3 desc for IMGUI.Todo:move this gui,make it transparent to renderer.
 	g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate(3);
 	CreateTextures();
@@ -38,37 +34,27 @@ Renderer::BaseRenderer::BaseRenderer():
 	InitPostProcess();
 }
 
-Renderer::BaseRenderer::~BaseRenderer()
+Renderer::ClusterForwardRenderer::~ClusterForwardRenderer()
 {
 	
 }
 
 
-void Renderer::BaseRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight)
+void Renderer::ClusterForwardRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight)
 {
-    mWindow = InWindow;
-	mWidth = InWidth;
-	mHeight = InHeight;
-	mDeviceManager->SetTargetWindowAndCreateSwapChain(InWindow, InWidth, InHeight);
-	//Use Reverse Z
-	mDefaultCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f,true);
-	mDefaultCamera->LookAt({ 3.0,3.0,2.0 }, { 0.0f,3.0f,0.0f }, { 0.0f,1.0f,0.0f });
-	mShadowCamera = std::make_unique<Gameplay::PerspectCamera>((float)InWidth, (float)InHeight, 0.1f,false);
-	mShadowCamera->LookAt({ -5,25,0.0 }, { 0.0f,0.0f,0.0f }, { 0.0f,1.0f,0.0f });
-	mViewPort = { 0,0,(float)mWidth,(float)mHeight,0.0,1.0 };
-	mRect = { 0,0,mWidth,mHeight };
+	BaseRenderer::SetTargetWindowAndCreateSwapChain(InWindow, InWidth, InHeight);
 	mContext->CreateWindowDependentResource(InWidth, InHeight);
     CreateGui();
 }
 
 
-void Renderer::BaseRenderer::Update(float delta)
+void Renderer::ClusterForwardRenderer::Update(float delta)
 {
 	UpdataFrameData();
 	mRenderExecution->run(*mRenderFlow).wait();
 }
        
-void Renderer::BaseRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene)
+void Renderer::ClusterForwardRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene)
 {
 	mCurrentScene = InGameScene;
 	entt::registry& sceneRegistery = mCurrentScene->GetRegistery();
@@ -86,13 +72,13 @@ void Renderer::BaseRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGam
     mGui->SetCurrentScene(InGameScene);
 }
 
-void Renderer::BaseRenderer::CreateGui() 
+void Renderer::ClusterForwardRenderer::CreateGui() 
 {
     mGui = std::make_shared<Gui>(weak_from_this());
     mGui->CreateGui(mWindow);
 }
 
-void Renderer::BaseRenderer::CreateRenderTask()
+void Renderer::ClusterForwardRenderer::CreateRenderTask()
 {
 	mRenderFlow = std::make_unique<tf::Taskflow>();
 	mRenderExecution = std::make_unique<tf::Executor>();
@@ -421,7 +407,7 @@ void Renderer::BaseRenderer::CreateRenderTask()
 
 
 
-void Renderer::BaseRenderer::CreateBuffers()
+void Renderer::ClusterForwardRenderer::CreateBuffers()
 {
 
 	for (auto i = 0 ; i < SWAP_CHAIN_BUFFER_COUNT ; ++i)
@@ -496,14 +482,14 @@ void Renderer::BaseRenderer::CreateBuffers()
 	mClusterBuffer->Create(L"ClusterBuffer", (UINT32)mCLusters.size(), sizeof(Cluster));
 }
 
-void Renderer::BaseRenderer::CreateTextures()
+void Renderer::ClusterForwardRenderer::CreateTextures()
 {
 	std::shared_ptr<Resource::Texture> defaultTexture =  LoadMaterial("uvmap.png", "defaultTexture",L"Diffuse");
 	std::shared_ptr<Resource::Texture> defaultNormalTexture = LoadMaterial("T_Flat_Normal.PNG", "defaultNormal",L"Normal");
 
 }
 
-std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMaterial(std::string_view InTextureName, std::string_view InMatName,const std::wstring& InDebugName)
+std::shared_ptr<Renderer::Resource::Texture> Renderer::ClusterForwardRenderer::LoadMaterial(std::string_view InTextureName, std::string_view InMatName,const std::wstring& InDebugName)
 {
 	auto newTextureData = AssetLoader::gStbTextureLoader->LoadTextureFromFile(InTextureName);
 	if (!newTextureData.has_value())
@@ -535,12 +521,12 @@ std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMateria
 
 }
 
-std::shared_ptr<class Renderer::RendererContext> Renderer::BaseRenderer::GetContext()
+std::shared_ptr<class Renderer::RendererContext> Renderer::ClusterForwardRenderer::GetContext()
 {
 	return mContext;
 }
 
-std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMaterial(std::string_view InTextureName, AssetLoader::TextureData* textureData, const std::wstring& InDebugName /*= L""*/)
+std::shared_ptr<Renderer::Resource::Texture> Renderer::ClusterForwardRenderer::LoadMaterial(std::string_view InTextureName, AssetLoader::TextureData* textureData, const std::wstring& InDebugName /*= L""*/)
 {
 	if (mTextureMap.find(InTextureName.data()) != mTextureMap.end())
 	{
@@ -580,18 +566,18 @@ std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMateria
 	return newTexture;
 }
 
-std::unordered_map<std::string, std::shared_ptr<Renderer::Resource::Texture>>& Renderer::BaseRenderer::GetSceneTextureMap()
+std::unordered_map<std::string, std::shared_ptr<Renderer::Resource::Texture>>& Renderer::ClusterForwardRenderer::GetSceneTextureMap()
 {
 	return mTextureMap;
 }
 
-void Renderer::BaseRenderer::DepthOnlyPass(const ECS::StaticMeshComponent& InAsset)
+void Renderer::ClusterForwardRenderer::DepthOnlyPass(const ECS::StaticMeshComponent& InAsset)
 {
 	
 
 }
 
-void Renderer::BaseRenderer::InitPostProcess()
+void Renderer::ClusterForwardRenderer::InitPostProcess()
 {
 	using namespace DirectX::DX12;
 
@@ -619,7 +605,7 @@ void Renderer::BaseRenderer::InitPostProcess()
 	//mImageBlit = std::make_unique<BasicPostProcess>(g_Device, imageBlit, BasicPostProcess::Copy);
 }
 
-void Renderer::BaseRenderer::FirstFrame()
+void Renderer::ClusterForwardRenderer::FirstFrame()
 {
 	TransitState(mGraphicsCmd, mContext->GetShadowMap()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 	TransitState(mGraphicsCmd, mLightUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
@@ -650,17 +636,17 @@ void Renderer::BaseRenderer::FirstFrame()
 	mFrameData[0].InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
 }
 
-void Renderer::BaseRenderer::PreRender()
+void Renderer::ClusterForwardRenderer::PreRender()
 {
 
 }
 
-void Renderer::BaseRenderer::PostRender()
+void Renderer::ClusterForwardRenderer::PostRender()
 {
 
 }
 
-void Renderer::BaseRenderer::CreatePipelineState()
+void Renderer::ClusterForwardRenderer::CreatePipelineState()
 {
 	//Color Pass pipeline state
 	D3D12_GRAPHICS_PIPELINE_STATE_DESC lDesc = {};
@@ -720,7 +706,7 @@ void Renderer::BaseRenderer::CreatePipelineState()
 	mPipelineStateShadowMap->SetName(L"mPipelineStateShadowMap");
 }
 
-void Renderer::BaseRenderer::CreateRootSignature()
+void Renderer::ClusterForwardRenderer::CreateRootSignature()
 {
 	//Color Pass RS
 	{
@@ -854,7 +840,7 @@ void Renderer::BaseRenderer::CreateRootSignature()
 	}
 }
 
-void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter, UINT InSubResource)
+void Renderer::ClusterForwardRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter, UINT InSubResource)
 {
 	D3D12_RESOURCE_BARRIER barrier = {};
 	barrier.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
@@ -866,7 +852,7 @@ void Renderer::BaseRenderer::TransitState(ID3D12GraphicsCommandList* InCmd, ID3D
 	InCmd->ResourceBarrier(1, &barrier);
 }
 
-void Renderer::BaseRenderer::UpdataFrameData()
+void Renderer::ClusterForwardRenderer::UpdataFrameData()
 {
 	auto frameDataCpuIndex = mFrameIndexCpu % SWAP_CHAIN_BUFFER_COUNT;
 
@@ -894,7 +880,7 @@ void Renderer::BaseRenderer::UpdataFrameData()
 	mFrameIndexCpu++;
 }
 
-void Renderer::BaseRenderer::OnGameSceneUpdated(std::shared_ptr<GAS::GameScene> InScene, std::span<entt::entity> InNewEntities)
+void Renderer::ClusterForwardRenderer::OnGameSceneUpdated(std::shared_ptr<GAS::GameScene> InScene, std::span<entt::entity> InNewEntities)
 {
 	if (InScene == mCurrentScene)
 	{
@@ -906,7 +892,7 @@ void Renderer::BaseRenderer::OnGameSceneUpdated(std::shared_ptr<GAS::GameScene> 
 	}
 }
 
-void Renderer::BaseRenderer::DrawObject(const ECS::StaticMeshComponent& InAsset)
+void Renderer::ClusterForwardRenderer::DrawObject(const ECS::StaticMeshComponent& InAsset)
 {
 	//Render 
 	for (const auto& subMesh : InAsset.mSubMeshes)

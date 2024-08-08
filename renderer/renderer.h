@@ -4,6 +4,7 @@
 #include <asset_loader.h>
 #include <camera.h>
 #include "game_scene.h"
+#include "base_renderer.h"
 
 
 namespace tf
@@ -26,15 +27,15 @@ namespace DirectX
 
 namespace Renderer
 {
-	class BaseRenderer : public std::enable_shared_from_this<BaseRenderer>
+	class ClusterForwardRenderer : public std::enable_shared_from_this<ClusterForwardRenderer>,public BaseRenderer
 	{
 	public:
-		BaseRenderer();
-		virtual ~BaseRenderer();
-		void SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight);
-		void Update(float delta);
+		ClusterForwardRenderer();
+		virtual ~ClusterForwardRenderer();
+		void SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight) override;
+		void Update(float delta) override;
 		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>>& GetSceneTextureMap();
-		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene);
+		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene) override;
 		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, std::string_view InMatName = {},const std::wstring& InDebugName = L"");
 		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, AssetLoader::TextureData* textureData, const std::wstring& InDebugName = L"");
 		std::shared_ptr<class RendererContext> GetContext();
@@ -70,9 +71,6 @@ namespace Renderer
 		virtual void DrawObject(const ECS::StaticMeshComponent& InAsset);
 
 	protected:
-		std::unique_ptr<class DeviceManager> mDeviceManager;
-		std::shared_ptr<class CmdManager> mCmdManager;
-		std::shared_ptr<class RendererContext> mContext;
 		bool mIsFirstFrame;
 		uint64_t mComputeFenceValue;
 		uint64_t mGraphicsFenceValue;
@@ -86,29 +84,23 @@ namespace Renderer
 		ID3D12PipelineState* mPipelineStateDepthOnly;
 		ID3D12PipelineState* mPipelineStateShadowMap;
 		ID3D12RootSignature* mColorPassRootSignature;
-		std::unique_ptr<Gameplay::PerspectCamera> mDefaultCamera;
-		std::unique_ptr<Gameplay::PerspectCamera> mShadowCamera;
+		
 		std::array<FrameData,SWAP_CHAIN_BUFFER_COUNT> mFrameData;
 		std::array<std::shared_ptr<Resource::UploadBuffer>,SWAP_CHAIN_BUFFER_COUNT> mFrameDataCPU;
 		std::array<std::unique_ptr<Resource::VertexBuffer>,SWAP_CHAIN_BUFFER_COUNT> mFrameDataGPU;
-		int mWidth;
-		int mHeight;
 		std::unique_ptr<class tf::Taskflow> mRenderFlow;
 		std::unique_ptr<class tf::Executor> mRenderExecution;
-		D3D12_VIEWPORT mViewPort;
-		D3D12_RECT mRect;
+		
 		float mColorRGBA[4] = { 0.15f,0.25f,0.75f,1.0f };
 		std::unique_ptr<Resource::StructuredBuffer> mLightBuffer;
 		std::shared_ptr<Resource::UploadBuffer> mLightUploadBuffer;
 		std::unique_ptr<Resource::StructuredBuffer> mClusterBuffer;
 		std::vector<Cluster> mCLusters;
-		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
 		std::unique_ptr<SkyboxPass> mSkyboxPass;
 		std::unique_ptr<LightCullPass> mLightCullPass;
 
 		std::array<ECS::LigthData, 256> mLights;
 		std::shared_ptr<GAS::GameScene> mCurrentScene;
-        HWND mWindow;
         std::shared_ptr<class Gui> mGui;
         bool mHasSkybox = true;
         std::future<void> mLoadResourceFuture;
