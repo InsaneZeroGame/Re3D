@@ -60,11 +60,15 @@ namespace Renderer
 		ID3D12CommandAllocator* RequestAllocator(D3D12_COMMAND_LIST_TYPE InType, uint64_t CompletedFenceValue);
 		ID3D12CommandQueue* GetQueue(D3D12_COMMAND_LIST_TYPE InType);
 		void Discard(D3D12_COMMAND_LIST_TYPE InType,ID3D12CommandAllocator* cmdAllocator,uint64_t InFenceValue);
+		void FlushCmds(D3D12_COMMAND_LIST_TYPE InType,std::span<ID3D12CommandList*> InCmds);
 	private:
 		ID3D12Device* mDevice = nullptr;
 		std::vector<ID3D12GraphicsCommandList*> mCmdLists;
 		std::map<D3D12_COMMAND_LIST_TYPE, std::unique_ptr<CommandAllocatorPool>> mAllocatorMap;
 		std::map<D3D12_COMMAND_LIST_TYPE, ID3D12CommandQueue*> mQueueMap;
+		ID3D12Fence* mFence;
+		uint64_t mFenceValue = 1;
+		HANDLE mFenceWaitEvent;
 	};
 
 	class DeviceManager

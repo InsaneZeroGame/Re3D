@@ -1,7 +1,6 @@
 #pragma once
 #include "skybox.h"
 #include "light_cull_pass.h"
-#include <asset_loader.h>
 #include <camera.h>
 #include "game_scene.h"
 #include "base_renderer.h"
@@ -36,8 +35,6 @@ namespace Renderer
 		void Update(float delta) override;
 		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>>& GetSceneTextureMap();
 		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene) override;
-		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, std::string_view InMatName = {},const std::wstring& InDebugName = L"");
-		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, AssetLoader::TextureData* textureData, const std::wstring& InDebugName = L"");
 		std::shared_ptr<class RendererContext> GetContext();
 		//Tone Mapping Settings
 		bool mUseToneMapping = true;
@@ -65,7 +62,6 @@ namespace Renderer
 		virtual void PostRender();
 		virtual void CreatePipelineState();
 		virtual void CreateRootSignature();
-		void TransitState(ID3D12GraphicsCommandList* InCmd,ID3D12Resource* InResource, D3D12_RESOURCE_STATES InBefore, D3D12_RESOURCE_STATES InAfter,UINT InSubResource = 0);
 		void UpdataFrameData();
 		void OnGameSceneUpdated(std::shared_ptr<GAS::GameScene> InScene, std::span<entt::entity> InNewEntities);
 		virtual void DrawObject(const ECS::StaticMeshComponent& InAsset);
@@ -73,7 +69,6 @@ namespace Renderer
 	protected:
 		bool mIsFirstFrame;
 		uint64_t mComputeFenceValue;
-		uint64_t mGraphicsFenceValue;
 		HANDLE mComputeFenceHandle;
 		ID3D12Fence* mComputeFence;
 		ID3D12GraphicsCommandList* mComputeCmd;
@@ -100,11 +95,8 @@ namespace Renderer
 		std::unique_ptr<LightCullPass> mLightCullPass;
 
 		std::array<ECS::LigthData, 256> mLights;
-		std::shared_ptr<GAS::GameScene> mCurrentScene;
         std::shared_ptr<class Gui> mGui;
         bool mHasSkybox = true;
-        std::future<void> mLoadResourceFuture;
-		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>> mTextureMap;
 
 		std::shared_ptr<Resource::StructuredBuffer> mDummyBuffer;
 		int mFrameIndexCpu = 0;

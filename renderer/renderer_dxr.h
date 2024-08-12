@@ -3,7 +3,7 @@
 
 namespace Renderer
 {
-	class DXRRenderer :public std::enable_shared_from_this<DXRRenderer>,public BaseRenderer
+	class DXRRenderer final:public std::enable_shared_from_this<DXRRenderer>,public BaseRenderer
 	{
 	public:
 		DXRRenderer();
@@ -19,6 +19,6 @@ namespace Renderer
 		void Update(float delta) override;
 
 	private:
-
+		ID3D12GraphicsCommandList4* mGraphicsCmd;
 	};
 }

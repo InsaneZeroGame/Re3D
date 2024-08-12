@@ -280,12 +280,20 @@ void Renderer::DeviceManager::SetTargetWindowAndCreateSwapChain(HWND InWindow, i
 void Renderer::DeviceManager::BeginFrame()
 {
 	//Wait for preview frame done
+	if (!s_SwapChain1)
+	{
+		return;
+	}
 	mCurrentBackbufferIndex = static_cast<IDXGISwapChain4*>(s_SwapChain1)->GetCurrentBackBufferIndex();
 	WaitForSingleObject(mFrameDoneEvent, INFINITE);
 }
 
 void Renderer::DeviceManager::EndFrame()
 {
+	if (!s_SwapChain1)
+	{
+		return;
+	}
 	mCmdManager->GetQueue(D3D12_COMMAND_LIST_TYPE_DIRECT)->Signal(mFrameFence, mFrameFenceValue);
 	mFrameFence->SetEventOnCompletion(mFrameFenceValue, mFrameDoneEvent);
 	mFrameFenceValue++;
@@ -379,6 +387,8 @@ Renderer::CmdManager::CmdManager(ID3D12Device* InDevice):
 		mDevice->CreateCommandQueue(&queueDesc, IID_PPV_ARGS(&queue));
 		mQueueMap.try_emplace(type, queue);
 	}
+	g_Device->CreateFence(0, D3D12_FENCE_FLAGS::D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mFence));
+	mFenceWaitEvent = CreateEvent(nullptr, false, false, nullptr);
 }
 
 Renderer::CmdManager::~CmdManager()
@@ -409,6 +419,15 @@ ID3D12CommandQueue* Renderer::CmdManager::GetQueue(D3D12_COMMAND_LIST_TYPE InTyp
 void Renderer::CmdManager::Discard(D3D12_COMMAND_LIST_TYPE InType, ID3D12CommandAllocator* cmdAllocator, uint64_t InFenceValue)
 {
 	mAllocatorMap[InType]->DiscardAllocator(InFenceValue, cmdAllocator);
+}
+
+void Renderer::CmdManager::FlushCmds(D3D12_COMMAND_LIST_TYPE InType,std::span<ID3D12CommandList*> InCmds)
+{
+	auto* queue = GetQueue(InType);
+	queue->ExecuteCommandLists(InCmds.size(), InCmds.data());
+	queue->Signal(mFence, mFenceValue);
+	WaitForSingleObject(mFenceWaitEvent, INFINITE);
+	mFenceValue++;
 }
 
 Renderer::CommandAllocatorPool::CommandAllocatorPool(D3D12_COMMAND_LIST_TYPE Type):

@@ -20,15 +20,16 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
 	//Game Scene 
 	std::shared_ptr<GAS::GameScene> newScene = std::make_shared<GAS::GameScene>();
 	//1.Renderer
-	//std::shared_ptr<Renderer::ClusterForwardRenderer> renderer = std::make_shared<Renderer::ClusterForwardRenderer>();
-	std::shared_ptr<Renderer::DXRRenderer> renderer = std::make_shared<Renderer::DXRRenderer>();
+	std::shared_ptr<Renderer::ClusterForwardRenderer> renderer = std::make_shared<Renderer::ClusterForwardRenderer>();
+	//std::shared_ptr<Renderer::DXRRenderer> renderer = std::make_shared<Renderer::DXRRenderer>();
 
 	//2.Window
     Window::gMainWindow = new Window::Win32NavtiveWindow(WINDOW_WIDTH, WINDOW_HEIGHT, hInstance, nCmdShow);
 	//3.Bind renderer and window
 	renderer->SetTargetWindowAndCreateSwapChain((HWND)Window::gMainWindow->GetNativeWindow(), Window::gMainWindow->GetWidth(), Window::gMainWindow->GetHeight());
     renderer->LoadGameScene(newScene);
-	Window::gMainWindow->SetRenderFunc(std::bind(&Renderer::DXRRenderer::Update,renderer.get(), std::placeholders::_1));
+	Window::gMainWindow->SetRenderFunc(std::bind(&Renderer::ClusterForwardRenderer::Update, renderer.get(), std::placeholders::_1));
+	//Window::gMainWindow->SetRenderFunc(std::bind(&Renderer::DXRRenderer::Update,renderer.get(), std::placeholders::_1));
 	//4.Window Message Loop
 	Window::gMainWindow->WindowLoop();
 	delete Window::gMainWindow;
