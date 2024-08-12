@@ -33,25 +33,10 @@ namespace Renderer
 		virtual ~ClusterForwardRenderer();
 		void SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight) override;
 		void Update(float delta) override;
-		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>>& GetSceneTextureMap();
 		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene) override;
-		std::shared_ptr<class RendererContext> GetContext();
-		//Tone Mapping Settings
-		bool mUseToneMapping = true;
-		float mExposure = 0.0f;
-
-		//Bloom Settings
-		float mBloomThreshold = 0.25;
-		float mBloomBlurKernelSize = 4.0f;
-		float mBloomBrightness = 1.0f;
-		float mbloomIntensity = 0.0f;
-		float mbaseIntensity = 1.0f;
-		float mbloomSaturation = 1.0f;
-		float mbloomBaseSaturation = 1.0f;
-		std::array<float, 3> mSunLightDir = {1.0,1.0,1.0};
-		float mSunLightIntensity = 1.0;
+		
 	protected:
-        void CreateGui();
+        //void CreateGui();
 		void CreateRenderTask();
 		void CreateBuffers();
 		void CreateTextures();
@@ -65,7 +50,6 @@ namespace Renderer
 		void UpdataFrameData();
 		void OnGameSceneUpdated(std::shared_ptr<GAS::GameScene> InScene, std::span<entt::entity> InNewEntities);
 		virtual void DrawObject(const ECS::StaticMeshComponent& InAsset);
-
 	protected:
 		bool mIsFirstFrame;
 		uint64_t mComputeFenceValue;
@@ -95,7 +79,6 @@ namespace Renderer
 		std::unique_ptr<LightCullPass> mLightCullPass;
 
 		std::array<ECS::LigthData, 256> mLights;
-        std::shared_ptr<class Gui> mGui;
         bool mHasSkybox = true;
 
 		std::shared_ptr<Resource::StructuredBuffer> mDummyBuffer;

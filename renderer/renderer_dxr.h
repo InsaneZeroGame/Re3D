@@ -9,12 +9,10 @@ namespace Renderer
 		DXRRenderer();
 		~DXRRenderer();
 
-
 		void SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight) override;
 
 
 		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene) override;
-
 
 		void Update(float delta) override;
 

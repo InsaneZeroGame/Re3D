@@ -5,7 +5,7 @@
 
 namespace Renderer
 {
-	class BaseRenderer
+	class BaseRenderer 
 	{
 	public:
 		BaseRenderer();
@@ -24,6 +24,25 @@ namespace Renderer
 		
 		std::shared_ptr<Resource::Texture> LoadMaterial(std::string_view InTextureName, AssetLoader::TextureData* textureData, const std::wstring& InDebugName = L"");
 
+		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>>& GetSceneTextureMap();
+
+		std::shared_ptr<class RendererContext> GetContext();
+
+	public:
+		//Tone Mapping Settings
+		bool mUseToneMapping = true;
+		float mExposure = 0.0f;
+
+		//Bloom Settings
+		float mBloomThreshold = 0.25;
+		float mBloomBlurKernelSize = 4.0f;
+		float mBloomBrightness = 1.0f;
+		float mbloomIntensity = 0.0f;
+		float mbaseIntensity = 1.0f;
+		float mbloomSaturation = 1.0f;
+		float mbloomBaseSaturation = 1.0f;
+		std::array<float, 3> mSunLightDir = { 1.0,1.0,1.0 };
+		float mSunLightIntensity = 1.0;
 	protected:
 		int mWidth;
 		int mHeight;
@@ -40,6 +59,7 @@ namespace Renderer
 		std::shared_ptr<GAS::GameScene> mCurrentScene;
 		std::future<void> mLoadResourceFuture;
 		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>> mTextureMap;
+		std::shared_ptr<class Gui> mGui;
 
 	};
 }

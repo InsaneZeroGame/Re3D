@@ -1,4 +1,5 @@
 #include "base_renderer.h"
+#include "gui.h"
 
 Renderer::BaseRenderer::BaseRenderer():
 	mDeviceManager(std::make_unique<DeviceManager>()),
@@ -8,7 +9,7 @@ Renderer::BaseRenderer::BaseRenderer():
 	mGraphicsFenceValue(1),
 	mCurrentScene(nullptr)
 {
-
+	
 }
 
 Renderer::BaseRenderer::~BaseRenderer()
@@ -94,6 +95,16 @@ std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMateria
 		mTextureMap[std::filesystem::path(InTextureName).filename().string()] = newTexture;
 	}
 	return newTexture;
+}
+
+std::unordered_map<std::string, std::shared_ptr<Renderer::Resource::Texture>>& Renderer::BaseRenderer::GetSceneTextureMap()
+{
+	return mTextureMap;
+}
+
+std::shared_ptr<Renderer::RendererContext> Renderer::BaseRenderer::GetContext()
+{
+	return mContext;
 }
 
 std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMaterial(std::string_view InTextureName, AssetLoader::TextureData* textureData, const std::wstring& InDebugName /*= L""*/)

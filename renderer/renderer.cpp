@@ -3,12 +3,13 @@
 #include "utility.h"
 #include <camera.h>
 #include "components.h"
-#include "gui.h"
 #include "renderer_context.h"
 #include "PostProcess.h"
 #include "GraphicsMemory.h"
+#include "gui.h"
 
 Renderer::ClusterForwardRenderer::ClusterForwardRenderer():
+	BaseRenderer(),
 	mIsFirstFrame(true),
 	mComputeFence(nullptr),
 	mGraphicsCmd(nullptr),
@@ -20,8 +21,7 @@ Renderer::ClusterForwardRenderer::ClusterForwardRenderer():
 	mComputeFenceHandle = CreateEvent(nullptr, false, false, nullptr);
 	mGraphicsCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT);
 	mComputeCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COMPUTE);
-	//Allocate 3 desc for IMGUI.Todo:move this gui,make it transparent to renderer.
-	g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->Allocate(3);
+	
 	CreateTextures();
 	CreateBuffers();
 	CreateRootSignature();
@@ -42,7 +42,8 @@ void Renderer::ClusterForwardRenderer::SetTargetWindowAndCreateSwapChain(HWND In
 {
 	BaseRenderer::SetTargetWindowAndCreateSwapChain(InWindow, InWidth, InHeight);
 	mContext->CreateWindowDependentResource(InWidth, InHeight);
-    CreateGui();
+	mGui = std::make_shared<Gui>(weak_from_this());
+	mGui->CreateGui(mWindow);
 }
 
 
@@ -56,12 +57,6 @@ void Renderer::ClusterForwardRenderer::LoadGameScene(std::shared_ptr<GAS::GameSc
 {
 	BaseRenderer::LoadGameScene(InGameScene);
     mGui->SetCurrentScene(InGameScene);
-}
-
-void Renderer::ClusterForwardRenderer::CreateGui() 
-{
-    mGui = std::make_shared<Gui>(weak_from_this());
-    mGui->CreateGui(mWindow);
 }
 
 void Renderer::ClusterForwardRenderer::CreateRenderTask()
@@ -475,16 +470,6 @@ void Renderer::ClusterForwardRenderer::CreateTextures()
 
 }
 
-std::shared_ptr<class Renderer::RendererContext> Renderer::ClusterForwardRenderer::GetContext()
-{
-	return mContext;
-}
-
-
-std::unordered_map<std::string, std::shared_ptr<Renderer::Resource::Texture>>& Renderer::ClusterForwardRenderer::GetSceneTextureMap()
-{
-	return mTextureMap;
-}
 
 void Renderer::ClusterForwardRenderer::DepthOnlyPass(const ECS::StaticMeshComponent& InAsset)
 {

@@ -4,7 +4,7 @@
 #include "renderer.h"
 #include <commdlg.h>
 
-Renderer::Gui::Gui(std::weak_ptr<ClusterForwardRenderer> InRenderer):
+Renderer::Gui::Gui(std::weak_ptr<BaseRenderer> InRenderer):
     mRenderer(InRenderer)
 {
   
@@ -124,7 +124,7 @@ void Renderer::Gui::SetCurrentScene(std::shared_ptr<GAS::GameScene> InGameScene)
 	GAS::GameScene::sOnNewEntityAdded.push_back(std::bind(&Gui::GameSceneUpdate, this, std::placeholders::_1, std::placeholders::_2));
 }
 
-void Renderer::Gui::SetRenderer(std::weak_ptr<ClusterForwardRenderer> InRenderer)
+void Renderer::Gui::SetRenderer(std::weak_ptr<BaseRenderer> InRenderer)
 {
     mRenderer = InRenderer;
 }
