@@ -50,5 +50,6 @@ endif()
 add_subdirectory(engine)
 add_subdirectory(renderer)
 add_subdirectory(game)
+add_subdirectory(game_dxr)
 
 

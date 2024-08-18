@@ -74,6 +74,7 @@ set(${TARGET}_Headers
             fbx_loader.h
             logger.h
             engine.h
+            window.h
 )
 
 set(${TARGET}_Srcs 
@@ -90,6 +91,7 @@ set(${TARGET}_Srcs
             fbx_loader.cpp  
             logger.cpp    
             engine.cpp
+            window.cpp
 )
 
 set(${TARGET}_Srcs
