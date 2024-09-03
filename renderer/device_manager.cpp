@@ -401,8 +401,6 @@ ID3D12GraphicsCommandList* Renderer::CmdManager::AllocateCmdList(D3D12_COMMAND_L
 	ID3D12GraphicsCommandList* newCmdList;
 	g_Device->CreateCommandList1(0, InType, D3D12_COMMAND_LIST_FLAG_NONE, IID_PPV_ARGS(&newCmdList));
 	return newCmdList;
-
-	
 }
 
 ID3D12CommandAllocator* Renderer::CmdManager::RequestAllocator(D3D12_COMMAND_LIST_TYPE InType, uint64_t CompletedFenceValue)
@@ -426,8 +424,22 @@ void Renderer::CmdManager::FlushCmds(D3D12_COMMAND_LIST_TYPE InType,std::span<ID
 	auto* queue = GetQueue(InType);
 	queue->ExecuteCommandLists(InCmds.size(), InCmds.data());
 	queue->Signal(mFence, mFenceValue);
+	mFence->SetEventOnCompletion(mFenceValue, mFenceWaitEvent);
 	WaitForSingleObject(mFenceWaitEvent, INFINITE);
 	mFenceValue++;
+}
+
+void Renderer::CmdManager::AllocateCmdAndFlush(D3D12_COMMAND_LIST_TYPE InType, std::function<void(ID3D12GraphicsCommandList*)> RecordCmdCallBack /*= nullptr*/)
+{
+	ID3D12GraphicsCommandList* lcmd = AllocateCmdList(InType);
+	ID3D12CommandAllocator* lAllocator = RequestAllocator(InType,mFenceValue);
+	lAllocator->Reset();
+	lcmd->Reset(lAllocator, nullptr);
+	RecordCmdCallBack(lcmd);
+	lcmd->Close();
+	ID3D12CommandList* lcmds[] = { lcmd };
+	FlushCmds(InType, lcmds);
+	Discard(InType, lAllocator, mFenceValue);
 }
 
 Renderer::CommandAllocatorPool::CommandAllocatorPool(D3D12_COMMAND_LIST_TYPE Type):

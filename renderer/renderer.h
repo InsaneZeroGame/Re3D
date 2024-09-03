@@ -50,6 +50,7 @@ namespace Renderer
 		void UpdataFrameData();
 		void OnGameSceneUpdated(std::shared_ptr<GAS::GameScene> InScene, std::span<entt::entity> InNewEntities);
 		virtual void DrawObject(const ECS::StaticMeshComponent& InAsset);
+		void PrepairForRendering();
 	protected:
 		bool mIsFirstFrame;
 		uint64_t mComputeFenceValue;

@@ -44,6 +44,7 @@ void Renderer::ClusterForwardRenderer::SetTargetWindowAndCreateSwapChain(HWND In
 	mContext->CreateWindowDependentResource(InWidth, InHeight);
 	mGui = std::make_shared<Gui>(weak_from_this());
 	mGui->CreateGui(mWindow);
+	PrepairForRendering();
 }
 
 
@@ -461,6 +462,7 @@ void Renderer::ClusterForwardRenderer::CreateBuffers()
 	mClusterBuffer = std::make_unique<Resource::StructuredBuffer>();
 	mCLusters.resize(CLUSTER_X * CLUSTER_Y * CLUSTER_Z);
 	mClusterBuffer->Create(L"ClusterBuffer", (UINT32)mCLusters.size(), sizeof(Cluster));
+
 }
 
 void Renderer::ClusterForwardRenderer::CreateTextures()
@@ -507,28 +509,7 @@ void Renderer::ClusterForwardRenderer::InitPostProcess()
 
 void Renderer::ClusterForwardRenderer::FirstFrame()
 {
-	TransitState(mGraphicsCmd, mContext->GetShadowMap()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	TransitState(mGraphicsCmd, mLightUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-	TransitState(mGraphicsCmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-	mGraphicsCmd->CopyResource(mLightBuffer->GetResource(), mLightUploadBuffer->GetResource());
-	TransitState(mGraphicsCmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
-	TransitState(mGraphicsCmd, mContext->GetDepthBuffer()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
-	TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
-	TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_RESOLVED)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::BLUR_HALF)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::BLUR_QUAT)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
-	TransitState(mGraphicsCmd, mContext->GetRenderTarget(RenderTarget::BLOOM_RES)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
-
-	for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
-	{
-		TransitState(mGraphicsCmd, mSkyboxPass->GetSkyBoxTexture(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, cubeFace);
-	}
-
-	for (auto& texture : mTextureMap)
-	{
-		TransitState(mGraphicsCmd, texture.second->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-	}
-
+	
 	auto gridParas = Utils::GetLightGridZParams(mDefaultCamera->GetFar(), mDefaultCamera->GetNear());
 	mFrameData[0].LightGridZParams = SimpleMath::Vector4(gridParas.x,gridParas.y, gridParas.z,0.0f);
 	mFrameData[0].ClipToView = mDefaultCamera->GetClipToView();
@@ -792,5 +773,35 @@ void Renderer::ClusterForwardRenderer::DrawObject(const ECS::StaticMeshComponent
 	}
 }
 
+void Renderer::ClusterForwardRenderer::PrepairForRendering()
+{
+
+	mCmdManager->AllocateCmdAndFlush(D3D12_COMMAND_LIST_TYPE_DIRECT, [=](ID3D12GraphicsCommandList* lcmd)
+		{
+			TransitState(lcmd, mContext->GetShadowMap()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			TransitState(lcmd, mLightUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
+			TransitState(lcmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
+			lcmd->CopyResource(mLightBuffer->GetResource(), mLightUploadBuffer->GetResource());
+			TransitState(lcmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
+			TransitState(lcmd, mContext->GetDepthBuffer()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
+			TransitState(lcmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
+			TransitState(lcmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_RESOLVED)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			TransitState(lcmd, mContext->GetRenderTarget(RenderTarget::BLUR_HALF)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			TransitState(lcmd, mContext->GetRenderTarget(RenderTarget::BLUR_QUAT)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
+			TransitState(lcmd, mContext->GetRenderTarget(RenderTarget::BLOOM_RES)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RENDER_TARGET);
+
+			for (size_t cubeFace = 0; cubeFace < 6; cubeFace++)
+			{
+				TransitState(lcmd, mSkyboxPass->GetSkyBoxTexture(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE, cubeFace);
+			}
+
+			for (auto& texture : mTextureMap)
+			{
+				TransitState(lcmd, texture.second->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
+			}
+		});
+
+
+}
 
 
