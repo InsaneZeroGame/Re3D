@@ -1,5 +1,4 @@
 #pragma once
-
 using ROTATION_AXIS = DirectX::SimpleMath::Vector3;
 const ROTATION_AXIS X_AXIS = DirectX::SimpleMath::Vector3(1.0f,0.0f,0.0f);
 const ROTATION_AXIS Y_AXIS = DirectX::SimpleMath::Vector3(0.0f, 1.0f, 0.0f);
@@ -58,6 +57,16 @@ namespace ECS
         std::string mName;
 	};
 
+	// Meshlet structure
+	struct Meshlet
+	{
+		std::vector<DirectX::XMFLOAT3> vertices;
+		std::vector<uint32_t> indices;
+		DirectX::XMFLOAT3 boundingSphereCenter;
+		float boundingSphereRadius;
+	};
+
+
 	struct StaticMeshComponent : public Component
 	{
 		std::vector<Renderer::Vertex> mVertices;
@@ -74,6 +83,61 @@ namespace ECS
 		MaterialName MatName;
 		MaterialName NormalMap;
 		std::string mName;
+
+		std::vector<Meshlet> ConvertToMeshlets(const std::vector<Renderer::Vertex>& vertices, const std::vector<int>& indices, size_t maxVerticesPerMeshlet, size_t maxIndicesPerMeshlet)
+		{
+			std::vector<Meshlet> meshlets;
+
+			size_t vertexCount = vertices.size();
+			size_t indexCount = indices.size();
+
+			for (size_t i = 0; i < indexCount; i += maxIndicesPerMeshlet)
+			{
+				Meshlet meshlet;
+
+				size_t currentIndexCount = std::min(maxIndicesPerMeshlet, indexCount - i);
+				for (size_t j = 0; j < currentIndexCount; ++j)
+				{
+					uint32_t index = indices[i + j];
+					meshlet.indices.push_back(index);
+					meshlet.vertices.push_back(
+						DirectX::XMFLOAT3(
+							vertices[index].pos[0],
+							vertices[index].pos[1],
+							vertices[index].pos[2])
+					);
+				}
+
+				// Calculate bounding sphere (simplified example)
+				DirectX::XMFLOAT3 center = { 0.0f, 0.0f, 0.0f };
+				float radius = 0.0f;
+				for (const auto& vertex : meshlet.vertices)
+				{
+					center.x += vertex.x;
+					center.y += vertex.y;
+					center.z += vertex.z;
+				}
+				center.x /= meshlet.vertices.size();
+				center.y /= meshlet.vertices.size();
+				center.z /= meshlet.vertices.size();
+
+				for (const auto& vertex : meshlet.vertices)
+				{
+					float distance = sqrtf((vertex.x - center.x) * (vertex.x - center.x) +
+						(vertex.y - center.y) * (vertex.y - center.y) +
+						(vertex.z - center.z) * (vertex.z - center.z));
+					radius = std::max(radius, distance);
+				}
+
+				meshlet.boundingSphereCenter = center;
+				meshlet.boundingSphereRadius = radius;
+
+				meshlets.push_back(meshlet);
+			}
+
+			return meshlets;
+		}
+
 	};
 
 	struct LightComponent : public Component
