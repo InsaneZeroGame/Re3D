@@ -159,7 +159,7 @@ float4 main(PSInput input) : SV_TARGET
     
     for (uint i = 0; i < 256; ++i)
     {
-        if ((clusters[GirdIndex].lightMask[i / 32] >> (i % 32)) & 0x1  == 1)
+        if (((clusters[GirdIndex].lightMask[i / 32] >> (i % 32)) & 0x1) == 1)
         {
             float4 lightViewSpace = mul(lights[i].pos, frameData.ViewMatrix);
             float4 lightDir = lightViewSpace - input.viewsSpacePos;

@@ -8,6 +8,7 @@ Renderer::DXRRenderer::DXRRenderer()
 		&options5, sizeof(options5)) == S_OK);
 	Ensures(options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0);
 	mGraphicsCmd = static_cast<ID3D12GraphicsCommandList4*>(mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT));
+	mMeshShaderPass = std::make_shared<MeshShaderPass>(L"MeshShader.cso", L"SimplePS.cso", mContext);
 }
 
 Renderer::DXRRenderer::~DXRRenderer()
@@ -25,6 +26,8 @@ void Renderer::DXRRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, int
 
 void Renderer::DXRRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene)
 {
+	BaseRenderer::LoadGameScene(InGameScene);
+	mGui->SetCurrentScene(InGameScene);
 }
 
 void Renderer::DXRRenderer::Update(float delta)
@@ -39,7 +42,9 @@ void Renderer::DXRRenderer::Update(float delta)
 	mGraphicsCmd->ClearRenderTargetView(g_DisplayPlane[lCurrentFrameIndex].GetRTV(),clearColor, 0, nullptr);
 	std::vector<ID3D12DescriptorHeap*> heaps = { g_DescHeap[D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV]->GetDescHeap() };
 	mGraphicsCmd->SetDescriptorHeaps((UINT)heaps.size(), heaps.data());
-
+	mGraphicsCmd->RSSetViewports(1, &mViewPort);
+	mGraphicsCmd->RSSetScissorRects(1, &mRect);
+	mMeshShaderPass->RenderScene(mGraphicsCmd);
 	mGui->BeginGui();
 	mGui->Render();
 	mGui->EndGui(mGraphicsCmd);

@@ -145,7 +145,7 @@ void main(
     float BoxDistanceSq = ComputeSquaredDistanceFromBoxToPoint(ViewTileCenter, ViewTileExtent, ViewSpaceLightPosition);
     if (BoxDistanceSq < LightRadius * LightRadius)
     {
-        InterlockedOr(clusters[clusterID].lightMask[GroupThreadId.y], (0x1 << GroupThreadId.x));
+        InterlockedOr(clusters[clusterID].lightMask[GroupThreadId.y], (0x1U << GroupThreadId.x));
     }
    
 }

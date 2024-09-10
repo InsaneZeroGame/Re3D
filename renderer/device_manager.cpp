@@ -8,7 +8,7 @@ constexpr static bool RequireDXRSupport = true;
 static bool g_bTypedUAVLoadSupport_R11G11B10_FLOAT = false;
 static bool g_bTypedUAVLoadSupport_R16G16B16A16_FLOAT = false;
 constexpr int MAX_DESC_NUM = 1024;
-bool useDebug = false;
+bool useDebug = true;
 
 // Check adapter support for DirectX Ray tracing.
 bool IsDirectXRaytracingSupported(ID3D12Device* testDevice)

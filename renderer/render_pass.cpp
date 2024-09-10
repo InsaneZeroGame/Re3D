@@ -23,7 +23,23 @@ void Renderer::BaseRenderPass::SetRenderPassStates(ID3D12GraphicsCommandList* In
 {
 	mGraphicsCmd = InCmdList;
 	mGraphicsCmd->SetPipelineState(mPipelineState);
-	mGraphicsCmd->SetGraphicsRootSignature(mRS);
+	if (mRS)
+	{
+		mGraphicsCmd->SetGraphicsRootSignature(mRS);
+	}
+}
+
+void Renderer::BaseRenderPass::CreateRS()
+{
+	// Create an empty root signature.
+	CD3DX12_ROOT_SIGNATURE_DESC rootSignatureDesc;
+	rootSignatureDesc.Init(0, nullptr, 0, nullptr, D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT);
+
+	ID3DBlob* signature;
+	ID3DBlob* error;
+	D3D12SerializeRootSignature(&rootSignatureDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error);
+	g_Device->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(), IID_PPV_ARGS(&mRS));
+
 }
 
 void Renderer::BaseRenderPass::DrawObject(const ECS::StaticMeshComponent& InAsset)

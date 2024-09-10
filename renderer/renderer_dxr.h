@@ -1,5 +1,6 @@
 #pragma once
 #include "base_renderer.h"
+#include "mesh_shader_pass.h"
 
 namespace Renderer
 {
@@ -18,5 +19,6 @@ namespace Renderer
 
 	private:
 		ID3D12GraphicsCommandList4* mGraphicsCmd;
+		std::shared_ptr<MeshShaderPass> mMeshShaderPass;
 	};
 }
