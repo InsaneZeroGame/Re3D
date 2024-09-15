@@ -2,6 +2,18 @@
 
 namespace Renderer
 {
+	struct MeshShaderConstants
+	{
+		DirectX::SimpleMath::Matrix mModelMatrix;
+		uint32_t mMeshletCount;
+		uint32_t mMeshletOffset;
+	};
+	constexpr int MESH_VERTEX_ROOT_PARAMETER_INDEX = 0;
+	constexpr int MESH_CONSTANTS_ROOT_PARAMETER_INDEX = 1;
+	constexpr int MESH_FRAME_DATA_ROOT_PARAMETER_INDEX = 2;
+	constexpr int MESH_CONSTANTS_32BITS_NUM = sizeof(MeshShaderConstants) / 4;
+	
+
 	class MeshShaderPass : public BaseRenderPass
 	{
 	public:
@@ -17,8 +29,7 @@ namespace Renderer
 		void CreateRS() override;
 
 	private:
-		ID3D12Resource* vertexBuffer;
-		D3D12_VERTEX_BUFFER_VIEW vertexBufferView = {};
+		
 
 	};
 }

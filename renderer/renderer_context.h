@@ -50,10 +50,10 @@ namespace Renderer
 		std::shared_ptr<Resource::VertexBuffer> GetVertexBuffer();
 		std::shared_ptr<Resource::VertexBuffer> GetIndexBuffer();
 		std::shared_ptr<VertexBufferRenderer<Vertex>> GetVertexBufferCpu();
-		std::shared_ptr<VertexBufferRenderer<int>> GetIndexBufferCpu();
+		std::shared_ptr<VertexBufferRenderer<uint32_t>> GetIndexBufferCpu();
 		void CreateWindowDependentResource(int InWindowWidth, int InWindowHeight);
 		void UpdateDataToVertexBuffer(std::span<Vertex> InData);
-		void UpdateDataToIndexBuffer(std::span<int> InData);
+		void UpdateDataToIndexBuffer(std::span<uint32_t> InData);
 		//std::shared_ptr<Resource::ColorBuffer> GetColorBuffer();
 		//std::shared_ptr<Resource::ColorBuffer> GetColorAttachment0();
 		std::shared_ptr<Resource::ColorBuffer> GetRenderTarget(RenderTarget InTarget);
@@ -68,7 +68,7 @@ namespace Renderer
 		std::shared_ptr<Resource::VertexBuffer> mVertexBuffer;
 		std::shared_ptr<Resource::VertexBuffer> mIndexBuffer;
 		std::shared_ptr<VertexBufferRenderer<Vertex>> mVertexBufferCpu;
-		std::shared_ptr<VertexBufferRenderer<int>> mIndexBufferCpu;
+		std::shared_ptr<VertexBufferRenderer<uint32_t>> mIndexBufferCpu;
 		std::shared_ptr<Resource::DepthBuffer> mDepthBuffer;
 		std::shared_ptr<Resource::DepthBuffer> mShadowMap;
 		std::shared_ptr<Resource::ColorBuffer> mColorBufferMSAA;

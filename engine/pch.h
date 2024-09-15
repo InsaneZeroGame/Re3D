@@ -23,3 +23,5 @@
 #include <span>
 #include "logger.h"
 #include <algorithm>
+#include "DirectXMesh.h"
+

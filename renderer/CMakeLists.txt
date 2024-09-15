@@ -63,7 +63,7 @@ set_property(SOURCE shaders/ForwardVS.hlsl PROPERTY VS_SHADER_MODEL 6.5)
 set_property(SOURCE shaders/ForwardPS.hlsl PROPERTY VS_SHADER_MODEL 6.5)
 set_property(SOURCE shaders/LightCull.hlsl PROPERTY VS_SHADER_MODEL 6.5)
 set_property(SOURCE shaders/SkyboxVS.hlsl PROPERTY VS_SHADER_MODEL 6.5)
-set_property(SOURCE shaders/SkyboxVS.hlsl PROPERTY VS_SHADER_MODEL 6.5)
+set_property(SOURCE shaders/SkyboxPS.hlsl PROPERTY VS_SHADER_MODEL 6.5)
 set_property(SOURCE shaders/ShadowMap.hlsl PROPERTY VS_SHADER_MODEL 6.5)
 set_property(SOURCE shaders/SimplePS.hlsl PROPERTY VS_SHADER_MODEL 6.5)
 
@@ -84,7 +84,7 @@ endif()
 function(compile_shader SHADER_FILE ENTRY_POINT TARGET_PROFILE OUTPUT_FILE)
     add_custom_command(
         OUTPUT ${OUTPUT_FILE}
-        COMMAND ${DXC_PATH} -T ${TARGET_PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_FILE} ${SHADER_FILE}
+        COMMAND ${DXC_PATH} -T ${TARGET_PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_FILE} -Zi -Qembed_debug ${SHADER_FILE}
         DEPENDS ${SHADER_FILE}
         COMMENT "Compiling ${SHADER_FILE} to ${OUTPUT_FILE}"
     )

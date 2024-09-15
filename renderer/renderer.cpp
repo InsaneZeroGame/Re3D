@@ -391,74 +391,7 @@ void Renderer::ClusterForwardRenderer::CreateRenderTask()
 
 void Renderer::ClusterForwardRenderer::CreateBuffers()
 {
-
-	for (auto i = 0 ; i < SWAP_CHAIN_BUFFER_COUNT ; ++i)
-	{
-		mFrameDataCPU[i] = std::make_shared<Resource::UploadBuffer>();
-		mFrameDataCPU[i]->Create(L"FrameData", sizeof(FrameData));
-
-		mFrameDataGPU[i] = std::make_unique<Resource::VertexBuffer>();
-		mFrameDataGPU[i]->Create(L"FrameData", 1, sizeof(FrameData),D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-
-		mFrameData[i].DirectionalLightColor = SimpleMath::Vector4(1.0f, 1.0f, 1.0f, 1.0);
-		mFrameData[i].DirectionalLightDir = SimpleMath::Vector3(1.0, 10.0, 12.0);
-		mFrameData[i].SunLightIntensity = 1.0;
-
-	}
-
-	mLightUploadBuffer = std::make_shared<Resource::UploadBuffer>();
-	mLightUploadBuffer->Create(L"LightUploadBuffer", sizeof(ECS::LigthData) * mLights.size());
-
-	float size = 65.0f;
-	
-	for (auto& light : mLights)
-	{
-		light.pos.x = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
-		light.pos.y = float(rand()) / RAND_MAX;
-		light.pos.z = ((float(rand()) / RAND_MAX) - 0.5f) * 2.0f;
-	
-		light.pos.x *= size;
-		light.pos.y *= 15.0;
-		light.pos.z *= size;
-		light.pos.w = 1.0f;
-	
-		light.color.x = float(rand()) / RAND_MAX;
-		light.color.y = float(rand()) / RAND_MAX;
-		light.color.z = float(rand()) / RAND_MAX;
-		light.radius_attenu.x = 55.0f;
-		//light.radius_attenu.y = float(rand()) * 1.2f / RAND_MAX;
-		light.radius_attenu.z = float(rand()) * 1.2f / RAND_MAX;
-		light.radius_attenu.w = float(rand()) * 1.2f / RAND_MAX;
-	}
-
-	//mLights[0].pos = { 0.0, 1.0, 0.0, 1.0f };
-	//mLights[0].radius_attenu = { 20.0, 0.0, 0.0, 1.0f };
-	//mLights[0].color = {1.0f,0.0f,0.0f,1.0f};
-
-	//mLights[1].pos = { -5.0, 0.0, 0.0, 1.0f };
-	//mLights[1].radius_attenu = { 200.0, 0.0, 0.0, 1.0f };
-	//mLights[1].color = { 0.0f,1.0f,0.0f,1.0f };
-	//
-	//mLights[3].pos = { 0.0, 0.0, 5.0, 1.0f };
-	//mLights[3].radius_attenu = { 50.0, 0.0, 0.0, 1.0f };
-	//mLights[3].color = { 1.0f,1.0f,0.0f,1.0f };
-	//
-	//mLights[2].pos = { 5.0, 0.0, 0.0, 1.0f };
-	//mLights[2].radius_attenu = { 10.0, 0.0, 0.0, 1.0f };
-	//mLights[2].color = { 1.0f,1.0f,1.0f,1.0f };
-	
-
-	//
-	mLightUploadBuffer->UploadData<ECS::LigthData>(mLights);
-
-	//mDummyBuffer = std::make_unique<Resource::StructuredBuffer>();
-	//mDummyBuffer->Create(L"Dummy", 1, sizeof(uint8_t), nullptr);
-	//mDummyBuffer->CreateSRV();
-
-	//FrameResource Table
-	mLightBuffer = std::make_unique<Resource::StructuredBuffer>();
-	mLightBuffer->Create(L"LightBuffer", (UINT32)mLights.size(), sizeof(ECS::LigthData));
-
+	BaseRenderer::CreateBuffers();
 	mClusterBuffer = std::make_unique<Resource::StructuredBuffer>();
 	mCLusters.resize(CLUSTER_X * CLUSTER_Y * CLUSTER_Z);
 	mClusterBuffer->Create(L"ClusterBuffer", (UINT32)mCLusters.size(), sizeof(Cluster));
@@ -468,8 +401,7 @@ void Renderer::ClusterForwardRenderer::CreateBuffers()
 void Renderer::ClusterForwardRenderer::CreateTextures()
 {
 	std::shared_ptr<Resource::Texture> defaultTexture =  LoadMaterial("uvmap.png", "defaultTexture",L"Diffuse");
-	std::shared_ptr<Resource::Texture> defaultNormalTexture = LoadMaterial("T_Flat_Normal.PNG", "defaultNormal",L"Normal");
-
+	std::shared_ptr<Resource::Texture> defaultNormalTexture = LoadMaterial("uvmap.png", "defaultNormal",L"Normal");
 }
 
 
@@ -509,12 +441,7 @@ void Renderer::ClusterForwardRenderer::InitPostProcess()
 
 void Renderer::ClusterForwardRenderer::FirstFrame()
 {
-	
-	auto gridParas = Utils::GetLightGridZParams(mDefaultCamera->GetFar(), mDefaultCamera->GetNear());
-	mFrameData[0].LightGridZParams = SimpleMath::Vector4(gridParas.x,gridParas.y, gridParas.z,0.0f);
-	mFrameData[0].ClipToView = mDefaultCamera->GetClipToView();
-	mFrameData[0].ViewMatrix = mDefaultCamera->GetView();
-	mFrameData[0].InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
+	BaseRenderer::FirstFrame();
 }
 
 void Renderer::ClusterForwardRenderer::PreRender()
@@ -725,30 +652,7 @@ void Renderer::ClusterForwardRenderer::CreateRootSignature()
 
 void Renderer::ClusterForwardRenderer::UpdataFrameData()
 {
-	auto frameDataCpuIndex = mFrameIndexCpu % SWAP_CHAIN_BUFFER_COUNT;
-
-	auto gridParas = Utils::GetLightGridZParams(mDefaultCamera->GetNear(), mDefaultCamera->GetFar());
-	mFrameData[frameDataCpuIndex].PrjView = mDefaultCamera->GetPrjView();
-	mFrameData[frameDataCpuIndex].View = mDefaultCamera->GetView();
-	mFrameData[frameDataCpuIndex].Prj = mDefaultCamera->GetPrj();
-	mFrameData[frameDataCpuIndex].ShadowViewMatrix = mShadowCamera->GetView();
-	mFrameData[frameDataCpuIndex].ShadowViewPrjMatrix = mShadowCamera->GetPrjView();
-	mFrameData[frameDataCpuIndex].NormalMatrix = mDefaultCamera->GetNormalMatrix();
-	mFrameData[frameDataCpuIndex].DirectionalLightDir.x = mSunLightDir[0];
-	mFrameData[frameDataCpuIndex].DirectionalLightDir.y = mSunLightDir[1];
-	mFrameData[frameDataCpuIndex].DirectionalLightDir.z = mSunLightDir[2];
-	mFrameData[frameDataCpuIndex].SunLightIntensity = mSunLightIntensity;
-	mFrameData[frameDataCpuIndex].DirectionalLightDir.Normalize();
-	mFrameData[frameDataCpuIndex].LightGridZParams.x = gridParas.x;
-	mFrameData[frameDataCpuIndex].LightGridZParams.y = gridParas.y;
-	mFrameData[frameDataCpuIndex].LightGridZParams.z = gridParas.z;
-	mFrameData[frameDataCpuIndex].ViewSizeAndInvSize = SimpleMath::Vector4((float)mWidth, (float)mHeight, 1.0f / (float)mWidth, 1.0f / (float)mHeight);
-	mFrameData[frameDataCpuIndex].ClipToView = mDefaultCamera->GetClipToView();
-	mFrameData[frameDataCpuIndex].ViewMatrix = mDefaultCamera->GetView();
-	mFrameData[frameDataCpuIndex].InvDeviceZToWorldZTransform = Utils::CreateInvDeviceZToWorldZTransform(mDefaultCamera->GetPrj(false));
-	mFrameDataCPU[frameDataCpuIndex]->UpdataData<FrameData>(mFrameData[frameDataCpuIndex]);
-	//Advance CPU Frame Index
-	mFrameIndexCpu++;
+	BaseRenderer::UpdataFrameData();
 }
 
 void Renderer::ClusterForwardRenderer::OnGameSceneUpdated(std::shared_ptr<GAS::GameScene> InScene, std::span<entt::entity> InNewEntities)
@@ -775,14 +679,10 @@ void Renderer::ClusterForwardRenderer::DrawObject(const ECS::StaticMeshComponent
 
 void Renderer::ClusterForwardRenderer::PrepairForRendering()
 {
-
+	BaseRenderer::PrepairForRendering();
 	mCmdManager->AllocateCmdAndFlush(D3D12_COMMAND_LIST_TYPE_DIRECT, [=](ID3D12GraphicsCommandList* lcmd)
 		{
 			TransitState(lcmd, mContext->GetShadowMap()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
-			TransitState(lcmd, mLightUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
-			TransitState(lcmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);
-			lcmd->CopyResource(mLightBuffer->GetResource(), mLightUploadBuffer->GetResource());
-			TransitState(lcmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_ALL_SHADER_RESOURCE);
 			TransitState(lcmd, mContext->GetDepthBuffer()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);
 			TransitState(lcmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_MSAA)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_RESOLVE_SOURCE);
 			TransitState(lcmd, mContext->GetRenderTarget(RenderTarget::COLOR_OUTPUT_RESOLVED)->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);

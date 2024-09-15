@@ -16,7 +16,11 @@ CPMAddPackage(
         GIT_TAG v4.0.0
 )
 
-
+CPMAddPackage(
+        NAME DirectXMesh
+        GITHUB_REPOSITORY "microsoft/DirectXMesh"
+        GIT_TAG sep2024
+)
 
 CPMAddPackage(
         NAME GLFW

@@ -1,4 +1,6 @@
 #include "components.h"
+#include <span>
+#include <d3d12.h>
 
 ECS::System::System()
 {
@@ -24,6 +26,45 @@ mMatNormalMapName(InMesh.mMatNormalMapName),
 mBaseColor(InMesh.mDiffuseColor)
 {
 	
+}
+
+
+
+HRESULT ECS::StaticMeshComponent::ConvertToMeshlets(size_t maxVerticesPerMeshlet, size_t maxIndicesPerMeshlet)
+{
+    // Convert vertices to DirectXMesh format
+	mMeshletsVertices.resize(mVertices.size());
+    for (size_t i = 0; i < mVertices.size(); ++i) {
+        mMeshletsVertices[i].x = mVertices[i].pos[0];
+        mMeshletsVertices[i].y = mVertices[i].pos[1];
+        mMeshletsVertices[i].z = mVertices[i].pos[2];
+
+    }
+
+    // Generate meshlets using DirectXMesh
+    std::vector<uint8_t> uniqueVertexIB;
+
+    HRESULT hr = DirectX::ComputeMeshlets(
+        mIndices.data(),
+        mIndices.size()/3,
+        mMeshletsVertices.data(),
+        mMeshletsVertices.size(),
+        nullptr,
+        mMeshlets,
+        uniqueVertexIB,
+        mMeshletPrimditives,
+        maxVerticesPerMeshlet,
+        maxIndicesPerMeshlet
+    );
+    size_t vertIndices = uniqueVertexIB.size() / sizeof(uint32_t);
+    mMeshletsIndices = std::vector<uint32_t>(reinterpret_cast<uint32_t*>(uniqueVertexIB.data()),
+        reinterpret_cast<uint32_t*>(uniqueVertexIB.data() + uniqueVertexIB.size()));
+
+    if (FAILED(hr)) {
+        // Handle error
+        return hr;
+    }
+    return S_OK;
 }
 
  ECS::TransformComponent::TransformComponent(StaticMesh&& InMesh) : 

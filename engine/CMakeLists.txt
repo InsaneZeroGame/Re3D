@@ -99,6 +99,6 @@ set(${TARGET}_Srcs
             pch.h pch.cpp)
 
 add_library(${TARGET} ${${TARGET}_Headers} ${${TARGET}_Srcs} )
-target_link_libraries(${TARGET} GSL spdlog glfw DirectXTK12 EnTT fbxsdk)
+target_link_libraries(${TARGET} GSL spdlog glfw DirectXTK12 EnTT fbxsdk DirectXMesh)
 fbx_target_finalize(${TARGET})
 target_precompile_headers(${TARGET} PRIVATE pch.h)

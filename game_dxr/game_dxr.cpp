@@ -28,7 +28,6 @@ int WINAPI wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE /*hPrevInstance
 	std::shared_ptr<Renderer::ClusterForwardRenderer> renderer = std::make_shared<Renderer::ClusterForwardRenderer>();
 #endif // USE_DXR_RENDERER
 
-
 	//2.Window
     Window::gMainWindow = new Window::Win32NavtiveWindow(WINDOW_WIDTH, WINDOW_HEIGHT, hInstance, nCmdShow);
 	//3.Bind renderer and window

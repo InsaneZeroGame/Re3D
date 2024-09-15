@@ -1,4 +1,6 @@
 #pragma once
+#include <DirectXMesh.h>
+
 using ROTATION_AXIS = DirectX::SimpleMath::Vector3;
 const ROTATION_AXIS X_AXIS = DirectX::SimpleMath::Vector3(1.0f,0.0f,0.0f);
 const ROTATION_AXIS Y_AXIS = DirectX::SimpleMath::Vector3(0.0f, 1.0f, 0.0f);
@@ -27,7 +29,7 @@ namespace ECS
 	struct StaticMesh
 	{
 		std::vector<Renderer::Vertex> mVertices;
-		std::vector<int> mIndices;
+		std::vector<uint32_t> mIndices;
         //std::vector<SubMesh> mSubmeshMap;
         std::unordered_map<MaterialIndex, SubMesh> mSubmeshMap;
 		std::unordered_map<MaterialIndex, std::string> mMatBaseColorName;
@@ -58,19 +60,24 @@ namespace ECS
 	};
 
 	// Meshlet structure
-	struct Meshlet
-	{
-		std::vector<DirectX::XMFLOAT3> vertices;
-		std::vector<uint32_t> indices;
-		DirectX::XMFLOAT3 boundingSphereCenter;
-		float boundingSphereRadius;
-	};
+    static constexpr size_t MAX_VERTICES = 64; // Example size
+    static constexpr size_t MAX_INDICES = 126; // Example size
+	//struct MeshletInternal
+	//{
+    //    //std::array<DirectX::XMFLOAT3, MAX_VERTICES> vertices;
+    //    //std::array<uint32_t, MAX_INDICES> indices;
+    //    uint32_t vertexCount = 0;
+    //    uint32_t primitiveCount = 0;
+    //    DirectX::XMFLOAT3 boundingSphereCenter;
+    //    float boundingSphereRadius;
+	//};
 
 
 	struct StaticMeshComponent : public Component
 	{
+		
 		std::vector<Renderer::Vertex> mVertices;
-		std::vector<int> mIndices;
+		std::vector<uint32_t> mIndices;
 		UINT mVertexCount;
 		UINT mIndexCount;
 		UINT StartIndexLocation;
@@ -83,60 +90,28 @@ namespace ECS
 		MaterialName MatName;
 		MaterialName NormalMap;
 		std::string mName;
+		uint32_t mMeshletOffset = 0;
 
-		std::vector<Meshlet> ConvertToMeshlets(const std::vector<Renderer::Vertex>& vertices, const std::vector<int>& indices, size_t maxVerticesPerMeshlet, size_t maxIndicesPerMeshlet)
-		{
-			std::vector<Meshlet> meshlets;
+		std::vector<DirectX::Meshlet> mMeshlets;
+		std::vector<DirectX::XMFLOAT3> mMeshletsVertices;
+		std::vector<DirectX::MeshletTriangle> mMeshletPrimditives;
+		std::vector<uint32_t> mMeshletsIndices;
+		HRESULT ConvertToMeshlets(size_t maxVerticesPerMeshlet, size_t maxIndicesPerMeshlet);
 
-			size_t vertexCount = vertices.size();
-			size_t indexCount = indices.size();
 
-			for (size_t i = 0; i < indexCount; i += maxIndicesPerMeshlet)
-			{
-				Meshlet meshlet;
+		// New member variables for resources and SRVs
+		ID3D12Resource* mMeshletsBuffer;
+		ID3D12Resource* mMeshletsVerticesBuffer;
+		ID3D12Resource* mMeshletsIndicesBuffer;
+		ID3D12Resource* mMeshletsPrimitivesBuffer;
 
-				size_t currentIndexCount = std::min(maxIndicesPerMeshlet, indexCount - i);
-				for (size_t j = 0; j < currentIndexCount; ++j)
-				{
-					uint32_t index = indices[i + j];
-					meshlet.indices.push_back(index);
-					meshlet.vertices.push_back(
-						DirectX::XMFLOAT3(
-							vertices[index].pos[0],
-							vertices[index].pos[1],
-							vertices[index].pos[2])
-					);
-				}
+		D3D12_CPU_DESCRIPTOR_HANDLE mMeshletsSRV;
+		D3D12_CPU_DESCRIPTOR_HANDLE mMeshletsVerticesSRV;
+		D3D12_CPU_DESCRIPTOR_HANDLE mMeshletsIndicesSRV;
+		D3D12_CPU_DESCRIPTOR_HANDLE mMeshletsPrimitivesSRV;
 
-				// Calculate bounding sphere (simplified example)
-				DirectX::XMFLOAT3 center = { 0.0f, 0.0f, 0.0f };
-				float radius = 0.0f;
-				for (const auto& vertex : meshlet.vertices)
-				{
-					center.x += vertex.x;
-					center.y += vertex.y;
-					center.z += vertex.z;
-				}
-				center.x /= meshlet.vertices.size();
-				center.y /= meshlet.vertices.size();
-				center.z /= meshlet.vertices.size();
-
-				for (const auto& vertex : meshlet.vertices)
-				{
-					float distance = sqrtf((vertex.x - center.x) * (vertex.x - center.x) +
-						(vertex.y - center.y) * (vertex.y - center.y) +
-						(vertex.z - center.z) * (vertex.z - center.z));
-					radius = std::max(radius, distance);
-				}
-
-				meshlet.boundingSphereCenter = center;
-				meshlet.boundingSphereRadius = radius;
-
-				meshlets.push_back(meshlet);
-			}
-
-			return meshlets;
-		}
+		HRESULT CreateResources(ID3D12Device* device);
+		HRESULT CreateSRVs(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE srvHeapHandle);
 
 	};
 

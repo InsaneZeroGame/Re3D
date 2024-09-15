@@ -200,6 +200,7 @@ void Renderer::Gui::GameSceneUpdate(std::shared_ptr<GAS::GameScene> InGameScene,
 		{
 			name += "-" + lStaticComponent->mName;
 			mRenderer.lock()->GetContext()->LoadStaticMeshToGpu(*lStaticComponent);
+			mRenderer.lock()->MeshShaderNewStaticmeshComponent(*lStaticComponent);
 		}
 		for (auto [textureName, textureData] : mCurrentScene->GetTextureMap())
 		{

@@ -28,6 +28,9 @@ namespace Renderer
 
 		std::shared_ptr<class RendererContext> GetContext();
 
+		//Todo: Remove this temp code for mesh shader
+		virtual void MeshShaderNewStaticmeshComponent(ECS::StaticMeshComponent& InStaticMeshComponent) {};
+
 	public:
 		//Tone Mapping Settings
 		bool mUseToneMapping = true;
@@ -43,6 +46,10 @@ namespace Renderer
 		float mbloomBaseSaturation = 1.0f;
 		std::array<float, 3> mSunLightDir = { 1.0,1.0,1.0 };
 		float mSunLightIntensity = 1.0;
+		virtual void CreateBuffers();
+		virtual void UpdataFrameData();
+		virtual void PrepairForRendering();
+		virtual void FirstFrame();
 	protected:
 		int mWidth;
 		int mHeight;
@@ -60,6 +67,13 @@ namespace Renderer
 		std::future<void> mLoadResourceFuture;
 		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>> mTextureMap;
 		std::shared_ptr<class Gui> mGui;
+		std::array<FrameData, SWAP_CHAIN_BUFFER_COUNT> mFrameData;
+		std::array<std::shared_ptr<Resource::UploadBuffer>, SWAP_CHAIN_BUFFER_COUNT> mFrameDataCPU;
+		std::array<std::unique_ptr<Resource::VertexBuffer>, SWAP_CHAIN_BUFFER_COUNT> mFrameDataGPU;
+		std::unique_ptr<Resource::StructuredBuffer> mLightBuffer;
+		std::shared_ptr<Resource::UploadBuffer> mLightUploadBuffer;
+		int mFrameIndexCpu = 0;
+		std::array<ECS::LigthData, 256> mLights;
 
 	};
 }

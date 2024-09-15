@@ -1,6 +1,6 @@
 #pragma once
 #pragma warning(disable : 4996)
-
+#define NOMINMAX
 #include <array>
 #include <vector>
 #include <functional>

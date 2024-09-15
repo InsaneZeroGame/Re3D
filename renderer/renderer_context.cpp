@@ -17,7 +17,7 @@ Renderer::RendererContext::RendererContext(std::shared_ptr<class CmdManager> InC
 
 	//2.Upload Buffer
 	mVertexBufferCpu = std::make_shared<VertexBufferRenderer<Vertex>>();
-	mIndexBufferCpu = std::make_shared<VertexBufferRenderer<int>>();
+	mIndexBufferCpu = std::make_shared<VertexBufferRenderer<uint32_t>>();
 	mCopyFenceHandle = CreateEvent(nullptr, false, false, nullptr);
 	mCopyCmd = mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_COPY);
 	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mCopyFence)) == S_OK);
@@ -56,9 +56,9 @@ void Renderer::RendererContext::UpdateDataToVertexBuffer(std::span<Vertex> InDat
 	UploadDataToResource<Vertex>(mVertexBuffer->GetResource(), InData, mVertexBufferCpu);
 }
 
-void Renderer::RendererContext::UpdateDataToIndexBuffer(std::span<int> InData)
+void Renderer::RendererContext::UpdateDataToIndexBuffer(std::span<uint32_t> InData)
 {
-	UploadDataToResource<int>(mIndexBuffer->GetResource(), InData, mIndexBufferCpu);
+	UploadDataToResource<uint32_t>(mIndexBuffer->GetResource(), InData, mIndexBufferCpu);
 }
 
 
@@ -130,7 +130,7 @@ std::shared_ptr<Renderer::VertexBufferRenderer<Renderer::Vertex>> Renderer::Rend
 	return mVertexBufferCpu;
 }
 
-std::shared_ptr<Renderer::VertexBufferRenderer<int>> Renderer::RendererContext::GetIndexBufferCpu()
+std::shared_ptr<Renderer::VertexBufferRenderer<uint32_t>> Renderer::RendererContext::GetIndexBufferCpu()
 {
 	return mIndexBufferCpu;
 }

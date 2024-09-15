@@ -38,7 +38,7 @@ namespace Renderer
 	protected:
         //void CreateGui();
 		void CreateRenderTask();
-		void CreateBuffers();
+		void CreateBuffers() override;
 		void CreateTextures();
 		void DepthOnlyPass(const ECS::StaticMeshComponent& InAsset);
 		void InitPostProcess();
@@ -47,10 +47,10 @@ namespace Renderer
 		virtual void PostRender();
 		virtual void CreatePipelineState();
 		virtual void CreateRootSignature();
-		void UpdataFrameData();
+		void UpdataFrameData() override;
 		void OnGameSceneUpdated(std::shared_ptr<GAS::GameScene> InScene, std::span<entt::entity> InNewEntities);
 		virtual void DrawObject(const ECS::StaticMeshComponent& InAsset);
-		void PrepairForRendering();
+		void PrepairForRendering() override;
 	protected:
 		bool mIsFirstFrame;
 		uint64_t mComputeFenceValue;
@@ -65,25 +65,20 @@ namespace Renderer
 		ID3D12PipelineState* mPipelineStateShadowMap;
 		ID3D12RootSignature* mColorPassRootSignature;
 		
-		std::array<FrameData,SWAP_CHAIN_BUFFER_COUNT> mFrameData;
-		std::array<std::shared_ptr<Resource::UploadBuffer>,SWAP_CHAIN_BUFFER_COUNT> mFrameDataCPU;
-		std::array<std::unique_ptr<Resource::VertexBuffer>,SWAP_CHAIN_BUFFER_COUNT> mFrameDataGPU;
+		
 		std::unique_ptr<class tf::Taskflow> mRenderFlow;
 		std::unique_ptr<class tf::Executor> mRenderExecution;
 		
 		float mColorRGBA[4] = { 0.15f,0.25f,0.75f,1.0f };
-		std::unique_ptr<Resource::StructuredBuffer> mLightBuffer;
-		std::shared_ptr<Resource::UploadBuffer> mLightUploadBuffer;
+		
 		std::unique_ptr<Resource::StructuredBuffer> mClusterBuffer;
 		std::vector<Cluster> mCLusters;
 		std::unique_ptr<SkyboxPass> mSkyboxPass;
 		std::unique_ptr<LightCullPass> mLightCullPass;
 
-		std::array<ECS::LigthData, 256> mLights;
         bool mHasSkybox = true;
 
 		std::shared_ptr<Resource::StructuredBuffer> mDummyBuffer;
-		int mFrameIndexCpu = 0;
 		std::unique_ptr<DirectX::DX12::BasicPostProcess> ppBloomExtract;
 		std::unique_ptr<DirectX::DX12::BasicPostProcess> ppBloomBlur;
 		std::unique_ptr<DirectX::DX12::DualPostProcess> ppBloomCombine;
