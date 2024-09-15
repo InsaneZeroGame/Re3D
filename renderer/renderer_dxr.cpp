@@ -13,7 +13,7 @@ Renderer::DXRRenderer::DXRRenderer()
 		&options5, sizeof(options5)) == S_OK);
 	Ensures(options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0);
 	mGraphicsCmd = static_cast<ID3D12GraphicsCommandList4*>(mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT));
-	mMeshShaderPass = std::make_shared<MeshShaderPass>(L"MeshShader.cso", L"SimplePS.cso", mContext);
+	mMeshShaderPass = std::make_shared<MeshShaderPass>(L"MeshShader.cso", L"SimplePS.cso", nullptr);
 	CreateBuffers();
 }
 
@@ -25,7 +25,10 @@ Renderer::DXRRenderer::~DXRRenderer()
 void Renderer::DXRRenderer::SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight)
 {
 	BaseRenderer::SetTargetWindowAndCreateSwapChain(InWindow, InWidth, InHeight);
-	mContext->CreateWindowDependentResource(InWidth, InHeight);
+	if (GetContext())
+	{
+		GetContext()->CreateWindowDependentResource(InWidth, InHeight);
+	}
 	mGui = std::make_shared<Gui>(weak_from_this());
 	mGui->CreateGui(mWindow);
 }
@@ -76,25 +79,20 @@ void Renderer::DXRRenderer::Update(float delta)
 		constexpr int matrixSizeNum32Bits = sizeof(DirectX::SimpleMath::Matrix) / 4;
 		allStaticMeshComponents.each([this](auto entity, ECS::StaticMeshComponent& renderComponent, ECS::TransformComponent& transformComponent) {
 			//Dispatch meshlets
-
 			MeshShaderConstants meshConstants;
 			meshConstants.mModelMatrix = transformComponent.GetModelMatrix();
 			mGraphicsCmd->SetGraphicsRoot32BitConstants(MESH_CONSTANTS_ROOT_PARAMETER_INDEX, matrixSizeNum32Bits, &meshConstants, 0);
-			const uint32_t meshletsPerGroup = 1;
-			const uint32_t maxThreadGroups = 128;
+			constexpr uint32_t meshletsPerGroup = 1;
+			constexpr uint32_t maxThreadGroups = 128;
 			uint32_t totalMeshlets = renderComponent.mMeshlets.size();
 			uint32_t meshletsProcessed = 0;
-
 			ID3D12GraphicsCommandList6* meshCmd = static_cast<ID3D12GraphicsCommandList6*>(mGraphicsCmd);
-
 			while (meshletsProcessed < totalMeshlets) {
 				uint32_t meshletsToProcess = std::min(maxThreadGroups, totalMeshlets - meshletsProcessed);
 				uint32_t dispatchX = (meshletsToProcess + meshletsPerGroup - 1) / 1; // meshletsPerGroup is 1
-
 				// Update the meshlet offset for the current batch
 				meshConstants.mMeshletOffset = renderComponent.mMeshletOffset + meshletsProcessed;
-				meshConstants.mMeshletCount = meshletsToProcess;
-				mGraphicsCmd->SetGraphicsRoot32BitConstants(MESH_CONSTANTS_ROOT_PARAMETER_INDEX, 2, &meshConstants.mMeshletCount, matrixSizeNum32Bits);
+				mGraphicsCmd->SetGraphicsRoot32BitConstants(MESH_CONSTANTS_ROOT_PARAMETER_INDEX, 1, &meshConstants.mMeshletOffset, matrixSizeNum32Bits);
 				meshCmd->DispatchMesh(dispatchX, 1, 1);
 				meshletsProcessed += meshletsToProcess;
 			}

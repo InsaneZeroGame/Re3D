@@ -28,8 +28,6 @@ mBaseColor(InMesh.mDiffuseColor)
 	
 }
 
-
-
 HRESULT ECS::StaticMeshComponent::ConvertToMeshlets(size_t maxVerticesPerMeshlet, size_t maxIndicesPerMeshlet)
 {
     // Convert vertices to DirectXMesh format
@@ -38,7 +36,6 @@ HRESULT ECS::StaticMeshComponent::ConvertToMeshlets(size_t maxVerticesPerMeshlet
         mMeshletsVertices[i].x = mVertices[i].pos[0];
         mMeshletsVertices[i].y = mVertices[i].pos[1];
         mMeshletsVertices[i].z = mVertices[i].pos[2];
-
     }
 
     // Generate meshlets using DirectXMesh

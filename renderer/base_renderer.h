@@ -26,7 +26,6 @@ namespace Renderer
 
 		std::unordered_map<std::string, std::shared_ptr<Resource::Texture>>& GetSceneTextureMap();
 
-		std::shared_ptr<class RendererContext> GetContext();
 
 		//Todo: Remove this temp code for mesh shader
 		virtual void MeshShaderNewStaticmeshComponent(ECS::StaticMeshComponent& InStaticMeshComponent) {};
@@ -50,6 +49,7 @@ namespace Renderer
 		virtual void UpdataFrameData();
 		virtual void PrepairForRendering();
 		virtual void FirstFrame();
+		virtual std::shared_ptr<class RendererContext> GetContext() { return nullptr; };
 	protected:
 		int mWidth;
 		int mHeight;
@@ -60,7 +60,6 @@ namespace Renderer
 		D3D12_VIEWPORT mViewPort;
 		D3D12_RECT mRect;
 		std::shared_ptr<class CmdManager> mCmdManager;
-		std::shared_ptr<class RendererContext> mContext;
 		std::unique_ptr<DirectX::ResourceUploadBatch> mBatchUploader;
 		uint64_t mGraphicsFenceValue;
 		std::shared_ptr<GAS::GameScene> mCurrentScene;

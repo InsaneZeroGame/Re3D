@@ -1,4 +1,5 @@
 #include "renderer.h"
+#include "renderer_context.h"
 #include "obj_model_loader.h"
 #include "utility.h"
 #include <camera.h>
@@ -14,7 +15,8 @@ Renderer::ClusterForwardRenderer::ClusterForwardRenderer():
 	mComputeFence(nullptr),
 	mGraphicsCmd(nullptr),
 	mSkyboxPass(nullptr),
-	mComputeFenceValue(1)
+	mComputeFenceValue(1),
+	mContext(std::make_shared<RendererContext>(mCmdManager))
 {
 	Ensures(AssetLoader::gStbTextureLoader);
 	Ensures(g_Device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&mComputeFence)) == S_OK);
@@ -58,6 +60,11 @@ void Renderer::ClusterForwardRenderer::LoadGameScene(std::shared_ptr<GAS::GameSc
 {
 	BaseRenderer::LoadGameScene(InGameScene);
     mGui->SetCurrentScene(InGameScene);
+}
+
+std::shared_ptr<Renderer::RendererContext> Renderer::ClusterForwardRenderer::GetContext()
+{
+	return mContext;
 }
 
 void Renderer::ClusterForwardRenderer::CreateRenderTask()

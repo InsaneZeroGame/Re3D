@@ -5,7 +5,6 @@ namespace Renderer
 	struct MeshShaderConstants
 	{
 		DirectX::SimpleMath::Matrix mModelMatrix;
-		uint32_t mMeshletCount;
 		uint32_t mMeshletOffset;
 	};
 	constexpr int MESH_VERTEX_ROOT_PARAMETER_INDEX = 0;

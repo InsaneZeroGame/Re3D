@@ -34,7 +34,7 @@ namespace Renderer
 		void SetTargetWindowAndCreateSwapChain(HWND InWindow, int InWidth, int InHeight) override;
 		void Update(float delta) override;
 		void LoadGameScene(std::shared_ptr<GAS::GameScene> InGameScene) override;
-		
+		std::shared_ptr<class RendererContext> GetContext() override;
 	protected:
         //void CreateGui();
 		void CreateRenderTask();
@@ -64,6 +64,8 @@ namespace Renderer
 		ID3D12PipelineState* mPipelineStateDepthOnly;
 		ID3D12PipelineState* mPipelineStateShadowMap;
 		ID3D12RootSignature* mColorPassRootSignature;
+		std::shared_ptr<class RendererContext> mContext;
+
 		
 		
 		std::unique_ptr<class tf::Taskflow> mRenderFlow;

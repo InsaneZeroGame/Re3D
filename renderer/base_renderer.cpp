@@ -4,7 +4,6 @@
 Renderer::BaseRenderer::BaseRenderer():
 	mDeviceManager(std::make_unique<DeviceManager>()),
 	mCmdManager(mDeviceManager->GetCmdManager()),
-	mContext(std::make_shared<RendererContext>(mCmdManager)),
 	mBatchUploader(std::make_unique<ResourceUploadBatch>(g_Device)),
 	mGraphicsFenceValue(1),
 	mCurrentScene(nullptr)
@@ -40,7 +39,7 @@ void Renderer::BaseRenderer::LoadGameScene(std::shared_ptr<GAS::GameScene> InGam
 		{
 			auto allStaticMeshComponents = sceneRegistery.view<ECS::StaticMeshComponent>();
 			allStaticMeshComponents.each([this](auto entity, ECS::StaticMeshComponent& renderComponent) {
-				mContext->LoadStaticMeshToGpu(renderComponent);
+				GetContext()->LoadStaticMeshToGpu(renderComponent);
 				});
 			for (auto [textureName, textureData] : mCurrentScene->GetTextureMap())
 			{
@@ -100,11 +99,6 @@ std::shared_ptr<Renderer::Resource::Texture> Renderer::BaseRenderer::LoadMateria
 std::unordered_map<std::string, std::shared_ptr<Renderer::Resource::Texture>>& Renderer::BaseRenderer::GetSceneTextureMap()
 {
 	return mTextureMap;
-}
-
-std::shared_ptr<Renderer::RendererContext> Renderer::BaseRenderer::GetContext()
-{
-	return mContext;
 }
 
 void Renderer::BaseRenderer::CreateBuffers()

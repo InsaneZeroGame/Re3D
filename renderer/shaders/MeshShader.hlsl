@@ -24,7 +24,6 @@ StructuredBuffer<uint> PrimitiveIndices : register(t3);
 struct MeshShaderConstants
 {
     float4x4 modelMatrix;
-    uint meshletCount;
     uint meshletOffset;
 };
 ConstantBuffer<MeshShaderConstants> ObjectConstants : register(b0);
