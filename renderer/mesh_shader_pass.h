@@ -6,6 +6,7 @@ namespace Renderer
 	{
 		DirectX::SimpleMath::Matrix mModelMatrix;
 		uint32_t mMeshletOffset;
+		ECS::StaticMeshComponentMeshOffset mMeshOffsets;
 	};
 	constexpr int MESH_VERTEX_ROOT_PARAMETER_INDEX = 0;
 	constexpr int MESH_CONSTANTS_ROOT_PARAMETER_INDEX = 1;

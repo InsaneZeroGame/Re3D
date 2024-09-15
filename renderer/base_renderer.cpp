@@ -203,7 +203,7 @@ void Renderer::BaseRenderer::UpdataFrameData()
 
 void Renderer::BaseRenderer::PrepairForRendering()
 {
-	mCmdManager->AllocateCmdAndFlush(D3D12_COMMAND_LIST_TYPE_DIRECT, [=](ID3D12GraphicsCommandList* lcmd)
+	mCmdManager->AllocateCmdAndFlush(D3D12_COMMAND_LIST_TYPE_DIRECT, [=](ID3D12GraphicsCommandList* lcmd,ID3D12CommandAllocator* allocator)
 		{
 			TransitState(lcmd, mLightUploadBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_SOURCE);
 			TransitState(lcmd, mLightBuffer->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_COPY_DEST);

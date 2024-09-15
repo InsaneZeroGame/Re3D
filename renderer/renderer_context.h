@@ -63,7 +63,6 @@ namespace Renderer
 		template<typename T>
 		void UploadDataToResource(ID3D12Resource* InDestResource, std::span<T> InData, std::shared_ptr<VertexBufferRenderer<T>> InCpuResource);
 		void UploadDataToResource(ID3D12Resource* InDestResource, const void* data, uint64_t size, uint64_t InDestOffset);
-
 	private:
 		std::shared_ptr<Resource::VertexBuffer> mVertexBuffer;
 		std::shared_ptr<Resource::VertexBuffer> mIndexBuffer;

@@ -687,7 +687,7 @@ void Renderer::ClusterForwardRenderer::DrawObject(const ECS::StaticMeshComponent
 void Renderer::ClusterForwardRenderer::PrepairForRendering()
 {
 	BaseRenderer::PrepairForRendering();
-	mCmdManager->AllocateCmdAndFlush(D3D12_COMMAND_LIST_TYPE_DIRECT, [=](ID3D12GraphicsCommandList* lcmd)
+	mCmdManager->AllocateCmdAndFlush(D3D12_COMMAND_LIST_TYPE_DIRECT, [=](ID3D12GraphicsCommandList* lcmd,ID3D12CommandAllocator* allocator)
 		{
 			TransitState(lcmd, mContext->GetShadowMap()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
 			TransitState(lcmd, mContext->GetDepthBuffer()->GetResource(), D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE);

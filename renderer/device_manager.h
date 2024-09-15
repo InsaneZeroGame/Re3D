@@ -61,7 +61,7 @@ namespace Renderer
 		ID3D12CommandQueue* GetQueue(D3D12_COMMAND_LIST_TYPE InType);
 		void Discard(D3D12_COMMAND_LIST_TYPE InType,ID3D12CommandAllocator* cmdAllocator,uint64_t InFenceValue);
 		void FlushCmds(D3D12_COMMAND_LIST_TYPE InType,std::span<ID3D12CommandList*> InCmds);
-		void AllocateCmdAndFlush(D3D12_COMMAND_LIST_TYPE InType,std::function<void(ID3D12GraphicsCommandList*)> RecordCmdCallBack = nullptr);
+		void AllocateCmdAndFlush(D3D12_COMMAND_LIST_TYPE InType,std::function<void(ID3D12GraphicsCommandList*,ID3D12CommandAllocator*)> RecordCmdCallBack = nullptr);
 	private:
 		ID3D12Device* mDevice = nullptr;
 		std::vector<ID3D12GraphicsCommandList*> mCmdLists;

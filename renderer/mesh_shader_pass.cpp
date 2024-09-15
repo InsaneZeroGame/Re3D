@@ -33,11 +33,13 @@ void Renderer::MeshShaderPass::CreatePipelineState()
 	psoDesc.AS = { nullptr, 0 };
 	psoDesc.NumRenderTargets = 1;
 	psoDesc.RTVFormats[0] = DXGI_FORMAT_R10G10B10A2_UNORM;
+	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	//psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;
 	psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);    // CW front; cull back
-	psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
+	//psoDesc.RasterizerState.CullMode = D3D12_CULL_MODE_NONE;
 	psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);         // Opaque
 	psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT); // Less-equal depth test w/ writes; no stencil
+	psoDesc.DepthStencilState.DepthFunc = D3D12_COMPARISON_FUNC_GREATER_EQUAL;
 	psoDesc.SampleMask = UINT_MAX;
 	psoDesc.SampleDesc = DefaultSampleDesc();
 
@@ -64,7 +66,7 @@ void Renderer::MeshShaderPass::CreateRS()
 		ranges[i].BaseShaderRegister = i;
 		ranges[i].RegisterSpace = 0;
 		ranges[i].OffsetInDescriptorsFromTableStart = D3D12_DESCRIPTOR_RANGE_OFFSET_APPEND;
-		ranges[i].Flags = D3D12_DESCRIPTOR_RANGE_FLAG_DATA_STATIC;
+		ranges[i].Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
 	}
 	rootParameters[0].InitAsDescriptorTable(4, ranges);
 	rootParameters[1].InitAsConstants(MESH_CONSTANTS_32BITS_NUM, 0);

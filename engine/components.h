@@ -62,15 +62,13 @@ namespace ECS
 	// Meshlet structure
     static constexpr size_t MAX_VERTICES = 64; // Example size
     static constexpr size_t MAX_INDICES = 126; // Example size
-	//struct MeshletInternal
-	//{
-    //    //std::array<DirectX::XMFLOAT3, MAX_VERTICES> vertices;
-    //    //std::array<uint32_t, MAX_INDICES> indices;
-    //    uint32_t vertexCount = 0;
-    //    uint32_t primitiveCount = 0;
-    //    DirectX::XMFLOAT3 boundingSphereCenter;
-    //    float boundingSphereRadius;
-	//};
+	
+	struct StaticMeshComponentMeshOffset
+	{
+		uint32_t mMeshletOffsetWithinScene = 0;
+		uint32_t mVertexOffsetWithinScene = 0;
+		uint32_t mPrimitiveOffsetWithinScene = 0;
+	};
 
 
 	struct StaticMeshComponent : public Component
@@ -90,29 +88,14 @@ namespace ECS
 		MaterialName MatName;
 		MaterialName NormalMap;
 		std::string mName;
-		uint32_t mMeshletOffset = 0;
+		uint32_t mMeshletOffsetWithInThreadGroup = 0;
+		StaticMeshComponentMeshOffset mMeshOffsetWithinScene;
 
 		std::vector<DirectX::Meshlet> mMeshlets;
-		std::vector<DirectX::XMFLOAT3> mMeshletsVertices;
+		std::vector<DirectX::XMFLOAT3> mMeshletsVerticesPosition;
 		std::vector<DirectX::MeshletTriangle> mMeshletPrimditives;
 		std::vector<uint32_t> mMeshletsIndices;
 		HRESULT ConvertToMeshlets(size_t maxVerticesPerMeshlet, size_t maxIndicesPerMeshlet);
-
-
-		// New member variables for resources and SRVs
-		ID3D12Resource* mMeshletsBuffer;
-		ID3D12Resource* mMeshletsVerticesBuffer;
-		ID3D12Resource* mMeshletsIndicesBuffer;
-		ID3D12Resource* mMeshletsPrimitivesBuffer;
-
-		D3D12_CPU_DESCRIPTOR_HANDLE mMeshletsSRV;
-		D3D12_CPU_DESCRIPTOR_HANDLE mMeshletsVerticesSRV;
-		D3D12_CPU_DESCRIPTOR_HANDLE mMeshletsIndicesSRV;
-		D3D12_CPU_DESCRIPTOR_HANDLE mMeshletsPrimitivesSRV;
-
-		HRESULT CreateResources(ID3D12Device* device);
-		HRESULT CreateSRVs(ID3D12Device* device, D3D12_CPU_DESCRIPTOR_HANDLE srvHeapHandle);
-
 	};
 
 	struct LightComponent : public Component

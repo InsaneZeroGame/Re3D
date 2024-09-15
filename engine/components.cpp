@@ -31,11 +31,11 @@ mBaseColor(InMesh.mDiffuseColor)
 HRESULT ECS::StaticMeshComponent::ConvertToMeshlets(size_t maxVerticesPerMeshlet, size_t maxIndicesPerMeshlet)
 {
     // Convert vertices to DirectXMesh format
-	mMeshletsVertices.resize(mVertices.size());
+    mMeshletsVerticesPosition.resize(mVertices.size());
     for (size_t i = 0; i < mVertices.size(); ++i) {
-        mMeshletsVertices[i].x = mVertices[i].pos[0];
-        mMeshletsVertices[i].y = mVertices[i].pos[1];
-        mMeshletsVertices[i].z = mVertices[i].pos[2];
+        mMeshletsVerticesPosition[i].x = mVertices[i].pos[0];
+        mMeshletsVerticesPosition[i].y = mVertices[i].pos[1];
+        mMeshletsVerticesPosition[i].z = mVertices[i].pos[2];
     }
 
     // Generate meshlets using DirectXMesh
@@ -44,8 +44,8 @@ HRESULT ECS::StaticMeshComponent::ConvertToMeshlets(size_t maxVerticesPerMeshlet
     HRESULT hr = DirectX::ComputeMeshlets(
         mIndices.data(),
         mIndices.size()/3,
-        mMeshletsVertices.data(),
-        mMeshletsVertices.size(),
+        mMeshletsVerticesPosition.data(),
+        mMeshletsVerticesPosition.size(),
         nullptr,
         mMeshlets,
         uniqueVertexIB,

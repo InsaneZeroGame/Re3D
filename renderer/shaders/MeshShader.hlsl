@@ -8,15 +8,8 @@ struct Meshlet
    uint PrimOffset;
 };
 
-struct Vertex
-{
-    float3 position;
-    //float3 normal;
-    //float2 texCoord;
-};
-
 StructuredBuffer<Meshlet> Meshlets : register(t0);
-StructuredBuffer<Vertex> Vertices : register(t1);
+StructuredBuffer<VSInput> Vertices : register(t1);
 ByteAddressBuffer UniqueVertexIndices : register(t2);
 StructuredBuffer<uint> PrimitiveIndices : register(t3);
 
@@ -24,7 +17,11 @@ StructuredBuffer<uint> PrimitiveIndices : register(t3);
 struct MeshShaderConstants
 {
     float4x4 modelMatrix;
-    uint meshletOffset;
+    uint MeshletOffsetWithinThreadGroup;
+    uint MeshletOffsetWithinScene;
+    uint VertexOffsetWithinScene;
+    uint PrimitiveOffsetWithinScene;
+    
 };
 ConstantBuffer<MeshShaderConstants> ObjectConstants : register(b0);
 ConstantBuffer<FrameData> frameData : register(b1);
@@ -55,12 +52,12 @@ uint3 UnpackPrimitive(uint primitive)
 
 uint3 GetPrimitive(Meshlet m, uint index)
 {
-    return UnpackPrimitive(PrimitiveIndices[m.PrimOffset + index]);
+    return UnpackPrimitive(PrimitiveIndices[m.PrimOffset + ObjectConstants.PrimitiveOffsetWithinScene + index]);
 }
 
 uint GetVertexIndex(Meshlet m, uint localIndex)
 {
-    localIndex = m.VertOffset + localIndex;
+    localIndex = m.VertOffset + ObjectConstants.VertexOffsetWithinScene + localIndex;
     return UniqueVertexIndices.Load(localIndex * 4);
     //if (MeshInfo.IndexBytes == 4) // 32-bit Vertex Indices
     //{
@@ -88,7 +85,7 @@ void main(
     out indices uint3 tris[126]) // Max possible triangles
 {
     // Calculate the global meshlet ID
-    uint meshletID = ObjectConstants.meshletOffset + groupID;
+    uint meshletID = ObjectConstants.MeshletOffsetWithinScene + ObjectConstants.MeshletOffsetWithinThreadGroup + groupID;
 
     Meshlet meshlet = Meshlets[meshletID];
 
@@ -102,9 +99,9 @@ void main(
     if (gtid < numVertices)
     {
         uint vertexIndex = GetVertexIndex(meshlet, gtid);
-        float4 modelSpacePos = mul(float4(Vertices[vertexIndex].position, 1.0f), ObjectConstants.modelMatrix);
+        float4 modelSpacePos = mul(Vertices[vertexIndex].pos, ObjectConstants.modelMatrix);
         vertices[gtid].position = mul(modelSpacePos, frameData.ViewPrj);
-        vertices[gtid].color = zliceColor[gtid % 7];
+        vertices[gtid].color = float4(Vertices[vertexIndex].normal, 1.0);
     }
     
     if (gtid < numPrimitives)

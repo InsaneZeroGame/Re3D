@@ -429,13 +429,13 @@ void Renderer::CmdManager::FlushCmds(D3D12_COMMAND_LIST_TYPE InType,std::span<ID
 	mFenceValue++;
 }
 
-void Renderer::CmdManager::AllocateCmdAndFlush(D3D12_COMMAND_LIST_TYPE InType, std::function<void(ID3D12GraphicsCommandList*)> RecordCmdCallBack /*= nullptr*/)
+void Renderer::CmdManager::AllocateCmdAndFlush(D3D12_COMMAND_LIST_TYPE InType, std::function<void(ID3D12GraphicsCommandList*,ID3D12CommandAllocator*)> RecordCmdCallBack /*= nullptr*/)
 {
 	ID3D12GraphicsCommandList* lcmd = AllocateCmdList(InType);
 	ID3D12CommandAllocator* lAllocator = RequestAllocator(InType,mFenceValue);
 	lAllocator->Reset();
 	lcmd->Reset(lAllocator, nullptr);
-	RecordCmdCallBack(lcmd);
+	RecordCmdCallBack(lcmd,lAllocator);
 	lcmd->Close();
 	ID3D12CommandList* lcmds[] = { lcmd };
 	FlushCmds(InType, lcmds);
