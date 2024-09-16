@@ -101,6 +101,7 @@ void Renderer::DXRRenderer::Update(float delta)
 			//Dispatch meshlets
 			MeshShaderConstants meshConstants;
 			meshConstants.mModelMatrix = transformComponent.GetModelMatrix();
+			meshConstants.mMeshOffsets = renderComponent.mMeshOffsetWithinScene;
 			mGraphicsCmd->SetGraphicsRoot32BitConstants(MESH_CONSTANTS_ROOT_PARAMETER_INDEX, matrixSizeNum32Bits, &meshConstants, 0);
 			constexpr uint32_t meshletsPerGroup = 1;
 			constexpr uint32_t maxThreadGroups = 128;
@@ -233,7 +234,7 @@ HRESULT Renderer::DXRRenderer::UpdateScene(ECS::StaticMeshComponent& InStaticMes
 	mCurrentMeshOffsets.mMeshletOffsetWithinScene += InStaticMeshComponent.mMeshlets.size();
 	mCurrentMeshOffsets.mVertexOffsetWithinScene += InStaticMeshComponent.mVertices.size();
 	mCurrentMeshOffsets.mPrimitiveOffsetWithinScene += InStaticMeshComponent.mMeshletPrimditives.size();
-
+	mCurrentMeshOffsets.mIndexOffsetWithinScene += InStaticMeshComponent.mMeshletsIndices.size();
 
 	// Create committed resources for meshlets, vertices, indices, and primitives
 	DirectX::ResourceUploadBatch resourceUpload(g_Device);

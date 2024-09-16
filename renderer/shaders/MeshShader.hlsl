@@ -21,7 +21,7 @@ struct MeshShaderConstants
     uint MeshletOffsetWithinScene;
     uint VertexOffsetWithinScene;
     uint PrimitiveOffsetWithinScene;
-    
+    uint IndexOffsetWithinScene;
 };
 ConstantBuffer<MeshShaderConstants> ObjectConstants : register(b0);
 ConstantBuffer<FrameData> frameData : register(b1);
@@ -57,7 +57,8 @@ uint3 GetPrimitive(Meshlet m, uint index)
 
 uint GetVertexIndex(Meshlet m, uint localIndex)
 {
-    localIndex = m.VertOffset + ObjectConstants.VertexOffsetWithinScene + localIndex;
+    localIndex = m.VertOffset + localIndex;
+    localIndex = localIndex + ObjectConstants.IndexOffsetWithinScene;
     return UniqueVertexIndices.Load(localIndex * 4);
     //if (MeshInfo.IndexBytes == 4) // 32-bit Vertex Indices
     //{
@@ -88,23 +89,18 @@ void main(
     uint meshletID = ObjectConstants.MeshletOffsetWithinScene + ObjectConstants.MeshletOffsetWithinThreadGroup + groupID;
 
     Meshlet meshlet = Meshlets[meshletID];
-
-    // Get the actual number of vertices and primitives to emit
-    uint numVertices = meshlet.VertCount;
-    uint numPrimitives = meshlet.PrimCount;
-
-    SetMeshOutputCounts(numVertices, numPrimitives);
+    SetMeshOutputCounts(meshlet.VertCount, meshlet.PrimCount);
 
     // Each thread processes a single vertex
-    if (gtid < numVertices)
+    if (gtid < meshlet.VertCount)
     {
-        uint vertexIndex = GetVertexIndex(meshlet, gtid);
+        uint vertexIndex = GetVertexIndex(meshlet, gtid) + ObjectConstants.VertexOffsetWithinScene;
         float4 modelSpacePos = mul(Vertices[vertexIndex].pos, ObjectConstants.modelMatrix);
         vertices[gtid].position = mul(modelSpacePos, frameData.ViewPrj);
         vertices[gtid].color = float4(Vertices[vertexIndex].normal, 1.0);
     }
     
-    if (gtid < numPrimitives)
+    if (gtid < meshlet.PrimCount)
     {
         tris[gtid] = GetPrimitive(meshlet, gtid);
     }
