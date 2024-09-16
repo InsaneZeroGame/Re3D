@@ -80,46 +80,43 @@ void Renderer::DXRRenderer::Update(float delta)
 	mGraphicsCmd->RSSetScissorRects(1, &mRect);
 	mMeshShaderPass->RenderScene(mGraphicsCmd);
 
-	if (sceneReady)
-	{
-		mGraphicsCmd->SetGraphicsRootDescriptorTable(0, mMeshletsBuffer.mSRVGpu);
+	mGraphicsCmd->SetGraphicsRootDescriptorTable(0, mMeshletsBuffer.mSRVGpu);
 
-		//Update Frame Resource
-		TransitState(mGraphicsCmd, mFrameDataGPU[frameDataIndex]->GetResource(),
-			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
-			D3D12_RESOURCE_STATE_COPY_DEST);
-		mGraphicsCmd->CopyResource(mFrameDataGPU[frameDataIndex]->GetResource(), mFrameDataCPU[frameDataIndex]->GetResource());
-		TransitState(mGraphicsCmd, mFrameDataGPU[frameDataIndex]->GetResource(),
-			D3D12_RESOURCE_STATE_COPY_DEST,
-			D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
-		mGraphicsCmd->SetGraphicsRootConstantBufferView(MESH_FRAME_DATA_ROOT_PARAMETER_INDEX, mFrameDataGPU[frameDataIndex]->RootConstantBufferView());
+	//Update Frame Resource
+	TransitState(mGraphicsCmd, mFrameDataGPU[frameDataIndex]->GetResource(),
+		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER,
+		D3D12_RESOURCE_STATE_COPY_DEST);
+	mGraphicsCmd->CopyResource(mFrameDataGPU[frameDataIndex]->GetResource(), mFrameDataCPU[frameDataIndex]->GetResource());
+	TransitState(mGraphicsCmd, mFrameDataGPU[frameDataIndex]->GetResource(),
+		D3D12_RESOURCE_STATE_COPY_DEST,
+		D3D12_RESOURCE_STATE_VERTEX_AND_CONSTANT_BUFFER);
+	mGraphicsCmd->SetGraphicsRootConstantBufferView(MESH_FRAME_DATA_ROOT_PARAMETER_INDEX, mFrameDataGPU[frameDataIndex]->RootConstantBufferView());
 
-		entt::registry& sceneRegistery = mCurrentScene->GetRegistery();
-		auto allStaticMeshComponents = sceneRegistery.view<ECS::StaticMeshComponent, ECS::TransformComponent>();
-		constexpr int matrixSizeNum32Bits = sizeof(DirectX::SimpleMath::Matrix) / 4;
-		allStaticMeshComponents.each([this](auto entity, ECS::StaticMeshComponent& renderComponent, ECS::TransformComponent& transformComponent) {
-			//Dispatch meshlets
-			MeshShaderConstants meshConstants;
-			meshConstants.mModelMatrix = transformComponent.GetModelMatrix();
-			meshConstants.mMeshOffsets = renderComponent.mMeshOffsetWithinScene;
-			mGraphicsCmd->SetGraphicsRoot32BitConstants(MESH_CONSTANTS_ROOT_PARAMETER_INDEX, matrixSizeNum32Bits, &meshConstants, 0);
-			constexpr uint32_t meshletsPerGroup = 1;
-			constexpr uint32_t maxThreadGroups = 128;
-			uint32_t totalMeshlets = renderComponent.mMeshlets.size();
-			uint32_t meshletsProcessed = 0;
-			ID3D12GraphicsCommandList6* meshCmd = static_cast<ID3D12GraphicsCommandList6*>(mGraphicsCmd);
-			while (meshletsProcessed < totalMeshlets) {
-				uint32_t meshletsToProcess = std::min(maxThreadGroups, totalMeshlets - meshletsProcessed);
-				uint32_t dispatchX = (meshletsToProcess + meshletsPerGroup - 1) / 1; // meshletsPerGroup is 1
-				// Update the meshlet offset for the current batch
-				meshConstants.mMeshletOffset = renderComponent.mMeshletOffsetWithInThreadGroup + meshletsProcessed;
-				constexpr int offsetDatToSetIn32Bits = MESH_CONSTANTS_32BITS_NUM - matrixSizeNum32Bits;
-				mGraphicsCmd->SetGraphicsRoot32BitConstants(MESH_CONSTANTS_ROOT_PARAMETER_INDEX, offsetDatToSetIn32Bits, &meshConstants.mMeshletOffset, matrixSizeNum32Bits);
-				meshCmd->DispatchMesh(dispatchX, 1, 1);
-				meshletsProcessed += meshletsToProcess;
-			}
-			});
-	}
+	entt::registry& sceneRegistery = mCurrentScene->GetRegistery();
+	auto allStaticMeshComponents = sceneRegistery.view<ECS::StaticMeshComponent, ECS::TransformComponent>();
+	constexpr int matrixSizeNum32Bits = sizeof(DirectX::SimpleMath::Matrix) / 4;
+	allStaticMeshComponents.each([this](auto entity, ECS::StaticMeshComponent& renderComponent, ECS::TransformComponent& transformComponent) {
+		//Dispatch meshlets
+		MeshShaderConstants meshConstants;
+		meshConstants.mModelMatrix = transformComponent.GetModelMatrix();
+		meshConstants.mMeshOffsets = renderComponent.mMeshOffsetWithinScene;
+		mGraphicsCmd->SetGraphicsRoot32BitConstants(MESH_CONSTANTS_ROOT_PARAMETER_INDEX, matrixSizeNum32Bits, &meshConstants, 0);
+		constexpr uint32_t meshletsPerGroup = 1;
+		constexpr uint32_t maxThreadGroups = 128;
+		uint32_t totalMeshlets = renderComponent.mMeshlets.size();
+		uint32_t meshletsProcessed = 0;
+		ID3D12GraphicsCommandList6* meshCmd = static_cast<ID3D12GraphicsCommandList6*>(mGraphicsCmd);
+		while (meshletsProcessed < totalMeshlets) {
+			uint32_t meshletsToProcess = std::min(maxThreadGroups, totalMeshlets - meshletsProcessed);
+			uint32_t dispatchX = (meshletsToProcess + meshletsPerGroup - 1) / 1; // meshletsPerGroup is 1
+			// Update the meshlet offset for the current batch
+			meshConstants.mMeshletOffset = renderComponent.mMeshletOffsetWithInThreadGroup + meshletsProcessed;
+			constexpr int offsetDatToSetIn32Bits = MESH_CONSTANTS_32BITS_NUM - matrixSizeNum32Bits;
+			mGraphicsCmd->SetGraphicsRoot32BitConstants(MESH_CONSTANTS_ROOT_PARAMETER_INDEX, offsetDatToSetIn32Bits, &meshConstants.mMeshletOffset, matrixSizeNum32Bits);
+			meshCmd->DispatchMesh(dispatchX, 1, 1);
+			meshletsProcessed += meshletsToProcess;
+		}
+		});
 	mGui->BeginGui();
 	mGui->Render();
 	mGui->EndGui(mGraphicsCmd);
@@ -136,9 +133,11 @@ void Renderer::DXRRenderer::Update(float delta)
 
 void Renderer::DXRRenderer::MeshShaderNewStaticmeshComponent(ECS::StaticMeshComponent& InStaticMeshComponent)
 {
-	InStaticMeshComponent.ConvertToMeshlets(64, 126);
-	UpdateScene(InStaticMeshComponent);
-	sceneReady = true;
+	mLoadResourceFuture = std::async(std::launch::async, [this, &InStaticMeshComponent]()
+		{
+			InStaticMeshComponent.ConvertToMeshlets(64, 126);
+			UpdateScene(InStaticMeshComponent);
+		});
 }
 
 void Renderer::DXRRenderer::CreateBuffers()
@@ -229,6 +228,8 @@ void Renderer::DXRRenderer::CreateBuffers()
 
 HRESULT Renderer::DXRRenderer::UpdateScene(ECS::StaticMeshComponent& InStaticMeshComponent)
 {
+	std::lock_guard<std::mutex> lock(mLoadResourceMutex);
+
 	InStaticMeshComponent.mMeshOffsetWithinScene = mCurrentMeshOffsets;
 
 	mCurrentMeshOffsets.mMeshletOffsetWithinScene += InStaticMeshComponent.mMeshlets.size();

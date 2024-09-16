@@ -73,6 +73,6 @@ namespace Renderer
 		std::shared_ptr<Resource::UploadBuffer> mLightUploadBuffer;
 		int mFrameIndexCpu = 0;
 		std::array<ECS::LigthData, 256> mLights;
-
+		std::mutex mLoadResourceMutex;
 	};
 }
