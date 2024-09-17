@@ -25,8 +25,11 @@ Cluster Forward Lighting
 Amazon Lumberyard Bistro Scene
 ![Screen Shot](https://kkh-1324724049.cos.ap-shanghai.myqcloud.com/Screenshot_bristo.png)
   
-Normal Mapping
+Normal Mapping  
 ![Screen Shot](https://kkh-1324724049.cos.ap-shanghai.myqcloud.com/normal_map_compare.png)
+
+Mesh Shader(Bistro Scene)
+![Screen Shot](https://kkh-1324724049.cos.ap-shanghai.myqcloud.com/mesh_shader.png)
 
 
     @misc{ORCAAmazonBistro,
