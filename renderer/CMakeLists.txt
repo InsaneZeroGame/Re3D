@@ -94,7 +94,7 @@ endfunction()
 message("Compiling mesh shader")
 set(SHADER_FILE "${PROJECT_SOURCE_DIR}/renderer/shaders/MeshShader.hlsl")
 set(MESH_SHADER_OUTPUT "${CMAKE_BINARY_DIR}/${CONFIGURATION}/MeshShader.cso")
-compile_shader(${SHADER_FILE} "main" "ms_6_5" ${MESH_SHADER_OUTPUT})
+compile_shader(${SHADER_FILE} "ms_main" "ms_6_5" ${MESH_SHADER_OUTPUT})
 
 if(DEBUG)
     set_property(SOURCE ${HLSL_SHADER_FILES} PROPERTY VS_SHADER_DISABLE_OPTIMIZATIONS true)

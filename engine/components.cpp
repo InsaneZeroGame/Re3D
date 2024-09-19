@@ -40,6 +40,9 @@ HRESULT ECS::StaticMeshComponent::ConvertToMeshlets(size_t maxVerticesPerMeshlet
 
     // Generate meshlets using DirectXMesh
     std::vector<uint8_t> uniqueVertexIB;
+    
+    std::vector<DirectX::Meshlet> lMeshlets;
+
 
     HRESULT hr = DirectX::ComputeMeshlets(
         mIndices.data(),
@@ -47,12 +50,25 @@ HRESULT ECS::StaticMeshComponent::ConvertToMeshlets(size_t maxVerticesPerMeshlet
         mMeshletsVerticesPosition.data(),
         mMeshletsVerticesPosition.size(),
         nullptr,
-        mMeshlets,
+        lMeshlets,
         uniqueVertexIB,
         mMeshletPrimditives,
         maxVerticesPerMeshlet,
         maxIndicesPerMeshlet
     );
+	auto meshlet_thread_group_size = lMeshlets.size()  / MAX_MESHLET_PER_THREAD_GROUP + 1;
+	mMeshlets.resize(meshlet_thread_group_size);
+    for (size_t i = 0; i < meshlet_thread_group_size; i++)
+    {
+        for (size_t j = 0; j < MAX_MESHLET_PER_THREAD_GROUP; j++)
+        {
+            if (i * MAX_MESHLET_PER_THREAD_GROUP + j < lMeshlets.size())
+            {
+                mMeshlets[i][j] = lMeshlets[i * MAX_MESHLET_PER_THREAD_GROUP + j];
+            }
+        }
+    }
+
     size_t vertIndices = uniqueVertexIB.size() / sizeof(uint32_t);
     mMeshletsIndices = std::vector<uint32_t>(reinterpret_cast<uint32_t*>(uniqueVertexIB.data()),
         reinterpret_cast<uint32_t*>(uniqueVertexIB.data() + uniqueVertexIB.size()));

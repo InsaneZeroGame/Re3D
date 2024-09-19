@@ -103,24 +103,22 @@ void Renderer::DXRRenderer::Update(float delta)
 		mGraphicsCmd->SetGraphicsRoot32BitConstants(MESH_CONSTANTS_ROOT_PARAMETER_INDEX, matrixSizeNum32Bits, &meshConstants, 0);
 		constexpr uint32_t meshletsPerGroup = 1;
 		constexpr uint32_t maxThreadGroups = 128;
-		uint32_t totalMeshlets = renderComponent.mMeshlets.size();
-		uint32_t meshletsProcessed = 0;
 		ID3D12GraphicsCommandList6* meshCmd = static_cast<ID3D12GraphicsCommandList6*>(mGraphicsCmd);
-		while (meshletsProcessed < totalMeshlets) {
-			uint32_t meshletsToProcess = std::min(maxThreadGroups, totalMeshlets - meshletsProcessed);
-			uint32_t dispatchX = (meshletsToProcess + meshletsPerGroup - 1) / 1; // meshletsPerGroup is 1
-			// Update the meshlet offset for the current batch
-			meshConstants.mMeshletOffset = renderComponent.mMeshletOffsetWithInThreadGroup + meshletsProcessed;
+		int i = 0;
+		for (auto& meshlet : renderComponent.mMeshlets)
+		{
+			meshConstants.mMeshletOffset = i * MAX_MESHLET_PER_THREAD_GROUP;
 			constexpr int offsetDatToSetIn32Bits = MESH_CONSTANTS_32BITS_NUM - matrixSizeNum32Bits;
 			mGraphicsCmd->SetGraphicsRoot32BitConstants(MESH_CONSTANTS_ROOT_PARAMETER_INDEX, offsetDatToSetIn32Bits, &meshConstants.mMeshletOffset, matrixSizeNum32Bits);
-			meshCmd->DispatchMesh(dispatchX, 1, 1);
-			meshletsProcessed += meshletsToProcess;
+			meshCmd->DispatchMesh(MAX_MESHLET_PER_THREAD_GROUP, 1, 1);
+			i++;
 		}
 		});
+	
+	//Gui
 	mGui->BeginGui();
 	mGui->Render();
 	mGui->EndGui(mGraphicsCmd);
-
 	
 	TransitState(mGraphicsCmd, g_DisplayPlane[lCurrentFrameIndex].GetResource(), D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 	mGraphicsCmd->Close();
@@ -232,7 +230,7 @@ HRESULT Renderer::DXRRenderer::UpdateScene(ECS::StaticMeshComponent& InStaticMes
 
 	InStaticMeshComponent.mMeshOffsetWithinScene = mCurrentMeshOffsets;
 
-	mCurrentMeshOffsets.mMeshletOffsetWithinScene += InStaticMeshComponent.mMeshlets.size();
+	mCurrentMeshOffsets.mMeshletOffsetWithinScene += InStaticMeshComponent.mMeshlets.size() * MAX_MESHLET_PER_THREAD_GROUP;
 	mCurrentMeshOffsets.mVertexOffsetWithinScene += InStaticMeshComponent.mVertices.size();
 	mCurrentMeshOffsets.mPrimitiveOffsetWithinScene += InStaticMeshComponent.mMeshletPrimditives.size();
 	mCurrentMeshOffsets.mIndexOffsetWithinScene += InStaticMeshComponent.mMeshletsIndices.size();
@@ -246,7 +244,7 @@ HRESULT Renderer::DXRRenderer::UpdateScene(ECS::StaticMeshComponent& InStaticMes
 	resourceUpload.Transition(mMeshletsIndicesBuffer.mBuffer, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
 	resourceUpload.Transition(mMeshletsPrimitivesBuffer.mBuffer, D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
 	
-	int dataSize = InStaticMeshComponent.mMeshlets.size() * sizeof(DirectX::Meshlet);
+	int dataSize = InStaticMeshComponent.mMeshlets.size() * MAX_MESHLET_PER_THREAD_GROUP * sizeof(DirectX::Meshlet);
 	UpdateMeshShaderResource(mMeshletsBuffer.mBuffer, 
 		InStaticMeshComponent.mMeshlets.data(),dataSize,
 		mMeshletsBuffer.mBufferOffsetInByte);

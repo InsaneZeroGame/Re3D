@@ -77,9 +77,12 @@ uint GetVertexIndex(Meshlet m, uint localIndex)
     //}
 }
 
+
+
+
 [numthreads(128, 1, 1)]
 [outputtopology("triangle")]
-void main(
+void ms_main(
     in uint gtid : SV_GroupThreadID,
     in uint groupID : SV_GroupID,
     out vertices VertexOut vertices[64], // Max possible vertices

@@ -11,6 +11,7 @@ constexpr int ROOT_PARA_COMPONENT_DATA = 2;
 constexpr int ROOT_PARA_DIFFUSE_COLOR_TEXTURE = 3;
 constexpr int ROOT_PARA_SHADOW_MAP = 4;
 constexpr int ROOT_PARA_NORMAL_MAP_TEXTURE = 5;
+constexpr int MAX_MESHLET_PER_THREAD_GROUP = 128;
 
 namespace ECS
 {
@@ -91,8 +92,8 @@ namespace ECS
 		std::string mName;
 		uint32_t mMeshletOffsetWithInThreadGroup = 0;
 		StaticMeshComponentMeshOffset mMeshOffsetWithinScene;
-
-		std::vector<DirectX::Meshlet> mMeshlets;
+		//Meshlet data 128 meshlets per thread group max
+		std::vector<std::array<DirectX::Meshlet, MAX_MESHLET_PER_THREAD_GROUP>> mMeshlets;
 		std::vector<DirectX::XMFLOAT3> mMeshletsVerticesPosition;
 		std::vector<DirectX::MeshletTriangle> mMeshletPrimditives;
 		std::vector<uint32_t> mMeshletsIndices;
