@@ -5,7 +5,6 @@ namespace Renderer
 	struct MeshShaderConstants
 	{
 		DirectX::SimpleMath::Matrix mModelMatrix;
-		uint32_t mMeshletOffset;
 		ECS::StaticMeshComponentMeshOffset mMeshOffsets;
 	};
 	constexpr int MESH_VERTEX_ROOT_PARAMETER_INDEX = 0;
@@ -17,7 +16,7 @@ namespace Renderer
 	class MeshShaderPass : public BaseRenderPass
 	{
 	public:
-		MeshShaderPass(const wchar_t* InVertexShader, const wchar_t* InPixelShader, std::shared_ptr<RendererContext> InGraphicsContext);
+		MeshShaderPass(const wchar_t* InAmplifyShader,const wchar_t* InMeshShader, const wchar_t* InPixelShader, std::shared_ptr<RendererContext> InGraphicsContext);
 		~MeshShaderPass();
 
 	public:
@@ -29,7 +28,6 @@ namespace Renderer
 		void CreateRS() override;
 
 	private:
-		
-
+		struct D3D12_SHADER_BYTECODE mAmplifyShader;
 	};
 }

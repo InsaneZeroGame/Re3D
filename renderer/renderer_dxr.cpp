@@ -107,9 +107,9 @@ void Renderer::DXRRenderer::Update(float delta)
 		int i = 0;
 		for (auto& meshlet : renderComponent.mMeshlets)
 		{
-			meshConstants.mMeshletOffset = i * MAX_MESHLET_PER_THREAD_GROUP;
+			meshConstants.mMeshOffsets.MeshletOffset = renderComponent.mMeshOffsetWithinScene.MeshletOffset + i * MAX_MESHLET_PER_THREAD_GROUP;
 			constexpr int offsetDatToSetIn32Bits = MESH_CONSTANTS_32BITS_NUM - matrixSizeNum32Bits;
-			mGraphicsCmd->SetGraphicsRoot32BitConstants(MESH_CONSTANTS_ROOT_PARAMETER_INDEX, offsetDatToSetIn32Bits, &meshConstants.mMeshletOffset, matrixSizeNum32Bits);
+			mGraphicsCmd->SetGraphicsRoot32BitConstants(MESH_CONSTANTS_ROOT_PARAMETER_INDEX, offsetDatToSetIn32Bits, &meshConstants.mMeshOffsets.MeshletOffset, matrixSizeNum32Bits);
 			meshCmd->DispatchMesh(MAX_MESHLET_PER_THREAD_GROUP, 1, 1);
 			i++;
 		}
@@ -230,10 +230,10 @@ HRESULT Renderer::DXRRenderer::UpdateScene(ECS::StaticMeshComponent& InStaticMes
 
 	InStaticMeshComponent.mMeshOffsetWithinScene = mCurrentMeshOffsets;
 
-	mCurrentMeshOffsets.mMeshletOffsetWithinScene += InStaticMeshComponent.mMeshlets.size() * MAX_MESHLET_PER_THREAD_GROUP;
-	mCurrentMeshOffsets.mVertexOffsetWithinScene += InStaticMeshComponent.mVertices.size();
-	mCurrentMeshOffsets.mPrimitiveOffsetWithinScene += InStaticMeshComponent.mMeshletPrimditives.size();
-	mCurrentMeshOffsets.mIndexOffsetWithinScene += InStaticMeshComponent.mMeshletsIndices.size();
+	mCurrentMeshOffsets.MeshletOffset += InStaticMeshComponent.mMeshlets.size() * MAX_MESHLET_PER_THREAD_GROUP;
+	mCurrentMeshOffsets.VertexOffset += InStaticMeshComponent.mVertices.size();
+	mCurrentMeshOffsets.PrimitiveOffset += InStaticMeshComponent.mMeshletPrimditives.size();
+	mCurrentMeshOffsets.IndexOffset += InStaticMeshComponent.mMeshletsIndices.size();
 
 	// Create committed resources for meshlets, vertices, indices, and primitives
 	DirectX::ResourceUploadBatch resourceUpload(g_Device);

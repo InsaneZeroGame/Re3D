@@ -3,11 +3,12 @@
 
 
 Renderer::MeshShaderPass::MeshShaderPass(
-	const wchar_t* InVertexShader, 
+	const wchar_t* InAmplifyShader,
+	const wchar_t* InMeshShader, 
 	const wchar_t* InPixelShader, 
-	std::shared_ptr<RendererContext> InGraphicsContext) :BaseRenderPass(InVertexShader, InPixelShader, InGraphicsContext)
+	std::shared_ptr<RendererContext> InGraphicsContext) :BaseRenderPass(InMeshShader, InPixelShader, InGraphicsContext)
 {
-	
+	mAmplifyShader = Utils::ReadShader(InAmplifyShader);
 	CreateRS();
 	CreatePipelineState();
 }

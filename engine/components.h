@@ -66,10 +66,11 @@ namespace ECS
 	
 	struct StaticMeshComponentMeshOffset
 	{
-		uint32_t mMeshletOffsetWithinScene = 0;
-		uint32_t mVertexOffsetWithinScene = 0;
-		uint32_t mPrimitiveOffsetWithinScene = 0;
-		uint32_t mIndexOffsetWithinScene = 0;
+		//Meshletoffset = SceneOffset + DispatchOffset
+		uint32_t MeshletOffset = 0;
+		uint32_t VertexOffset = 0;
+		uint32_t PrimitiveOffset = 0;
+		uint32_t IndexOffset = 0;
 	};
 
 

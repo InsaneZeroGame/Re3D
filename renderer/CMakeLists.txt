@@ -94,13 +94,16 @@ endfunction()
 message("Compiling mesh shader")
 set(SHADER_FILE "${PROJECT_SOURCE_DIR}/renderer/shaders/MeshShader.hlsl")
 set(MESH_SHADER_OUTPUT "${CMAKE_BINARY_DIR}/${CONFIGURATION}/MeshShader.cso")
+set(AMPLFY_SHADER_OUTPUT "${CMAKE_BINARY_DIR}/${CONFIGURATION}/AmplifyShader.cso")
+
 compile_shader(${SHADER_FILE} "ms_main" "ms_6_5" ${MESH_SHADER_OUTPUT})
+compile_shader(${SHADER_FILE} "as_main" "as_6_5" ${AMPLFY_SHADER_OUTPUT})
 
 if(DEBUG)
     set_property(SOURCE ${HLSL_SHADER_FILES} PROPERTY VS_SHADER_DISABLE_OPTIMIZATIONS true)
     set_property(SOURCE ${HLSL_SHADER_FILES} PROPERTY VS_SHADER_ENABLE_DEBUG true)
 endif()
-add_library(${TARGET} ${HLSL_SHADER_FILES} ${${TARGET}_Headers} ${${TARGET}_Srcs} ${IMGUI} ${MESH_SHADER_OUTPUT})
+add_library(${TARGET} ${HLSL_SHADER_FILES} ${${TARGET}_Headers} ${${TARGET}_Srcs} ${IMGUI} ${MESH_SHADER_OUTPUT} ${AMPLFY_SHADER_OUTPUT})
 target_link_libraries(${TARGET} GSL spdlog Engine Taskflow EnTT)
 target_precompile_headers(${TARGET} PRIVATE pch.h)
 

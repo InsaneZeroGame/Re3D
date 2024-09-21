@@ -17,10 +17,9 @@ StructuredBuffer<uint> PrimitiveIndices : register(t3);
 struct MeshShaderConstants
 {
     float4x4 modelMatrix;
-    uint MeshletOffsetWithinThreadGroup;
-    uint MeshletOffsetWithinScene;
+    uint MeshletOffset;
     uint VertexOffsetWithinScene;
-    uint PrimitiveOffsetWithinScene;
+    uint PrimitiveOffset;
     uint IndexOffsetWithinScene;
 };
 ConstantBuffer<MeshShaderConstants> ObjectConstants : register(b0);
@@ -52,7 +51,7 @@ uint3 UnpackPrimitive(uint primitive)
 
 uint3 GetPrimitive(Meshlet m, uint index)
 {
-    return UnpackPrimitive(PrimitiveIndices[m.PrimOffset + ObjectConstants.PrimitiveOffsetWithinScene + index]);
+    return UnpackPrimitive(PrimitiveIndices[m.PrimOffset + ObjectConstants.PrimitiveOffset + index]);
 }
 
 uint GetVertexIndex(Meshlet m, uint localIndex)
@@ -77,7 +76,18 @@ uint GetVertexIndex(Meshlet m, uint localIndex)
     //}
 }
 
+struct Payload
+{
+    uint meshletID[128];
+};
 
+groupshared Payload payload;
+
+[numthreads(128,1,1)]
+void as_main()
+{
+    DispatchMesh(1, 1, 1, payload);
+}
 
 
 [numthreads(128, 1, 1)]
@@ -89,7 +99,7 @@ void ms_main(
     out indices uint3 tris[126]) // Max possible triangles
 {
     // Calculate the global meshlet ID
-    uint meshletID = ObjectConstants.MeshletOffsetWithinScene + ObjectConstants.MeshletOffsetWithinThreadGroup + groupID;
+    uint meshletID = ObjectConstants.MeshletOffset + groupID;
 
     Meshlet meshlet = Meshlets[meshletID];
     SetMeshOutputCounts(meshlet.VertCount, meshlet.PrimCount);
