@@ -31,7 +31,7 @@ void Renderer::MeshShaderPass::CreatePipelineState()
 	psoDesc.pRootSignature = mRS;
 	psoDesc.MS = mVertexShader;
 	psoDesc.PS = mPixelShader;
-	psoDesc.AS = { nullptr, 0 };
+	psoDesc.AS = mAmplifyShader;
 	psoDesc.NumRenderTargets = 1;
 	psoDesc.RTVFormats[0] = DXGI_FORMAT_R10G10B10A2_UNORM;
 	psoDesc.DSVFormat = DXGI_FORMAT_D32_FLOAT;

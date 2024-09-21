@@ -84,9 +84,13 @@ struct Payload
 groupshared Payload payload;
 
 [numthreads(128,1,1)]
-void as_main()
+void as_main(
+    in uint gtid : SV_GroupThreadID,
+    in uint groupID : SV_GroupID
+)
 {
-    DispatchMesh(1, 1, 1, payload);
+    payload.meshletID[gtid] = ObjectConstants.MeshletOffset + gtid;
+    DispatchMesh(128, 1, 1, payload);
 }
 
 
@@ -95,12 +99,13 @@ void as_main()
 void ms_main(
     in uint gtid : SV_GroupThreadID,
     in uint groupID : SV_GroupID,
+    in payload Payload meshInput,
     out vertices VertexOut vertices[64], // Max possible vertices
     out indices uint3 tris[126]) // Max possible triangles
 {
     // Calculate the global meshlet ID
-    uint meshletID = ObjectConstants.MeshletOffset + groupID;
-
+    //uint meshletID = ObjectConstants.MeshletOffset + groupID;
+    uint meshletID = meshInput.meshletID[groupID];
     Meshlet meshlet = Meshlets[meshletID];
     SetMeshOutputCounts(meshlet.VertCount, meshlet.PrimCount);
 

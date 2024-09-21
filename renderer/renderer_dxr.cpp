@@ -25,7 +25,7 @@ Renderer::DXRRenderer::DXRRenderer()
 		&options5, sizeof(options5)) == S_OK);
 	Ensures(options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0);
 	mGraphicsCmd = static_cast<ID3D12GraphicsCommandList4*>(mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT));
-	mMeshShaderPass = std::make_shared<MeshShaderPass>(L"MeshShader.cso", L"SimplePS.cso", nullptr);
+	mMeshShaderPass = std::make_shared<MeshShaderPass>(L"AmplifyShader.cso", L"MeshShader.cso", L"SimplePS.cso", nullptr);
 	CreateBuffers();
 }
 
@@ -110,7 +110,8 @@ void Renderer::DXRRenderer::Update(float delta)
 			meshConstants.mMeshOffsets.MeshletOffset = renderComponent.mMeshOffsetWithinScene.MeshletOffset + i * MAX_MESHLET_PER_THREAD_GROUP;
 			constexpr int offsetDatToSetIn32Bits = MESH_CONSTANTS_32BITS_NUM - matrixSizeNum32Bits;
 			mGraphicsCmd->SetGraphicsRoot32BitConstants(MESH_CONSTANTS_ROOT_PARAMETER_INDEX, offsetDatToSetIn32Bits, &meshConstants.mMeshOffsets.MeshletOffset, matrixSizeNum32Bits);
-			meshCmd->DispatchMesh(MAX_MESHLET_PER_THREAD_GROUP, 1, 1);
+			//meshCmd->DispatchMesh(MAX_MESHLET_PER_THREAD_GROUP, 1, 1);
+			meshCmd->DispatchMesh(1, 1, 1);
 			i++;
 		}
 		});
