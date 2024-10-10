@@ -3,12 +3,13 @@
 
 
 Renderer::MeshShaderPass::MeshShaderPass(
-	const wchar_t* InAmplifyShader,
-	const wchar_t* InMeshShader, 
-	const wchar_t* InPixelShader, 
-	std::shared_ptr<RendererContext> InGraphicsContext) :BaseRenderPass(InMeshShader, InPixelShader, InGraphicsContext)
+	std::string_view InAmplifyShader,
+	std::string_view InMeshShader, 
+	std::string_view InPixelShader, 
+	std::shared_ptr<RendererContext> InGraphicsContext) :BaseRenderPass("", InPixelShader, InGraphicsContext)
 {
-	mAmplifyShader = Utils::ReadShader(InAmplifyShader);
+	mAmplifyShader = Utils::ReadShader(InAmplifyShader,"as_main", "as_6_5");
+	mVertexShader = Utils::ReadShader(InMeshShader, "ms_main", "ms_6_5");
 	CreateRS();
 	CreatePipelineState();
 }

@@ -25,7 +25,7 @@ Renderer::DXRRenderer::DXRRenderer()
 		&options5, sizeof(options5)) == S_OK);
 	Ensures(options5.RaytracingTier >= D3D12_RAYTRACING_TIER_1_0);
 	mGraphicsCmd = static_cast<ID3D12GraphicsCommandList4*>(mCmdManager->AllocateCmdList(D3D12_COMMAND_LIST_TYPE_DIRECT));
-	mMeshShaderPass = std::make_shared<MeshShaderPass>(L"AmplifyShader.cso", L"MeshShader.cso", L"SimplePS.cso", nullptr);
+	mMeshShaderPass = std::make_shared<MeshShaderPass>("AmplifyShader.hlsl","MeshShader.hlsl", "SimplePS.hlsl", nullptr);
 	CreateBuffers();
 }
 

@@ -16,7 +16,7 @@ namespace Renderer
 	class MeshShaderPass : public BaseRenderPass
 	{
 	public:
-		MeshShaderPass(const wchar_t* InAmplifyShader,const wchar_t* InMeshShader, const wchar_t* InPixelShader, std::shared_ptr<RendererContext> InGraphicsContext);
+		MeshShaderPass(std::string_view InAmplifyShader,std::string_view InMeshShader, std::string_view InPixelShader, std::shared_ptr<RendererContext> InGraphicsContext);
 		~MeshShaderPass();
 
 	public:

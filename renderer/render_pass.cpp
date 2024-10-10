@@ -1,16 +1,19 @@
 #include "render_pass.h"
 #include "components.h"
 
-Renderer::BaseRenderPass::BaseRenderPass(const wchar_t* InVertexShader, const wchar_t* InPixelShader, std::shared_ptr<RendererContext> InGraphicsContext):
+Renderer::BaseRenderPass::BaseRenderPass(std::string_view InVertexShader, std::string_view InPixelShader, std::shared_ptr<RendererContext> InGraphicsContext):
 	mPipelineState(nullptr),
 	mRS(nullptr),
 	mContext(InGraphicsContext)
 {
 	Ensures(g_Device);
-	mVertexShader = Utils::ReadShader(InVertexShader);
-	if (InPixelShader)
+	if (!InVertexShader.empty())
 	{
-		mPixelShader = Utils::ReadShader(InPixelShader);
+		mVertexShader = Utils::ReadShader(InVertexShader, "main", "vs_6_5");
+	}
+	if (!InPixelShader.empty())
+	{
+		mPixelShader = Utils::ReadShader(InPixelShader, "main", "ps_6_5");
 	}
 }
 

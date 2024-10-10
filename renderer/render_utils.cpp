@@ -1,14 +1,70 @@
 #include "render_utils.h"
 #include "utility.h"
 
-D3D12_SHADER_BYTECODE Renderer::Utils::ReadShader(_In_z_ const wchar_t* name)
+
+LPCWSTR StringViewToLPCWSTR(std::string_view str) {
+	// Convert std::string_view to std::wstring
+	std::wstring wstr(str.begin(), str.end());
+
+	// Allocate a buffer to hold the wide string
+	static std::vector<wchar_t> buffer;
+	buffer.assign(wstr.begin(), wstr.end());
+	buffer.push_back(L'\0'); // Ensure null-termination
+
+	// Return a pointer to the wide string
+	return buffer.data();
+}
+
+inline std::string HrToString(HRESULT hr)
 {
-	auto shaderByteCode = Utility::ReadData(name);
-	ID3DBlob* vertexBlob;
-	D3DCreateBlob(shaderByteCode.size(), &vertexBlob);
-	void* vertexPtr = vertexBlob->GetBufferPointer();
-	memcpy(vertexPtr, shaderByteCode.data(), shaderByteCode.size());
-	return CD3DX12_SHADER_BYTECODE(vertexBlob);
+	char s_str[64] = {};
+	sprintf_s(s_str, "HRESULT of 0x%08X", static_cast<UINT>(hr));
+	return std::string(s_str);
+}
+
+std::string GetExecutablePath() {
+	char buffer[MAX_PATH];
+	DWORD length = GetModuleFileNameA(NULL, buffer, MAX_PATH);
+	if (length == 0) {
+		// Handle error
+		return "";
+	}
+	std::filesystem::path exePath(buffer);
+	return exePath.parent_path().string();
+}
+
+
+
+D3D12_SHADER_BYTECODE Renderer::Utils::ReadShader(std::string_view ShaderPath,std::string_view EntryPoint,std::string_view Type)
+{
+	ID3DBlob* vertexShader;
+	ID3DBlob* error;
+
+#if defined(_DEBUG)
+	// Enable better shader debugging with the graphics debugging tools.
+	UINT compileFlags = D3DCOMPILE_OPTIMIZATION_LEVEL3;
+
+	//UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
+#else
+	UINT compileFlags = 0;
+#endif
+	auto path = GetExecutablePath() + "/shaders/" + std::string(ShaderPath);
+	HRESULT hr = D3DCompileFromFile(StringViewToLPCWSTR(path), nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, EntryPoint.data(), Type.data(), compileFlags, 0, &vertexShader, &error);
+	if (FAILED(hr)) {
+		if (error) {
+			// Print the error message to the log
+			OutputDebugString(static_cast<const char*>(error->GetBufferPointer()));
+			error->Release();
+		}
+		else {
+			OutputDebugString(HrToString(hr).c_str());
+		}
+	}
+	else {
+		OutputDebugString("Shader compiled successfully.");
+	}
+	
+	return CD3DX12_SHADER_BYTECODE(vertexShader);
 }
 
 SimpleMath::Vector3 Renderer::Utils::GetLightGridZParams(float NearPlane, float FarPlane)

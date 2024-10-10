@@ -16,7 +16,7 @@ namespace Renderer
 	class BaseRenderPass
 	{
 	public:
-		BaseRenderPass(const wchar_t* InVertexShader, const wchar_t* InPixelShader, std::shared_ptr<RendererContext> InGraphicsContext = nullptr);
+		BaseRenderPass(std::string_view InVertexShader, std::string_view InPixelShader, std::shared_ptr<RendererContext> InGraphicsContext = nullptr);
 		virtual ~BaseRenderPass();
 		virtual void RenderScene(ID3D12GraphicsCommandList* InCmdList) = 0;
 		virtual void SetRenderPassStates(ID3D12GraphicsCommandList* InCmdList);

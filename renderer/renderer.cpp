@@ -469,8 +469,8 @@ void Renderer::ClusterForwardRenderer::CreatePipelineState()
 	lDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
 	lDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
 	lDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
-	lDesc.VS = Utils::ReadShader(L"ForwardVS.cso");
-	lDesc.PS = Utils::ReadShader(L"ForwardPS.cso");
+	lDesc.VS = Utils::ReadShader("ForwardVS.hlsl","main","vs_6_5");
+	lDesc.PS = Utils::ReadShader("ForwardPS.hlsl", "main", "ps_6_5");
 	lDesc.SampleMask = UINT_MAX;
 	std::vector<D3D12_INPUT_ELEMENT_DESC> elements =
 	{
@@ -511,7 +511,7 @@ void Renderer::ClusterForwardRenderer::CreatePipelineState()
 	mPipelineStateDepthOnly->SetName(L"mPipelineStateDepthOnly");
 
 
-	lDesc.VS = Utils::ReadShader(L"ShadowMap.cso");
+	lDesc.VS = Utils::ReadShader("ShadowMap.hlsl", "main", "vs_6_5");
 	lDesc.SampleDesc.Count = 1;
 	lDesc.RasterizerState.MultisampleEnable = false;
 	lDesc.RasterizerState.DepthBias = -100;

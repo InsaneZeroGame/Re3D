@@ -50,61 +50,19 @@ shaders/SkyboxVS.hlsl
 shaders/SkyboxPS.hlsl
 shaders/ShadowMap.hlsl
 shaders/SimplePS.hlsl
+shaders/MeshShader.hlsl
+shaders/AmplifyShader.hlsl
 )
-set_property(SOURCE shaders/SkyboxVS.hlsl PROPERTY VS_SHADER_TYPE Vertex)
-set_property(SOURCE shaders/SkyboxPS.hlsl PROPERTY VS_SHADER_TYPE Pixel)
-set_property(SOURCE shaders/ForwardVS.hlsl PROPERTY VS_SHADER_TYPE Vertex)
-set_property(SOURCE shaders/ForwardPS.hlsl PROPERTY VS_SHADER_TYPE Pixel)
-set_property(SOURCE shaders/LightCull.hlsl PROPERTY VS_SHADER_TYPE Compute)
-set_property(SOURCE shaders/ShadowMap.hlsl PROPERTY VS_SHADER_TYPE Vertex)
-set_property(SOURCE shaders/SimplePS.hlsl PROPERTY VS_SHADER_TYPE Pixel)
-
-set_property(SOURCE shaders/ForwardVS.hlsl PROPERTY VS_SHADER_MODEL 6.5)
-set_property(SOURCE shaders/ForwardPS.hlsl PROPERTY VS_SHADER_MODEL 6.5)
-set_property(SOURCE shaders/LightCull.hlsl PROPERTY VS_SHADER_MODEL 6.5)
-set_property(SOURCE shaders/SkyboxVS.hlsl PROPERTY VS_SHADER_MODEL 6.5)
-set_property(SOURCE shaders/SkyboxPS.hlsl PROPERTY VS_SHADER_MODEL 6.5)
-set_property(SOURCE shaders/ShadowMap.hlsl PROPERTY VS_SHADER_MODEL 6.5)
-set_property(SOURCE shaders/SimplePS.hlsl PROPERTY VS_SHADER_MODEL 6.5)
+source_group("Shaders" FILES ${HLSL_SHADER_FILES})
+# Copy shaders to a certain path
+set(SHADERS_DESTINATION ${CMAKE_BINARY_DIR}/bin/shaders)
+file(COPY ${HLSL_SHADER_FILES} DESTINATION ${SHADERS_DESTINATION})
 
 
-# Set the path to the DXC executable
-set(DXC_PATH "${PROJECT_SOURCE_DIR}/renderer/shaders/DXC/bin/x64/dxc.exe")
 
-# Get the current configuration type
-if(CMAKE_CONFIGURATION_TYPES)
-    # Multi-configuration generator (e.g., Visual Studio)
-    set(CONFIGURATION "$<CONFIG>")
-else()
-    # Single-configuration generator (e.g., Makefile)
-    set(CONFIGURATION "${CMAKE_BUILD_TYPE}")
-endif()
-
-# Function to compile HLSL shaders
-function(compile_shader SHADER_FILE ENTRY_POINT TARGET_PROFILE OUTPUT_FILE)
-    add_custom_command(
-        OUTPUT ${OUTPUT_FILE}
-        COMMAND ${DXC_PATH} -T ${TARGET_PROFILE} -E ${ENTRY_POINT} -Fo ${OUTPUT_FILE} -Zi -Qembed_debug ${SHADER_FILE}
-        DEPENDS ${SHADER_FILE}
-        COMMENT "Compiling ${SHADER_FILE} to ${OUTPUT_FILE}"
-    )
-endfunction()
-
-# Compile the mesh shader
-message("Compiling mesh shader")
-set(SHADER_FILE "${PROJECT_SOURCE_DIR}/renderer/shaders/MeshShader.hlsl")
-set(MESH_SHADER_OUTPUT "${CMAKE_BINARY_DIR}/${CONFIGURATION}/MeshShader.cso")
-set(AMPLFY_SHADER_OUTPUT "${CMAKE_BINARY_DIR}/${CONFIGURATION}/AmplifyShader.cso")
-
-compile_shader(${SHADER_FILE} "ms_main" "ms_6_5" ${MESH_SHADER_OUTPUT})
-compile_shader(${SHADER_FILE} "as_main" "as_6_5" ${AMPLFY_SHADER_OUTPUT})
-
-if(DEBUG)
-    set_property(SOURCE ${HLSL_SHADER_FILES} PROPERTY VS_SHADER_DISABLE_OPTIMIZATIONS true)
-    set_property(SOURCE ${HLSL_SHADER_FILES} PROPERTY VS_SHADER_ENABLE_DEBUG true)
-endif()
-add_library(${TARGET} ${HLSL_SHADER_FILES} ${${TARGET}_Headers} ${${TARGET}_Srcs} ${IMGUI} ${MESH_SHADER_OUTPUT} ${AMPLFY_SHADER_OUTPUT})
+add_library(${TARGET} ${${TARGET}_Headers} ${${TARGET}_Srcs} ${IMGUI} )
 target_link_libraries(${TARGET} GSL spdlog Engine Taskflow EnTT)
 target_precompile_headers(${TARGET} PRIVATE pch.h)
+add_custom_target(Shaders SOURCES ${HLSL_SHADER_FILES})
 
 

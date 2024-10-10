@@ -3,8 +3,9 @@
 
 
 Renderer::LightCullPass::LightCullPass(std::shared_ptr<RendererContext> InGraphicsContext):
-	BaseRenderPass(L"LightCull.cso", nullptr, InGraphicsContext)
+	BaseRenderPass("", "", InGraphicsContext)
 {
+	mVertexShader = Utils::ReadShader("LightCull.hlsl", "main", "cs_6_5");
 	CreateRS();
 	CreatePipelineState();
 }

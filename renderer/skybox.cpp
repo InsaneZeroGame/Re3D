@@ -3,7 +3,7 @@
 
 
 Renderer::SkyboxPass::SkyboxPass(std::shared_ptr<RendererContext> InGraphicsContext):
-	BaseRenderPass(L"SkyboxVS.cso",L"SkyboxPS.cso",InGraphicsContext),
+	BaseRenderPass("SkyboxVS.hlsl","SkyboxPS.hlsl",InGraphicsContext),
 	mStaticMeshComponent(nullptr)
 {
 	using namespace DirectX::DX12;
